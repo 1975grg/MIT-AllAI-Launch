@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
-import type { SmartCase } from "@shared/schema";
+import type { SmartCase, Property } from "@shared/schema";
 
 const createCaseSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -54,7 +54,7 @@ export default function Maintenance() {
     retry: false,
   });
 
-  const { data: properties } = useQuery({
+  const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
     retry: false,
   });
@@ -142,7 +142,7 @@ export default function Maintenance() {
     return null;
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string | null) => {
     switch (status) {
       case "New": return <AlertTriangle className="h-4 w-4 text-blue-600" />;
       case "In Review": return <Clock className="h-4 w-4 text-yellow-600" />;
@@ -155,7 +155,7 @@ export default function Maintenance() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "New": return <Badge className="bg-blue-100 text-blue-800">New</Badge>;
       case "In Progress": return <Badge className="bg-yellow-100 text-yellow-800">In Progress</Badge>;
@@ -165,7 +165,7 @@ export default function Maintenance() {
     }
   };
 
-  const getPriorityBadge = (priority: string) => {
+  const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
       case "Urgent": return <Badge className="bg-red-100 text-red-800">Urgent</Badge>;
       case "High": return <Badge className="bg-orange-100 text-orange-800">High</Badge>;
@@ -383,7 +383,7 @@ export default function Maintenance() {
                     
                     <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
                       <span data-testid={`text-case-created-${index}`}>
-                        Created {new Date(smartCase.createdAt).toLocaleDateString()}
+                        Created {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
                       </span>
                       {smartCase.estimatedCost && (
                         <span data-testid={`text-case-cost-${index}`}>

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Building, Plus, MapPin, Home, Calendar } from "lucide-react";
-import type { Property } from "@shared/schema";
+import type { Property, OwnershipEntity } from "@shared/schema";
 
 export default function Properties() {
   const { toast } = useToast();
@@ -39,7 +39,7 @@ export default function Properties() {
     retry: false,
   });
 
-  const { data: entities } = useQuery({
+  const { data: entities } = useQuery<OwnershipEntity[]>({
     queryKey: ["/api/entities"],
     retry: false,
   });
@@ -133,7 +133,7 @@ export default function Properties() {
                 </Card>
               ))}
             </div>
-          ) : properties?.length > 0 ? (
+          ) : (properties && properties.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {properties.map((property, index) => (
                 <Card key={property.id} className="hover:shadow-md transition-shadow" data-testid={`card-property-${index}`}>

@@ -10,6 +10,28 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Building, DollarSign, AlertTriangle, Bell, Check, Clock, X } from "lucide-react";
+import type { SmartCase, Reminder } from "@shared/schema";
+
+type DashboardStats = {
+  totalProperties: number;
+  monthlyRevenue: number;
+  openCases: number;
+  dueReminders: number;
+};
+
+type RentCollectionStatus = {
+  collected: number;
+  total: number;
+  percentage: number;
+  items: Array<{
+    id: string;
+    property: string;
+    tenant: string;
+    amount: number;
+    status: "paid" | "due" | "overdue";
+    dueDate: Date;
+  }>;
+};
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -30,22 +52,22 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
     retry: false,
   });
 
-  const { data: rentCollection, isLoading: rentLoading } = useQuery({
+  const { data: rentCollection, isLoading: rentLoading } = useQuery<RentCollectionStatus>({
     queryKey: ["/api/dashboard/rent-collection"],
     retry: false,
   });
 
-  const { data: smartCases, isLoading: casesLoading } = useQuery({
+  const { data: smartCases, isLoading: casesLoading } = useQuery<SmartCase[]>({
     queryKey: ["/api/cases"],
     retry: false,
   });
 
-  const { data: reminders, isLoading: remindersLoading } = useQuery({
+  const { data: reminders, isLoading: remindersLoading } = useQuery<Reminder[]>({
     queryKey: ["/api/reminders"],
     retry: false,
   });
@@ -239,7 +261,7 @@ export default function Dashboard() {
                         <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
                       ))}
                     </div>
-                  ) : smartCases?.length > 0 ? (
+                  ) : (smartCases && smartCases.length > 0) ? (
                     <div className="space-y-3">
                       {smartCases.slice(0, 3).map((smartCase, index) => (
                         <div key={smartCase.id} className="flex items-center justify-between p-4 border border-border rounded-md" data-testid={`case-item-${index}`}>
@@ -255,9 +277,9 @@ export default function Dashboard() {
                             </div>
                           </div>
                           <div className="flex items-center space-x-3">
-                            {getStatusBadge(smartCase.status)}
+                            {getStatusBadge(smartCase.status || "New")}
                             <span className="text-sm text-muted-foreground" data-testid={`text-case-date-${index}`}>
-                              {new Date(smartCase.createdAt).toLocaleDateString()}
+                              {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
                             </span>
                           </div>
                         </div>
@@ -288,7 +310,7 @@ export default function Dashboard() {
                         <div key={i} className="h-12 bg-muted animate-pulse rounded-md" />
                       ))}
                     </div>
-                  ) : reminders?.length > 0 ? (
+                  ) : (reminders && reminders.length > 0) ? (
                     <div className="space-y-3">
                       {reminders.slice(0, 4).map((reminder, index) => (
                         <div key={reminder.id} className="flex items-start space-x-3 p-3 bg-muted/50 rounded-md" data-testid={`reminder-item-${index}`}>

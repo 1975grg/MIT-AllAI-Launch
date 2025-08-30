@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Receipt, Plus, DollarSign, Calendar, Building, Tag } from "lucide-react";
-import type { Transaction } from "@shared/schema";
+import type { Transaction, Property } from "@shared/schema";
 
 export default function Expenses() {
   const { toast } = useToast();
@@ -40,7 +40,7 @@ export default function Expenses() {
     retry: false,
   });
 
-  const { data: properties } = useQuery({
+  const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
     retry: false,
   });
@@ -91,7 +91,7 @@ export default function Expenses() {
     categoryFilter === "all" || expense.category === categoryFilter
   );
 
-  const categories = [...new Set(expenseTransactions.map(e => e.category).filter(Boolean))];
+  const categories = Array.from(new Set(expenseTransactions.map(e => e.category).filter(Boolean)));
   const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
   const thisMonthExpenses = filteredExpenses.filter(expense => {
     const expenseMonth = new Date(expense.date).getMonth();

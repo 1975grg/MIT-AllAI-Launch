@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Plus, Clock, CheckCircle, Calendar, AlertTriangle } from "lucide-react";
-import type { Reminder } from "@shared/schema";
+import { Bell, Plus, Clock, CheckCircle, Calendar, AlertTriangle, DollarSign, FileText, Wrench, Shield } from "lucide-react";
+import type { Reminder, Property } from "@shared/schema";
 
 export default function Reminders() {
   const { toast } = useToast();
@@ -41,7 +41,7 @@ export default function Reminders() {
     retry: false,
   });
 
-  const { data: properties } = useQuery({
+  const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
     retry: false,
   });
@@ -159,7 +159,7 @@ export default function Reminders() {
     }
   };
 
-  const isOverdue = (dueAt: string) => {
+  const isOverdue = (dueAt: Date | string) => {
     return new Date(dueAt) < new Date();
   };
 
@@ -338,7 +338,7 @@ export default function Reminders() {
                       </div>
                       
                       <div className="flex items-center space-x-3">
-                        {getStatusBadge(reminder.status)}
+                        {getStatusBadge(reminder.status || "Pending")}
                         {reminder.status === "Pending" && (
                           <Button 
                             variant="outline" 
@@ -359,7 +359,7 @@ export default function Reminders() {
                         <span data-testid={`text-reminder-scope-${index}`}>
                           {reminder.scope}: {reminder.scopeId}
                         </span>
-                        {reminder.leadDays > 0 && (
+                        {(reminder.leadDays || 0) > 0 && (
                           <span data-testid={`text-reminder-lead-${index}`}>
                             {reminder.leadDays} day(s) notice
                           </span>

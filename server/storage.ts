@@ -312,13 +312,26 @@ export class DatabaseStorage implements IStorage {
 
   // Lease operations
   async getLeases(orgId: string): Promise<Lease[]> {
-    return await db
-      .select()
+    const result = await db
+      .select({
+        id: leases.id,
+        unitId: leases.unitId,
+        tenantGroupId: leases.tenantGroupId,
+        startDate: leases.startDate,
+        endDate: leases.endDate,
+        rent: leases.rent,
+        deposit: leases.deposit,
+        dueDay: leases.dueDay,
+        lateFeeRuleJson: leases.lateFeeRuleJson,
+        status: leases.status,
+        createdAt: leases.createdAt,
+      })
       .from(leases)
       .leftJoin(units, eq(leases.unitId, units.id))
       .leftJoin(properties, eq(units.propertyId, properties.id))
       .where(eq(properties.orgId, orgId))
       .orderBy(desc(leases.startDate));
+    return result;
   }
 
   async getActiveLease(unitId: string): Promise<Lease | undefined> {
@@ -374,16 +387,23 @@ export class DatabaseStorage implements IStorage {
 
   // Asset operations
   async getAssets(propertyId?: string, unitId?: string): Promise<Asset[]> {
-    let query = db.select().from(assets);
+    const baseQuery = db.select().from(assets);
     
-    if (propertyId) {
-      query = query.where(eq(assets.propertyId, propertyId));
-    }
-    if (unitId) {
-      query = query.where(eq(assets.unitId, unitId));
+    if (propertyId && unitId) {
+      return await baseQuery
+        .where(and(eq(assets.propertyId, propertyId), eq(assets.unitId, unitId)))
+        .orderBy(asc(assets.category));
+    } else if (propertyId) {
+      return await baseQuery
+        .where(eq(assets.propertyId, propertyId))
+        .orderBy(asc(assets.category));
+    } else if (unitId) {
+      return await baseQuery
+        .where(eq(assets.unitId, unitId))
+        .orderBy(asc(assets.category));
     }
     
-    return await query.orderBy(asc(assets.category));
+    return await baseQuery.orderBy(asc(assets.category));
   }
 
   async createAsset(asset: InsertAsset): Promise<Asset> {
@@ -407,16 +427,19 @@ export class DatabaseStorage implements IStorage {
 
   // Transaction operations
   async getTransactions(orgId: string, type?: "Income" | "Expense"): Promise<Transaction[]> {
-    let query = db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.orgId, orgId));
-    
     if (type) {
-      query = query.where(and(eq(transactions.orgId, orgId), eq(transactions.type, type)));
+      return await db
+        .select()
+        .from(transactions)
+        .where(and(eq(transactions.orgId, orgId), eq(transactions.type, type)))
+        .orderBy(desc(transactions.date));
     }
     
-    return await query.orderBy(desc(transactions.date));
+    return await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.orgId, orgId))
+      .orderBy(desc(transactions.date));
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {

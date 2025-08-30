@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Users, Plus, Mail, Phone, User } from "lucide-react";
+import type { TenantGroup } from "@shared/schema";
 
 export default function Tenants() {
   const { toast } = useToast();
@@ -33,7 +34,7 @@ export default function Tenants() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: tenantGroups, isLoading: tenantsLoading, error } = useQuery({
+  const { data: tenantGroups, isLoading: tenantsLoading, error } = useQuery<TenantGroup[]>({
     queryKey: ["/api/tenants"],
     retry: false,
   });
@@ -126,7 +127,7 @@ export default function Tenants() {
                 </Card>
               ))}
             </div>
-          ) : tenantGroups?.length > 0 ? (
+          ) : (tenantGroups && tenantGroups.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {tenantGroups.map((group, index) => (
                 <Card key={group.id} className="hover:shadow-md transition-shadow" data-testid={`card-tenant-${index}`}>
@@ -164,7 +165,7 @@ export default function Tenants() {
                       </div>
                       
                       <p className="text-sm text-muted-foreground" data-testid={`text-tenant-created-${index}`}>
-                        Added {new Date(group.createdAt).toLocaleDateString()}
+                        Added {group.createdAt ? new Date(group.createdAt).toLocaleDateString() : 'Unknown'}
                       </p>
                     </div>
                     
