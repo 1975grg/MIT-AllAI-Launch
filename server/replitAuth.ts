@@ -57,13 +57,28 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  await storage.upsertUser({
+  const user = await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
+
+  // Check if user has an organization, create one if they don't
+  const existingOrg = await storage.getUserOrganization(user.id);
+  if (!existingOrg) {
+    const orgName = user.firstName && user.lastName 
+      ? `${user.firstName} ${user.lastName}'s Properties`
+      : user.email 
+        ? `${user.email}'s Properties`
+        : "My Properties";
+    
+    await storage.createOrganization({
+      name: orgName,
+      ownerId: user.id,
+    });
+  }
 }
 
 export async function setupAuth(app: Express) {
