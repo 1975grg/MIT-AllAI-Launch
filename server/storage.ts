@@ -73,6 +73,7 @@ export interface IStorage {
   getProperties(orgId: string): Promise<Property[]>;
   getProperty(id: string): Promise<Property | undefined>;
   createProperty(property: InsertProperty): Promise<Property>;
+  createPropertyWithOwnerships(property: InsertProperty, ownerships: Array<{entityId: string, percent: number}>): Promise<Property>;
   updateProperty(id: string, property: Partial<InsertProperty>): Promise<Property>;
   deleteProperty(id: string): Promise<void>;
   
@@ -224,11 +225,71 @@ export class DatabaseStorage implements IStorage {
 
   // Property operations
   async getProperties(orgId: string): Promise<Property[]> {
-    return await db
-      .select()
+    const result = await db
+      .select({
+        id: properties.id,
+        orgId: properties.orgId,
+        name: properties.name,
+        type: properties.type,
+        street: properties.street,
+        city: properties.city,
+        state: properties.state,
+        zipCode: properties.zipCode,
+        country: properties.country,
+        yearBuilt: properties.yearBuilt,
+        sqft: properties.sqft,
+        hoaName: properties.hoaName,
+        hoaContact: properties.hoaContact,
+        notes: properties.notes,
+        createdAt: properties.createdAt,
+        // Include ownership information
+        ownershipEntityId: propertyOwnerships.entityId,
+        ownershipPercent: propertyOwnerships.percent,
+        entityName: ownershipEntities.name,
+        entityType: ownershipEntities.type,
+      })
       .from(properties)
+      .leftJoin(propertyOwnerships, eq(properties.id, propertyOwnerships.propertyId))
+      .leftJoin(ownershipEntities, eq(propertyOwnerships.entityId, ownershipEntities.id))
       .where(eq(properties.orgId, orgId))
       .orderBy(asc(properties.name));
+    
+    // Group by property and aggregate ownership information
+    const propertiesMap = new Map();
+    
+    for (const row of result) {
+      if (!propertiesMap.has(row.id)) {
+        propertiesMap.set(row.id, {
+          id: row.id,
+          orgId: row.orgId,
+          name: row.name,
+          type: row.type,
+          street: row.street,
+          city: row.city,
+          state: row.state,
+          zipCode: row.zipCode,
+          country: row.country,
+          yearBuilt: row.yearBuilt,
+          sqft: row.sqft,
+          hoaName: row.hoaName,
+          hoaContact: row.hoaContact,
+          notes: row.notes,
+          createdAt: row.createdAt,
+          ownerships: []
+        });
+      }
+      
+      if (row.ownershipEntityId) {
+        propertiesMap.get(row.id).ownerships.push({
+          entityId: row.ownershipEntityId,
+          percent: parseFloat(row.ownershipPercent || "0"),
+          entityName: row.entityName,
+          entityType: row.entityType,
+        });
+      }
+    }
+    
+    return Array.from(propertiesMap.values());
   }
 
   async getProperty(id: string): Promise<Property | undefined> {
@@ -238,6 +299,23 @@ export class DatabaseStorage implements IStorage {
 
   async createProperty(property: InsertProperty): Promise<Property> {
     const [newProperty] = await db.insert(properties).values(property).returning();
+    return newProperty;
+  }
+
+  async createPropertyWithOwnerships(property: InsertProperty, ownerships: Array<{entityId: string, percent: number}>): Promise<Property> {
+    const [newProperty] = await db.insert(properties).values(property).returning();
+    
+    // Create ownership records
+    if (ownerships && ownerships.length > 0) {
+      const ownershipRecords = ownerships.map(ownership => ({
+        propertyId: newProperty.id,
+        entityId: ownership.entityId,
+        percent: ownership.percent.toString(),
+      }));
+      
+      await db.insert(propertyOwnerships).values(ownershipRecords);
+    }
+    
     return newProperty;
   }
 

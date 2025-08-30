@@ -11,13 +11,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building, Plus, MapPin, Home, Calendar } from "lucide-react";
+import { Building, Plus, MapPin, Home, Calendar, Building2, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Property, OwnershipEntity } from "@shared/schema";
+
+// Extended property type that includes ownership information  
+type PropertyWithOwnerships = Property & {
+  ownerships?: Array<{
+    entityId: string;
+    percent: number;
+    entityName: string;
+    entityType: string;
+  }>;
+};
 
 export default function Properties() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showPropertyForm, setShowPropertyForm] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<string>("all");
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -34,7 +46,7 @@ export default function Properties() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: properties, isLoading: propertiesLoading, error } = useQuery<Property[]>({
+  const { data: properties, isLoading: propertiesLoading, error } = useQuery<PropertyWithOwnerships[]>({
     queryKey: ["/api/properties"],
     retry: false,
   });
@@ -85,6 +97,12 @@ export default function Properties() {
     return null;
   }
 
+  // Filter properties by selected ownership entity
+  const filteredProperties = properties?.filter((property) => {
+    if (selectedEntity === "all") return true;
+    return property.ownerships?.some((ownership: any) => ownership.entityId === selectedEntity);
+  }) || [];
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-properties">
       <Sidebar />
@@ -99,8 +117,32 @@ export default function Properties() {
               <p className="text-muted-foreground">Manage your property portfolio</p>
             </div>
             
-            <Dialog open={showPropertyForm} onOpenChange={setShowPropertyForm}>
-              <DialogTrigger asChild>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={selectedEntity} onValueChange={setSelectedEntity}>
+                  <SelectTrigger className="w-48" data-testid="select-entity-filter">
+                    <SelectValue placeholder="Filter by ownership" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Properties</SelectItem>
+                    {entities?.map((entity) => (
+                      <SelectItem key={entity.id} value={entity.id}>
+                        <div className="flex items-center space-x-2">
+                          <Building2 className="h-3 w-3" />
+                          <span>{entity.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {entity.type}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Dialog open={showPropertyForm} onOpenChange={setShowPropertyForm}>
+                <DialogTrigger asChild>
                 <Button data-testid="button-add-property">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Property
@@ -117,6 +159,7 @@ export default function Properties() {
                 />
               </DialogContent>
             </Dialog>
+            </div>
           </div>
 
           {propertiesLoading ? (
@@ -133,9 +176,9 @@ export default function Properties() {
                 </Card>
               ))}
             </div>
-          ) : (properties && properties.length > 0) ? (
+          ) : (filteredProperties && filteredProperties.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {properties.map((property, index) => (
+              {filteredProperties.map((property, index) => (
                 <Card key={property.id} className="hover:shadow-md transition-shadow" data-testid={`card-property-${index}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -145,7 +188,9 @@ export default function Properties() {
                         </div>
                         <div>
                           <CardTitle className="text-lg" data-testid={`text-property-name-${index}`}>{property.name}</CardTitle>
-                          <Badge variant="secondary" data-testid={`badge-property-type-${index}`}>{property.type}</Badge>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="secondary" data-testid={`badge-property-type-${index}`}>{property.type}</Badge>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -178,6 +223,33 @@ export default function Properties() {
                         <p className="text-sm text-muted-foreground" data-testid={`text-property-notes-${index}`}>
                           {property.notes}
                         </p>
+                      )}
+                      
+                      {/* Ownership Information */}
+                      {property.ownerships && property.ownerships.length > 0 && (
+                        <div className="border-t pt-3 mt-3">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium text-foreground">Ownership</span>
+                          </div>
+                          <div className="space-y-1">
+                            {property.ownerships.map((ownership, ownershipIndex) => (
+                              <div key={ownershipIndex} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {ownership.entityType}
+                                  </Badge>
+                                  <span data-testid={`text-ownership-entity-${index}-${ownershipIndex}`}>
+                                    {ownership.entityName}
+                                  </span>
+                                </div>
+                                <span className="font-medium text-primary" data-testid={`text-ownership-percent-${index}-${ownershipIndex}`}>
+                                  {ownership.percent}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                     

@@ -129,12 +129,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
+      const { ownerships, ...propertyData } = req.body;
+      
       const validatedData = insertPropertySchema.parse({
-        ...req.body,
+        ...propertyData,
         orgId: org.id,
       });
       
-      const property = await storage.createProperty(validatedData);
+      const property = await storage.createPropertyWithOwnerships(validatedData, ownerships);
       res.json(property);
     } catch (error) {
       console.error("Error creating property:", error);
