@@ -30,6 +30,7 @@ export default function Properties() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showPropertyForm, setShowPropertyForm] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<string>("all");
+  const [editingProperty, setEditingProperty] = useState<PropertyWithOwnerships | null>(null);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -89,6 +90,40 @@ export default function Properties() {
     },
   });
 
+  const updatePropertyMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const response = await apiRequest("PATCH", `/api/properties/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      setShowPropertyForm(false);
+      setEditingProperty(null);
+      toast({
+        title: "Success",
+        description: "Property updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update property",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -102,6 +137,24 @@ export default function Properties() {
     if (selectedEntity === "all") return true;
     return property.ownerships?.some((ownership: any) => ownership.entityId === selectedEntity);
   }) || [];
+
+  const handleEditProperty = (property: PropertyWithOwnerships) => {
+    setEditingProperty(property);
+    setShowPropertyForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowPropertyForm(false);
+    setEditingProperty(null);
+  };
+
+  const handleFormSubmit = (data: any) => {
+    if (editingProperty) {
+      updatePropertyMutation.mutate({ id: editingProperty.id, data });
+    } else {
+      createPropertyMutation.mutate(data);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-background" data-testid="page-properties">
@@ -141,7 +194,7 @@ export default function Properties() {
                 </Select>
               </div>
               
-              <Dialog open={showPropertyForm} onOpenChange={setShowPropertyForm}>
+              <Dialog open={showPropertyForm} onOpenChange={handleCloseForm}>
                 <DialogTrigger asChild>
                 <Button data-testid="button-add-property">
                   <Plus className="h-4 w-4 mr-2" />
@@ -150,12 +203,29 @@ export default function Properties() {
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Add New Property</DialogTitle>
+                  <DialogTitle>{editingProperty ? "Edit Property" : "Add New Property"}</DialogTitle>
                 </DialogHeader>
                 <PropertyForm 
                   entities={entities || []}
-                  onSubmit={(data) => createPropertyMutation.mutate(data)}
-                  isLoading={createPropertyMutation.isPending}
+                  onSubmit={handleFormSubmit}
+                  isLoading={createPropertyMutation.isPending || updatePropertyMutation.isPending}
+                  initialData={editingProperty ? {
+                    name: editingProperty.name,
+                    type: editingProperty.type,
+                    street: editingProperty.street,
+                    city: editingProperty.city,
+                    state: editingProperty.state,
+                    zipCode: editingProperty.zipCode,
+                    yearBuilt: editingProperty.yearBuilt || undefined,
+                    sqft: editingProperty.sqft || undefined,
+                    hoaName: editingProperty.hoaName || "",
+                    hoaContact: editingProperty.hoaContact || "",
+                    notes: editingProperty.notes || "",
+                    ownerships: editingProperty.ownerships?.map(o => ({
+                      entityId: o.entityId,
+                      percent: o.percent
+                    })) || []
+                  } : undefined}
                 />
               </DialogContent>
             </Dialog>
@@ -257,7 +327,13 @@ export default function Properties() {
                       <Button variant="outline" size="sm" className="flex-1" data-testid={`button-view-units-${index}`}>
                         View Units
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1" data-testid={`button-edit-property-${index}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1" 
+                        onClick={() => handleEditProperty(property)}
+                        data-testid={`button-edit-property-${index}`}
+                      >
                         Edit
                       </Button>
                     </div>

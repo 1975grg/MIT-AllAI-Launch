@@ -75,6 +75,7 @@ export interface IStorage {
   createProperty(property: InsertProperty): Promise<Property>;
   createPropertyWithOwnerships(property: InsertProperty, ownerships: Array<{entityId: string, percent: number}>): Promise<Property>;
   updateProperty(id: string, property: Partial<InsertProperty>): Promise<Property>;
+  updatePropertyWithOwnerships(id: string, property: Partial<InsertProperty>, ownerships: Array<{entityId: string, percent: number}>): Promise<Property>;
   deleteProperty(id: string): Promise<void>;
   
   // Unit operations
@@ -325,6 +326,31 @@ export class DatabaseStorage implements IStorage {
       .set(property)
       .where(eq(properties.id, id))
       .returning();
+    return updated;
+  }
+
+  async updatePropertyWithOwnerships(id: string, property: Partial<InsertProperty>, ownerships: Array<{entityId: string, percent: number}>): Promise<Property> {
+    // Update the property
+    const [updated] = await db
+      .update(properties)
+      .set(property)
+      .where(eq(properties.id, id))
+      .returning();
+    
+    // Delete existing ownerships
+    await db.delete(propertyOwnerships).where(eq(propertyOwnerships.propertyId, id));
+    
+    // Create new ownership records
+    if (ownerships && ownerships.length > 0) {
+      const ownershipRecords = ownerships.map(ownership => ({
+        propertyId: id,
+        entityId: ownership.entityId,
+        percent: ownership.percent.toString(),
+      }));
+      
+      await db.insert(propertyOwnerships).values(ownershipRecords);
+    }
+    
     return updated;
   }
 

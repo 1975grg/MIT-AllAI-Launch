@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Building, Home, Users, Wrench, Receipt, Bell, Settings } from "lucide-react";
+import { Building, Home, Users, Wrench, Receipt, Bell, Settings, Building2 } from "lucide-react";
 
 export default function Sidebar() {
   const [location] = useLocation();
@@ -10,6 +10,7 @@ export default function Sidebar() {
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
     { name: "My Properties", href: "/properties", icon: Building },
+    { name: "Entities", href: "/entities", icon: Building2 },
     { name: "Tenants", href: "/tenants", icon: Users },
     { name: "Maintenance", href: "/maintenance", icon: Wrench },
     { name: "Expenses", href: "/expenses", icon: Receipt },

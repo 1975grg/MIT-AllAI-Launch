@@ -42,9 +42,10 @@ interface PropertyFormProps {
   entities: OwnershipEntity[];
   onSubmit: (data: z.infer<typeof propertySchema>) => void;
   isLoading: boolean;
+  initialData?: Partial<z.infer<typeof propertySchema>>;
 }
 
-export default function PropertyForm({ entities, onSubmit, isLoading }: PropertyFormProps) {
+export default function PropertyForm({ entities, onSubmit, isLoading, initialData }: PropertyFormProps) {
   const [showCreateEntity, setShowCreateEntity] = useState(false);
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"Individual" | "LLC" | "Partnership" | "Corporation">("Individual");
@@ -58,6 +59,7 @@ export default function PropertyForm({ entities, onSubmit, isLoading }: Property
       state: "",
       zipCode: "",
       ownerships: [{ entityId: "", percent: 100 }],
+      ...initialData,
     },
   });
 
@@ -364,7 +366,7 @@ export default function PropertyForm({ entities, onSubmit, isLoading }: Property
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} data-testid="button-submit-property">
-            {isLoading ? "Creating..." : "Create Property"}
+            {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update Property" : "Create Property")}
           </Button>
         </div>
       </form>
