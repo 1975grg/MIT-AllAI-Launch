@@ -1,0 +1,227 @@
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+const tenantSchema = z.object({
+  tenantGroup: z.object({
+    name: z.string().min(1, "Group name is required"),
+  }),
+  tenants: z.array(z.object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Valid email is required").optional().or(z.literal("")),
+    phone: z.string().optional(),
+    emergencyContact: z.string().optional(),
+    emergencyPhone: z.string().optional(),
+    notes: z.string().optional(),
+  })).min(1, "At least one tenant is required"),
+});
+
+interface TenantFormProps {
+  onSubmit: (data: z.infer<typeof tenantSchema>) => void;
+  isLoading: boolean;
+}
+
+export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
+  const form = useForm<z.infer<typeof tenantSchema>>({
+    resolver: zodResolver(tenantSchema),
+    defaultValues: {
+      tenantGroup: {
+        name: "",
+      },
+      tenants: [{
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        emergencyContact: "",
+        emergencyPhone: "",
+        notes: "",
+      }],
+    },
+  });
+
+  const addTenant = () => {
+    const currentTenants = form.getValues("tenants");
+    form.setValue("tenants", [
+      ...currentTenants,
+      {
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        emergencyContact: "",
+        emergencyPhone: "",
+        notes: "",
+      },
+    ]);
+  };
+
+  const removeTenant = (index: number) => {
+    const currentTenants = form.getValues("tenants");
+    if (currentTenants.length > 1) {
+      form.setValue("tenants", currentTenants.filter((_, i) => i !== index));
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="tenantGroup.name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tenant Group Name</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Smith Family, John & Jane Doe" {...field} data-testid="input-tenant-group-name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Tenants</h3>
+            <Button type="button" variant="outline" onClick={addTenant} data-testid="button-add-tenant">
+              Add Tenant
+            </Button>
+          </div>
+
+          {form.watch("tenants").map((_, index) => (
+            <div key={index} className="border border-border rounded-lg p-4 space-y-4" data-testid={`tenant-form-${index}`}>
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Tenant {index + 1}</h4>
+                {form.watch("tenants").length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeTenant(index)}
+                    data-testid={`button-remove-tenant-${index}`}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name={`tenants.${index}.firstName`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John" {...field} data-testid={`input-tenant-first-name-${index}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`tenants.${index}.lastName`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Doe" {...field} data-testid={`input-tenant-last-name-${index}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`tenants.${index}.email`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="john@example.com" {...field} data-testid={`input-tenant-email-${index}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`tenants.${index}.phone`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(555) 123-4567" {...field} data-testid={`input-tenant-phone-${index}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`tenants.${index}.emergencyContact`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Emergency Contact</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Jane Doe" {...field} data-testid={`input-tenant-emergency-contact-${index}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`tenants.${index}.emergencyPhone`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Emergency Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(555) 987-6543" {...field} data-testid={`input-tenant-emergency-phone-${index}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name={`tenants.${index}.notes`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Additional notes about this tenant..." {...field} data-testid={`textarea-tenant-notes-${index}`} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" data-testid="button-cancel-tenant">
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading} data-testid="button-submit-tenant">
+            {isLoading ? "Creating..." : "Create Tenant"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}

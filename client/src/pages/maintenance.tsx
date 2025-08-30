@@ -1,0 +1,455 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
+import type { SmartCase } from "@shared/schema";
+
+const createCaseSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  propertyId: z.string().optional(),
+  unitId: z.string().optional(),
+  priority: z.enum(["Low", "Medium", "High", "Urgent"]).default("Medium"),
+  category: z.string().optional(),
+});
+
+export default function Maintenance() {
+  const { toast } = useToast();
+  const { isAuthenticated, isLoading } = useAuth();
+  const [showCaseForm, setShowCaseForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, isLoading, toast]);
+
+  const { data: smartCases, isLoading: casesLoading, error } = useQuery<SmartCase[]>({
+    queryKey: ["/api/cases"],
+    retry: false,
+  });
+
+  const { data: properties } = useQuery({
+    queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const form = useForm<z.infer<typeof createCaseSchema>>({
+    resolver: zodResolver(createCaseSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      priority: "Medium",
+    },
+  });
+
+  const createCaseMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof createCaseSchema>) => {
+      const response = await apiRequest("POST", "/api/cases", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      setShowCaseForm(false);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Maintenance case created successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create maintenance case",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCaseStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await apiRequest("PATCH", `/api/cases/${id}`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      toast({
+        title: "Success",
+        description: "Case status updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update case status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
+
+  if (error && isUnauthorizedError(error as Error)) {
+    return null;
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "New": return <AlertTriangle className="h-4 w-4 text-blue-600" />;
+      case "In Review": return <Clock className="h-4 w-4 text-yellow-600" />;
+      case "Scheduled": return <Clock className="h-4 w-4 text-orange-600" />;
+      case "In Progress": return <Wrench className="h-4 w-4 text-yellow-600" />;
+      case "On Hold": return <XCircle className="h-4 w-4 text-gray-600" />;
+      case "Resolved": return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "Closed": return <CheckCircle className="h-4 w-4 text-green-600" />;
+      default: return <Clock className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "New": return <Badge className="bg-blue-100 text-blue-800">New</Badge>;
+      case "In Progress": return <Badge className="bg-yellow-100 text-yellow-800">In Progress</Badge>;
+      case "Resolved": return <Badge className="bg-green-100 text-green-800">Resolved</Badge>;
+      case "Closed": return <Badge className="bg-green-100 text-green-800">Closed</Badge>;
+      default: return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case "Urgent": return <Badge className="bg-red-100 text-red-800">Urgent</Badge>;
+      case "High": return <Badge className="bg-orange-100 text-orange-800">High</Badge>;
+      case "Medium": return <Badge className="bg-yellow-100 text-yellow-800">Medium</Badge>;
+      case "Low": return <Badge className="bg-gray-100 text-gray-800">Low</Badge>;
+      default: return <Badge variant="secondary">{priority}</Badge>;
+    }
+  };
+
+  const filteredCases = smartCases?.filter(smartCase => 
+    statusFilter === "all" || smartCase.status === statusFilter
+  ) || [];
+
+  const onSubmit = (data: z.infer<typeof createCaseSchema>) => {
+    createCaseMutation.mutate(data);
+  };
+
+  return (
+    <div className="flex h-screen bg-background" data-testid="page-maintenance">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header title="Maintenance" />
+        
+        <main className="flex-1 overflow-auto p-6 bg-muted/30">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">Smart Cases</h1>
+              <p className="text-muted-foreground">Track and manage maintenance requests</p>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40" data-testid="select-status-filter">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cases</SelectItem>
+                  <SelectItem value="New">New</SelectItem>
+                  <SelectItem value="In Review">In Review</SelectItem>
+                  <SelectItem value="Scheduled">Scheduled</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="On Hold">On Hold</SelectItem>
+                  <SelectItem value="Resolved">Resolved</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Dialog open={showCaseForm} onOpenChange={setShowCaseForm}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-add-case">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Case
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create Maintenance Case</DialogTitle>
+                  </DialogHeader>
+                  
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Title</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Describe the issue" {...field} data-testid="input-case-title" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Provide additional details..." {...field} data-testid="textarea-case-description" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="propertyId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Property</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-case-property">
+                                  <SelectValue placeholder="Select a property" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {properties?.map((property) => (
+                                  <SelectItem key={property.id} value={property.id}>
+                                    {property.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="priority"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Priority</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-case-priority">
+                                  <SelectValue placeholder="Select priority" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Low">Low</SelectItem>
+                                <SelectItem value="Medium">Medium</SelectItem>
+                                <SelectItem value="High">High</SelectItem>
+                                <SelectItem value="Urgent">Urgent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., Plumbing, Electrical, HVAC" {...field} data-testid="input-case-category" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end space-x-2">
+                        <Button type="button" variant="outline" onClick={() => setShowCaseForm(false)} data-testid="button-cancel-case">
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={createCaseMutation.isPending} data-testid="button-submit-case">
+                          {createCaseMutation.isPending ? "Creating..." : "Create Case"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          {casesLoading ? (
+            <div className="grid grid-cols-1 gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} data-testid={`skeleton-case-${i}`}>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="h-6 bg-muted animate-pulse rounded" />
+                      <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                      <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredCases.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6">
+              {filteredCases.map((smartCase, index) => (
+                <Card key={smartCase.id} className="hover:shadow-md transition-shadow" data-testid={`card-case-${index}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                          {getStatusIcon(smartCase.status)}
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg" data-testid={`text-case-title-${index}`}>{smartCase.title}</CardTitle>
+                          {smartCase.category && (
+                            <p className="text-sm text-muted-foreground" data-testid={`text-case-category-${index}`}>
+                              {smartCase.category}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {getPriorityBadge(smartCase.priority)}
+                        {getStatusBadge(smartCase.status)}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent>
+                    {smartCase.description && (
+                      <p className="text-sm text-muted-foreground mb-4" data-testid={`text-case-description-${index}`}>
+                        {smartCase.description}
+                      </p>
+                    )}
+                    
+                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                      <span data-testid={`text-case-created-${index}`}>
+                        Created {new Date(smartCase.createdAt).toLocaleDateString()}
+                      </span>
+                      {smartCase.estimatedCost && (
+                        <span data-testid={`text-case-cost-${index}`}>
+                          Est. Cost: ${Number(smartCase.estimatedCost).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      {smartCase.status !== "Resolved" && smartCase.status !== "Closed" && (
+                        <>
+                          {smartCase.status === "New" && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => updateCaseStatusMutation.mutate({ id: smartCase.id, status: "In Review" })}
+                              data-testid={`button-review-case-${index}`}
+                            >
+                              Start Review
+                            </Button>
+                          )}
+                          {(smartCase.status === "In Review" || smartCase.status === "Scheduled") && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => updateCaseStatusMutation.mutate({ id: smartCase.id, status: "In Progress" })}
+                              data-testid={`button-start-case-${index}`}
+                            >
+                              Start Work
+                            </Button>
+                          )}
+                          {smartCase.status === "In Progress" && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => updateCaseStatusMutation.mutate({ id: smartCase.id, status: "Resolved" })}
+                              data-testid={`button-resolve-case-${index}`}
+                            >
+                              Mark Resolved
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      <Button variant="outline" size="sm" data-testid={`button-view-case-${index}`}>
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2" data-testid="text-no-cases">No Maintenance Cases</h3>
+                <p className="text-muted-foreground mb-4">Create your first maintenance case to start tracking issues and repairs.</p>
+                <Button onClick={() => setShowCaseForm(true)} data-testid="button-add-first-case">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Case
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
