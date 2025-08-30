@@ -1,0 +1,157 @@
+Project name: AllAI Property (Free) — Owners, LLCs, Smart Cases, Reminders
+
+Stack: Next.js (App Router) + TypeScript + Tailwind + shadcn/ui + lucide; Next API routes (Node) + Prisma + SQLite (default) or Postgres; Auth.js (email magic link); Zod; node-cron; OpenAPI via Swagger UI. Include .env.example, Dockerfile, seed script, and a clean README.
+
+Must-have features
+
+Auth & Org
+
+Email magic link login.
+
+Organization (one per account to start) with members and roles: admin, manager, tenant, vendor, accountant.
+
+Ownership & Entities
+
+Models:
+
+OwnershipEntity(id, orgId, type: 'LLC'|'Individual', name, state?, ein?, registeredAgent?, renewalMonth?, notes)
+
+PropertyOwnership(propertyId, entityId, percent: Decimal)
+
+UI:
+
+/entities list + create (LLC or Individual).
+
+On property create, pick one or more entities and set % splits (validate sum = 100).
+
+Properties & Units (with address autocomplete)
+
+Address autocomplete with provider abstraction:
+
+Default: OpenStreetMap/Nominatim (no key).
+
+Optional: Google Places (if GOOGLE_PLACES_API_KEY present).
+
+Models:
+
+Property(id, orgId, name, type, address fields, yearBuilt?, sqft?, hoaName?, hoaContact?, notes)
+
+Unit(id, propertyId, label, bedrooms?, bathrooms?, sqft?, floor?, rentAmount?, deposit?, notes)
+
+Pages:
+
+/properties list + create/edit with autocomplete.
+
+Property detail tabs: Overview, Units, Assets, CAM, Docs, Threads.
+
+Asset/Appliance Inventory (predictive-maintenance-ready)
+
+Models:
+
+Asset(id, unitId?, propertyId?, category, make?, model?, serial?, mfgYear?, installDate?, warrantyEnd?, lastServiceAt?, nextServiceAt?, photos[])
+
+AssetExtract(id, assetId, sourcePhotoUrl, extractJson, createdAt) // AI vision parse results
+
+MaintenanceTemplate(id, category, name, cadenceDays, defaultNotes)
+
+MaintenanceReminder(id, assetId, templateId?, dueAt, status, completedAt?)
+
+UI:
+
+Add asset from catalog (HVAC, Boiler, Water Heater, Fridge, Range/Oven, Microwave, Dishwasher, Washer, Dryer, Disposal, Smoke/CO, Roof, Windows, Irrigation, Sump Pump, Panel, Garage Door, Security).
+
+Upload photo → “Extract details” button calls /api/ai/assets/extract (stub) which fills fields if possible; store raw response in AssetExtract.extractJson.
+
+Leasing & Rent
+
+Models: Lease(id, unitId, tenantGroupId, startDate, endDate, rent, deposit, dueDay, lateFeeRuleJson?, status)
+
+Automatic rent schedule generation; rent due reminders N days before and on due date.
+
+Lease expiration alerts at 120/90/60/30; actions: Offer Renewal / Plan Re-list (spawns tasks & message templates).
+
+Smart Cases (Maintenance)
+
+Models: SmartCase, CaseMedia, CaseEvent, Vendor
+
+Case statuses: New → In Review → Scheduled → In Progress → On Hold → Resolved → Closed (Kanban board).
+
+AI integration stubs:
+
+POST /api/ai/triage → returns {priority, category, questions[], suggestedVendors[]}; store on SmartCase.aiTriageJson.
+
+POST /api/ai/webhook to receive triage.completed, dispatch.eta.updated, job.completed; append CaseEvent.
+
+CAM & Accounting-lite
+
+Transaction, CamCategory, CamEntry
+
+CAM Summary page with the three stat tiles (Total Expenses • Total Charges • Property Balance) and a category table (Actual, YTD Estimate, Difference).
+
+Reminders Engine (node-cron)
+
+Models:
+
+Reminder(id, orgId, scope: 'entity'|'property'|'lease'|'asset', scopeId, title, type: 'rent'|'lease'|'regulatory'|'maintenance'|'custom', dueAt, leadDays, channel: 'inapp'|'email', payloadJson, status)
+
+RegulatoryRule(id, entityId, name, cronText? or month/day fields, notes) // e.g., WV annual report
+
+Worker:
+
+Cron job runs every hour; finds due/lead reminders, sends in-app + email, writes Notification rows.
+
+Generate:
+
+Rent (from Lease rent schedule).
+
+Lease expiration series (120/90/60/30).
+
+Maintenance (from MaintenanceTemplates/Assets).
+
+Regulatory for Entities (annual report/state fee; plus custom items like domain/website renewal).
+
+ICS export endpoint /api/calendar.ics for upcoming reminders (per org).
+
+Communication
+
+Thread(scope: 'unit'|'case'|'entity', scopeId) + Message
+
+In-app messaging with attachments; internal/private toggle. Email/SMS adapters are stubs.
+
+Dashboard
+
+/dashboard with cards: Open Smart Cases; Rent due (7/30d); Leases expiring (30/60/90); Upcoming reminders (next 14d); Overdue tasks; Outstanding balances.
+
+“Quick Add” launcher.
+
+Settings & Integrations
+
+Org branding, timezone.
+
+Address provider selector (OpenStreetMap default, Google optional).
+
+AI Agent config: AGENT_BASE_URL, AGENT_API_KEY, WEBHOOK_SECRET + test buttons.
+
+Email provider (stub) config.
+
+API & DX
+
+REST under /api/* with Zod validation & role checks.
+
+OpenAPI JSON at /api/docs + Swagger UI at /api/swagger.
+
+Seed data: 1 org, 2 entities (LLC + Individual), 2 properties, 6 units, tenants, 5 smart cases, CAM categories/entries, a few assets with upcoming maintenance, sample reminders (rent, lease, regulatory).
+
+npm run dev → migrate, seed, start.
+
+README screenshots + “Deploy on Replit”.
+
+Environment
+DATABASE_URL=
+GOOGLE_PLACES_API_KEY=           # optional
+ADDRESS_PROVIDER=OSM|GOOGLE      # default OSM
+AGENT_BASE_URL=                  # later
+AGENT_API_KEY=
+WEBHOOK_SECRET=
+EMAIL_FROM=
+SMTP_URL=                        # optional
