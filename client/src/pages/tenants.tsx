@@ -12,12 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Users, Plus, Mail, Phone, User } from "lucide-react";
-import type { TenantGroup } from "@shared/schema";
+import type { TenantGroup, Property, OwnershipEntity } from "@shared/schema";
 
 export default function Tenants() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showTenantForm, setShowTenantForm] = useState(false);
+  const [entityFilter, setEntityFilter] = useState<string>("all");
+  const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -36,6 +39,16 @@ export default function Tenants() {
 
   const { data: tenantGroups, isLoading: tenantsLoading, error } = useQuery<TenantGroup[]>({
     queryKey: ["/api/tenants"],
+    retry: false,
+  });
+
+  const { data: properties } = useQuery<Property[]>({
+    queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const { data: entities = [] } = useQuery<OwnershipEntity[]>({
+    queryKey: ["/api/entities"],
     retry: false,
   });
 
@@ -80,6 +93,16 @@ export default function Tenants() {
     return null;
   }
 
+  const filteredProperties = properties || [];
+  
+  const filteredTenantGroups = tenantGroups?.filter(group => {
+    // For property filter, we can check if the tenant group has any connection to the selected property
+    // Note: This may need adjustment based on actual schema relationships
+    const propertyMatch = propertyFilter === "all" || group.propertyId === propertyFilter;
+    const statusMatch = statusFilter === "all" || group.status === statusFilter;
+    return propertyMatch && statusMatch;
+  }) || [];
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-tenants">
       <Sidebar />
@@ -94,23 +117,71 @@ export default function Tenants() {
               <p className="text-muted-foreground">Manage your tenant relationships</p>
             </div>
             
-            <Dialog open={showTenantForm} onOpenChange={setShowTenantForm}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-add-tenant">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Tenant
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Add New Tenant</DialogTitle>
-                </DialogHeader>
-                <TenantForm 
-                  onSubmit={(data) => createTenantMutation.mutate(data)}
-                  isLoading={createTenantMutation.isPending}
-                />
-              </DialogContent>
-            </Dialog>
+            <div className="flex items-center space-x-3">
+              {/* Entity Filter */}
+              <Select value={entityFilter} onValueChange={(value) => {
+                setEntityFilter(value);
+                if (value !== "all") {
+                  setPropertyFilter("all");
+                }
+              }}>
+                <SelectTrigger className="w-44" data-testid="select-entity-filter">
+                  <SelectValue placeholder="All Entities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Entities</SelectItem>
+                  {entities.map((entity) => (
+                    <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Property Filter */}
+              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                <SelectTrigger className="w-52" data-testid="select-property-filter">
+                  <SelectValue placeholder="All Properties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {(properties || []).map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.street}, {property.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40" data-testid="select-status-filter">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="Former">Former</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Dialog open={showTenantForm} onOpenChange={setShowTenantForm}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-add-tenant">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Tenant
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Add New Tenant</DialogTitle>
+                  </DialogHeader>
+                  <TenantForm 
+                    onSubmit={(data) => createTenantMutation.mutate(data)}
+                    isLoading={createTenantMutation.isPending}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           {tenantsLoading ? (
@@ -127,9 +198,9 @@ export default function Tenants() {
                 </Card>
               ))}
             </div>
-          ) : (tenantGroups && tenantGroups.length > 0) ? (
+          ) : (filteredTenantGroups && filteredTenantGroups.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tenantGroups.map((group, index) => (
+              {filteredTenantGroups.map((group, index) => (
                 <Card key={group.id} className="hover:shadow-md transition-shadow" data-testid={`card-tenant-${index}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -148,6 +219,18 @@ export default function Tenants() {
                   <CardContent>
                     <div className="space-y-3">
                       <div className="text-sm text-muted-foreground">
+                        {group.propertyId && (
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="text-blue-600 font-medium">Property:</span>
+                            <span data-testid={`text-tenant-property-${index}`}>
+                              {(() => {
+                                const property = properties?.find(p => p.id === group.propertyId);
+                                return property ? `${property.street}, ${property.city}` : 'Property';
+                              })()}
+                            </span>
+                          </div>
+                        )}
+                        
                         <div className="flex items-center space-x-2 mb-2">
                           <User className="h-4 w-4" />
                           <span data-testid={`text-tenant-type-${index}`}>Tenant Group</span>

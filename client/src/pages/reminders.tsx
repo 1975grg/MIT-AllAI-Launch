@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Plus, Clock, CheckCircle, Calendar, AlertTriangle, DollarSign, FileText, Wrench, Shield } from "lucide-react";
-import type { Reminder, Property } from "@shared/schema";
+import type { Reminder, Property, OwnershipEntity } from "@shared/schema";
 
 export default function Reminders() {
   const { toast } = useToast();
@@ -21,6 +21,8 @@ export default function Reminders() {
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [entityFilter, setEntityFilter] = useState<string>("all");
+  const [propertyFilter, setPropertyFilter] = useState<string>("all");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -43,6 +45,11 @@ export default function Reminders() {
 
   const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const { data: entities = [] } = useQuery<OwnershipEntity[]>({
+    queryKey: ["/api/entities"],
     retry: false,
   });
 
@@ -122,11 +129,16 @@ export default function Reminders() {
     return null;
   }
 
+  const filteredProperties = properties || [];
+  
   const filteredReminders = reminders?.filter(reminder => {
     const typeMatch = typeFilter === "all" || reminder.type === typeFilter;
     const statusMatch = statusFilter === "all" || reminder.status === statusFilter;
-    return typeMatch && statusMatch;
+    const propertyMatch = propertyFilter === "all" || reminder.scopeId === propertyFilter;
+    return typeMatch && statusMatch && propertyMatch;
   }) || [];
+
+  const reminderTypes = Array.from(new Set(reminders?.map(r => r.type).filter(Boolean))) || [];
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -181,23 +193,56 @@ export default function Reminders() {
               <p className="text-muted-foreground">Stay on top of important tasks and deadlines</p>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              {/* Entity Filter */}
+              <Select value={entityFilter} onValueChange={(value) => {
+                setEntityFilter(value);
+                if (value !== "all") {
+                  setPropertyFilter("all");
+                }
+              }}>
+                <SelectTrigger className="w-44" data-testid="select-entity-filter">
+                  <SelectValue placeholder="All Entities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Entities</SelectItem>
+                  {entities.map((entity) => (
+                    <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Property Filter */}
+              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                <SelectTrigger className="w-52" data-testid="select-property-filter">
+                  <SelectValue placeholder="All Properties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {filteredProperties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.street}, {property.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Type Filter */}
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-32" data-testid="select-type-filter">
+                <SelectTrigger className="w-44" data-testid="select-type-filter">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="rent">Rent</SelectItem>
-                  <SelectItem value="lease">Lease</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="regulatory">Regulatory</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
+                  {reminderTypes.map((type) => (
+                    <SelectItem key={type} value={type!}>{type}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
+              {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32" data-testid="select-status-filter">
+                <SelectTrigger className="w-40" data-testid="select-status-filter">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -326,6 +371,25 @@ export default function Reminders() {
                             {reminder.title}
                           </h3>
                           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                            {reminder.scope === 'property' && reminder.scopeId && (
+                              <div>
+                                <span className="text-blue-600 font-medium">Property:</span>
+                                <span className="ml-1" data-testid={`text-reminder-property-${index}`}>
+                                  {(() => {
+                                    const property = properties?.find(p => p.id === reminder.scopeId);
+                                    return property ? `${property.street}, ${property.city}` : 'Property';
+                                  })()}
+                                </span>
+                              </div>
+                            )}
+                            {reminder.scope === 'entity' && reminder.scopeId && (
+                              <div>
+                                <span className="text-purple-600 font-medium">Entity:</span>
+                                <span className="ml-1" data-testid={`text-reminder-entity-${index}`}>
+                                  {entities?.find(e => e.id === reminder.scopeId)?.name || 'Entity'}
+                                </span>
+                              </div>
+                            )}
                             <span data-testid={`text-reminder-due-${index}`}>
                               Due {new Date(reminder.dueAt).toLocaleDateString()}
                             </span>

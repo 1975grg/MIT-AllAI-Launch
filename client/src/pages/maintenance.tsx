@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
-import type { SmartCase, Property } from "@shared/schema";
+import type { SmartCase, Property, OwnershipEntity } from "@shared/schema";
 
 const createCaseSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -34,6 +34,9 @@ export default function Maintenance() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showCaseForm, setShowCaseForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [entityFilter, setEntityFilter] = useState<string>("all");
+  const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -56,6 +59,11 @@ export default function Maintenance() {
 
   const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const { data: entities = [] } = useQuery<OwnershipEntity[]>({
+    queryKey: ["/api/entities"],
     retry: false,
   });
 
@@ -175,9 +183,17 @@ export default function Maintenance() {
     }
   };
 
-  const filteredCases = smartCases?.filter(smartCase => 
-    statusFilter === "all" || smartCase.status === statusFilter
-  ) || [];
+  const filteredProperties = properties || [];
+  
+  const filteredCases = smartCases?.filter(smartCase => {
+    const statusMatch = statusFilter === "all" || smartCase.status === statusFilter;
+    const propertyMatch = propertyFilter === "all" || smartCase.propertyId === propertyFilter;
+    const categoryMatch = categoryFilter === "all" || smartCase.category === categoryFilter;
+    // Note: SmartCase doesn't have entityId directly, but we can filter by property's entity relationship if needed
+    return statusMatch && propertyMatch && categoryMatch;
+  }) || [];
+
+  const categories = Array.from(new Set(smartCases?.map(c => c.category).filter(Boolean))) || [];
 
   const onSubmit = (data: z.infer<typeof createCaseSchema>) => {
     createCaseMutation.mutate(data);
@@ -197,13 +213,60 @@ export default function Maintenance() {
               <p className="text-muted-foreground">Track and manage maintenance requests</p>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40" data-testid="select-status-filter">
-                  <SelectValue placeholder="Filter by status" />
+            <div className="flex items-center space-x-3">
+              {/* Entity Filter */}
+              <Select value={entityFilter} onValueChange={(value) => {
+                setEntityFilter(value);
+                if (value !== "all") {
+                  setPropertyFilter("all");
+                }
+              }}>
+                <SelectTrigger className="w-44" data-testid="select-entity-filter">
+                  <SelectValue placeholder="All Entities" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Cases</SelectItem>
+                  <SelectItem value="all">All Entities</SelectItem>
+                  {entities.map((entity) => (
+                    <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Property Filter */}
+              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                <SelectTrigger className="w-52" data-testid="select-property-filter">
+                  <SelectValue placeholder="All Properties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {filteredProperties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.street}, {property.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Category Filter */}
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-44" data-testid="select-category-filter">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category!}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40" data-testid="select-status-filter">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="New">New</SelectItem>
                   <SelectItem value="In Review">In Review</SelectItem>
                   <SelectItem value="Scheduled">Scheduled</SelectItem>
@@ -403,9 +466,22 @@ export default function Maintenance() {
                     )}
                     
                     <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                      <span data-testid={`text-case-created-${index}`}>
-                        Created {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
-                      </span>
+                      <div>
+                        <span data-testid={`text-case-created-${index}`}>
+                          Created {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
+                        </span>
+                        {smartCase.propertyId && (
+                          <div className="mt-1">
+                            <span className="text-blue-600 font-medium">Property:</span>
+                            <span className="ml-1" data-testid={`text-case-property-${index}`}>
+                              {(() => {
+                                const property = properties?.find(p => p.id === smartCase.propertyId);
+                                return property ? `${property.street}, ${property.city}` : 'Property';
+                              })()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       {smartCase.estimatedCost && (
                         <span data-testid={`text-case-cost-${index}`}>
                           Est. Cost: ${Number(smartCase.estimatedCost).toLocaleString()}
