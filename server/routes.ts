@@ -465,6 +465,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
               notes: appliance.notes,
             });
           }
+        } else {
+          // Create new unit with equipment data if none exists  
+          const unitData = {
+            propertyId: req.params.id,
+            label: defaultUnit.label || "Unit 1", // Default label if not provided
+            bedrooms: defaultUnit.bedrooms,
+            bathrooms: defaultUnit.bathrooms ? defaultUnit.bathrooms.toString() : undefined,
+            sqft: defaultUnit.sqft,
+            rentAmount: defaultUnit.rentAmount,
+            deposit: defaultUnit.deposit,
+            notes: defaultUnit.notes,
+            hvacBrand: defaultUnit.hvacBrand,
+            hvacModel: defaultUnit.hvacModel,
+            hvacYear: defaultUnit.hvacYear,
+            hvacLifetime: defaultUnit.hvacLifetime,
+            hvacReminder: defaultUnit.hvacReminder,
+            waterHeaterBrand: defaultUnit.waterHeaterBrand,
+            waterHeaterModel: defaultUnit.waterHeaterModel,
+            waterHeaterYear: defaultUnit.waterHeaterYear,
+            waterHeaterLifetime: defaultUnit.waterHeaterLifetime,
+            waterHeaterReminder: defaultUnit.waterHeaterReminder,
+            applianceNotes: defaultUnit.applianceNotes,
+          };
+          
+          updatedUnit = await storage.createUnit(unitData);
+          
+          // Add custom appliances to new unit
+          if (defaultUnit.appliances && defaultUnit.appliances.length > 0) {
+            for (const appliance of defaultUnit.appliances) {
+              await storage.createUnitAppliance({
+                unitId: updatedUnit.id,
+                name: appliance.name,
+                manufacturer: appliance.manufacturer,
+                model: appliance.model,
+                year: appliance.year,
+                expectedLifetime: appliance.expectedLifetime,
+                alertBeforeExpiry: appliance.alertBeforeExpiry,
+                notes: appliance.notes,
+              });
+            }
+          }
         }
         
         // Create equipment reminders if requested

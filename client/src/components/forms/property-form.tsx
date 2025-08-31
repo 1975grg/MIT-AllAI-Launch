@@ -29,7 +29,7 @@ const applianceSchema = z.object({
 });
 
 const unitSchema = z.object({
-  label: z.string().min(1, "Unit label is required"),
+  label: z.string().optional(), // Make label optional for equipment-only updates
   bedrooms: z.number().min(0).optional(),
   bathrooms: z.number().min(0).optional(),
   sqft: z.number().min(0).optional(),
