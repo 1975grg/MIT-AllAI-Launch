@@ -476,6 +476,64 @@ export class DatabaseStorage implements IStorage {
     return { property: newProperty, unit: newUnit };
   }
 
+  // Create property with multiple units (for buildings)
+  async createPropertyWithOwnershipsAndUnits(
+    property: InsertProperty, 
+    ownerships: Array<{entityId: string, percent: number}>,
+    units: any[]
+  ): Promise<{property: Property, units: Unit[]}> {
+    // First create the property with ownerships
+    const newProperty = await this.createPropertyWithOwnerships(property, ownerships);
+    
+    const createdUnits: Unit[] = [];
+    
+    // Create each unit
+    for (const unitData of units) {
+      const unitInsertData: InsertUnit = {
+        propertyId: newProperty.id,
+        label: unitData.label || 'Unit',
+        bedrooms: unitData.bedrooms,
+        bathrooms: unitData.bathrooms,
+        sqft: unitData.sqft,
+        rentAmount: unitData.rentAmount ? String(unitData.rentAmount) : undefined,
+        deposit: unitData.deposit ? String(unitData.deposit) : undefined,
+        notes: unitData.notes,
+        hvacBrand: unitData.hvacBrand,
+        hvacModel: unitData.hvacModel,
+        hvacYear: unitData.hvacYear,
+        hvacLifetime: unitData.hvacLifetime,
+        hvacReminder: unitData.hvacReminder,
+        waterHeaterBrand: unitData.waterHeaterBrand,
+        waterHeaterModel: unitData.waterHeaterModel,
+        waterHeaterYear: unitData.waterHeaterYear,
+        waterHeaterLifetime: unitData.waterHeaterLifetime,
+        waterHeaterReminder: unitData.waterHeaterReminder,
+        applianceNotes: unitData.applianceNotes,
+      };
+      
+      const newUnit = await this.createUnit(unitInsertData);
+      createdUnits.push(newUnit);
+      
+      // Handle custom appliances for this unit
+      if (unitData.appliances && unitData.appliances.length > 0) {
+        for (const appliance of unitData.appliances) {
+          await this.createUnitAppliance({
+            unitId: newUnit.id,
+            name: appliance.name,
+            manufacturer: appliance.manufacturer,
+            model: appliance.model,
+            year: appliance.year,
+            expectedLifetime: appliance.expectedLifetime,
+            alertBeforeExpiry: appliance.alertBeforeExpiry,
+            notes: appliance.notes,
+          });
+        }
+      }
+    }
+    
+    return { property: newProperty, units: createdUnits };
+  }
+
   async updateProperty(id: string, property: Partial<InsertProperty>): Promise<Property> {
     const [updated] = await db
       .update(properties)

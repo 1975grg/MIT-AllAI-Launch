@@ -379,16 +379,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const { ownerships, createDefaultUnit, defaultUnit, ...propertyData } = req.body;
+      const { ownerships, createDefaultUnit, defaultUnit, units, ...propertyData } = req.body;
       
       const validatedData = insertPropertySchema.parse({
         ...propertyData,
         orgId: org.id,
       });
       
-      // Check if we should create a default unit
-      if (createDefaultUnit && defaultUnit) {
-        // Use the new method that creates both property and unit
+      // Check if we have multiple units (for buildings)
+      if (units && Array.isArray(units) && units.length > 0) {
+        console.log(`🏢 Creating building with ${units.length} units`);
+        const result = await storage.createPropertyWithOwnershipsAndUnits(
+          validatedData, 
+          ownerships, 
+          units
+        );
+        res.json({ property: result.property, units: result.units });
+      }
+      // Check if we should create a single default unit
+      else if (createDefaultUnit && defaultUnit) {
+        console.log("🏠 Creating single property with default unit");
         const result = await storage.createPropertyWithOwnershipsAndUnit(
           validatedData, 
           ownerships, 
@@ -396,6 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         res.json({ property: result.property, unit: result.unit });
       } else {
+        console.log("🏗️ Creating property without units");
         // Use the old method for just property creation
         const property = await storage.createPropertyWithOwnerships(validatedData, ownerships);
         res.json({ property, unit: null });
