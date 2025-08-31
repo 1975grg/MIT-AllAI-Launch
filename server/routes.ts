@@ -96,6 +96,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/entities/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const validatedData = insertOwnershipEntitySchema.partial().parse(req.body);
+      const entity = await storage.updateOwnershipEntity(req.params.id, validatedData);
+      res.json(entity);
+    } catch (error) {
+      console.error("Error updating entity:", error);
+      res.status(500).json({ message: "Failed to update entity" });
+    }
+  });
+
   // Property routes
   app.get('/api/properties', isAuthenticated, async (req: any, res) => {
     try {

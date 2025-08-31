@@ -18,6 +18,7 @@ export default function Entities() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showEntityForm, setShowEntityForm] = useState(false);
+  const [editingEntity, setEditingEntity] = useState<OwnershipEntity | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -72,6 +73,40 @@ export default function Entities() {
     },
   });
 
+  const updateEntityMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const response = await apiRequest("PATCH", `/api/entities/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/entities"] });
+      setShowEntityForm(false);
+      setEditingEntity(null);
+      toast({
+        title: "Success",
+        description: "Entity updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update entity",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -79,6 +114,24 @@ export default function Entities() {
   if (error && isUnauthorizedError(error as Error)) {
     return null;
   }
+
+  const handleEditEntity = (entity: OwnershipEntity) => {
+    setEditingEntity(entity);
+    setShowEntityForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowEntityForm(false);
+    setEditingEntity(null);
+  };
+
+  const handleFormSubmit = (data: any) => {
+    if (editingEntity) {
+      updateEntityMutation.mutate({ id: editingEntity.id, data });
+    } else {
+      createEntityMutation.mutate(data);
+    }
+  };
 
   const getEntityIcon = (type: string) => {
     switch (type) {
@@ -105,7 +158,7 @@ export default function Entities() {
               <p className="text-muted-foreground">Manage your LLCs, partnerships, and individual ownership</p>
             </div>
             
-            <Dialog open={showEntityForm} onOpenChange={setShowEntityForm}>
+            <Dialog open={showEntityForm} onOpenChange={handleCloseForm}>
               <DialogTrigger asChild>
                 <Button data-testid="button-add-entity">
                   <Plus className="h-4 w-4 mr-2" />
@@ -114,11 +167,20 @@ export default function Entities() {
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Add New Ownership Entity</DialogTitle>
+                  <DialogTitle>{editingEntity ? "Edit Ownership Entity" : "Add New Ownership Entity"}</DialogTitle>
                 </DialogHeader>
                 <EntityForm 
-                  onSubmit={(data) => createEntityMutation.mutate(data)}
-                  isLoading={createEntityMutation.isPending}
+                  onSubmit={handleFormSubmit}
+                  isLoading={createEntityMutation.isPending || updateEntityMutation.isPending}
+                  initialData={editingEntity ? {
+                    type: editingEntity.type as "LLC" | "Individual",
+                    name: editingEntity.name,
+                    state: editingEntity.state || "",
+                    ein: editingEntity.ein || "",
+                    registeredAgent: editingEntity.registeredAgent || "",
+                    renewalMonth: editingEntity.renewalMonth || undefined,
+                    notes: editingEntity.notes || ""
+                  } : undefined}
                 />
               </DialogContent>
             </Dialog>
@@ -198,7 +260,13 @@ export default function Entities() {
                       <Button variant="outline" size="sm" className="flex-1" data-testid={`button-view-performance-${index}`}>
                         View Performance
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1" data-testid={`button-edit-entity-${index}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1" 
+                        onClick={() => handleEditEntity(entity)}
+                        data-testid={`button-edit-entity-${index}`}
+                      >
                         Edit
                       </Button>
                     </div>

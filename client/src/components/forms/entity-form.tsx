@@ -197,7 +197,7 @@ export default function EntityForm({ onSubmit, isLoading, initialData }: EntityF
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} data-testid="button-submit-entity">
-            {isLoading ? "Creating..." : "Create Entity"}
+            {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update Entity" : "Create Entity")}
           </Button>
         </div>
       </form>
