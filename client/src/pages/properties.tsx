@@ -11,9 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building, Plus, MapPin, Home, Calendar, Building2, Filter } from "lucide-react";
+import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Property, OwnershipEntity } from "@shared/schema";
+import type { Property, OwnershipEntity, Unit } from "@shared/schema";
 
 // Extended property type that includes ownership information  
 type PropertyWithOwnerships = Property & {
@@ -31,6 +31,7 @@ export default function Properties() {
   const [showPropertyForm, setShowPropertyForm] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<string>("all");
   const [editingProperty, setEditingProperty] = useState<PropertyWithOwnerships | null>(null);
+  const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -55,6 +56,13 @@ export default function Properties() {
   const { data: entities } = useQuery<OwnershipEntity[]>({
     queryKey: ["/api/entities"],
     retry: false,
+  });
+
+  // Fetch units for expanded properties
+  const { data: allUnits = [] } = useQuery<Unit[]>({
+    queryKey: ["/api/units"],
+    retry: false,
+    enabled: expandedProperties.size > 0,
   });
 
   const createPropertyMutation = useMutation({
@@ -161,6 +169,22 @@ export default function Properties() {
     } else {
       createPropertyMutation.mutate(data);
     }
+  };
+
+  const togglePropertyUnits = (propertyId: string) => {
+    setExpandedProperties(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(propertyId)) {
+        newSet.delete(propertyId);
+      } else {
+        newSet.add(propertyId);
+      }
+      return newSet;
+    });
+  };
+
+  const getPropertyUnits = (propertyId: string): Unit[] => {
+    return allUnits.filter(unit => unit.propertyId === propertyId);
   };
 
   return (
@@ -328,19 +352,86 @@ export default function Properties() {
                         </div>
                       )}
                     </div>
+
+                    {/* Units Section - Show when expanded */}
+                    {expandedProperties.has(property.id) && (
+                      <div className="border-t pt-4 mt-4">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <Home className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium text-foreground">Units</span>
+                        </div>
+                        
+                        {getPropertyUnits(property.id).length > 0 ? (
+                          <div className="space-y-3">
+                            {getPropertyUnits(property.id).map((unit, unitIndex) => (
+                              <div key={unit.id} className="bg-muted/50 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium text-sm" data-testid={`text-unit-label-${index}-${unitIndex}`}>
+                                    {unit.label}
+                                  </h4>
+                                  {unit.rentAmount && (
+                                    <div className="flex items-center space-x-1 text-sm font-medium text-green-600">
+                                      <DollarSign className="h-3 w-3" />
+                                      <span data-testid={`text-unit-rent-${index}-${unitIndex}`}>
+                                        ${unit.rentAmount.toLocaleString()}/mo
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                                  {unit.bedrooms !== null && (
+                                    <div className="flex items-center space-x-1">
+                                      <Bed className="h-3 w-3" />
+                                      <span>{unit.bedrooms} bed</span>
+                                    </div>
+                                  )}
+                                  {unit.bathrooms !== null && (
+                                    <div className="flex items-center space-x-1">
+                                      <Bath className="h-3 w-3" />
+                                      <span>{unit.bathrooms} bath</span>
+                                    </div>
+                                  )}
+                                  {unit.sqft && (
+                                    <div className="flex items-center space-x-1">
+                                      <Home className="h-3 w-3" />
+                                      <span>{unit.sqft.toLocaleString()} sq ft</span>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {unit.notes && (
+                                  <p className="text-xs text-muted-foreground" data-testid={`text-unit-notes-${index}-${unitIndex}`}>
+                                    {unit.notes}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4 text-muted-foreground">
+                            <Home className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No units added yet</p>
+                            <p className="text-xs">Add units to start managing tenants</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     <div className="flex space-x-2 mt-4">
                       <Button 
                         variant="outline" 
                         size="sm" 
                         className="flex-1" 
-                        onClick={() => {
-                          // Navigate to units for this property or show units modal
-                          window.location.href = `/properties/${property.id}/units`;
-                        }}
+                        onClick={() => togglePropertyUnits(property.id)}
                         data-testid={`button-view-units-${index}`}
                       >
-                        View Units
+                        {expandedProperties.has(property.id) ? (
+                          <ChevronDown className="h-4 w-4 mr-2" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 mr-2" />
+                        )}
+                        Units ({getPropertyUnits(property.id).length || 0})
                       </Button>
                       <Button 
                         variant="outline" 

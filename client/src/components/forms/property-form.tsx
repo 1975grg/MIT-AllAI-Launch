@@ -18,7 +18,7 @@ const ownershipSchema = z.object({
   percent: z.number().min(0.01).max(100),
 });
 
-const defaultUnitSchema = z.object({
+const unitSchema = z.object({
   label: z.string().min(1, "Unit label is required"),
   bedrooms: z.number().min(0).optional(),
   bathrooms: z.number().min(0).optional(),
@@ -41,7 +41,10 @@ const propertySchema = z.object({
   hoaContact: z.string().optional(),
   notes: z.string().optional(),
   createDefaultUnit: z.boolean().default(true),
-  defaultUnit: defaultUnitSchema.optional(),
+  hasMultipleUnits: z.boolean().default(false),
+  numberOfUnits: z.number().min(1).max(50).default(1),
+  defaultUnit: unitSchema.optional(),
+  units: z.array(unitSchema).optional(),
   ownerships: z.array(ownershipSchema).min(1, "At least one owner is required").refine(
     (ownerships) => {
       const total = ownerships.reduce((sum, o) => sum + o.percent, 0);
@@ -51,15 +54,20 @@ const propertySchema = z.object({
   ),
 }).refine(
   (data) => {
-    // If createDefaultUnit is true, defaultUnit is required
-    if (data.createDefaultUnit && !data.defaultUnit) {
-      return false;
+    // If createDefaultUnit is true, we need either defaultUnit or units
+    if (data.createDefaultUnit) {
+      if (data.hasMultipleUnits && (!data.units || data.units.length === 0)) {
+        return false;
+      }
+      if (!data.hasMultipleUnits && !data.defaultUnit) {
+        return false;
+      }
     }
     return true;
   },
   {
-    message: "Default unit information is required",
-    path: ["defaultUnit"],
+    message: "Unit information is required when creating units",
+    path: ["units"],
   }
 );
 
@@ -84,6 +92,8 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
       state: "",
       zipCode: "",
       createDefaultUnit: true,
+      hasMultipleUnits: false,
+      numberOfUnits: 1,
       defaultUnit: {
         label: "Main Unit",
         bedrooms: undefined,
@@ -93,6 +103,7 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
         deposit: "",
         notes: "",
       },
+      units: [],
       ownerships: [{ entityId: "", percent: 100 }],
       ...initialData,
     },
@@ -103,9 +114,40 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
     name: "ownerships",
   });
 
+  const { fields: unitFields, append: appendUnit, remove: removeUnit } = useFieldArray({
+    control: form.control,
+    name: "units",
+  });
+
   const calculateTotalPercent = () => {
     const ownerships = form.getValues("ownerships");
     return ownerships.reduce((sum, ownership) => sum + (ownership.percent || 0), 0);
+  };
+
+  const generateUnits = (numberOfUnits: number) => {
+    const currentUnits = form.getValues("units") || [];
+    const newUnits = [];
+    
+    for (let i = 0; i < numberOfUnits; i++) {
+      if (i < currentUnits.length) {
+        // Keep existing unit data
+        newUnits.push(currentUnits[i]);
+      } else {
+        // Create new unit with default values
+        newUnits.push({
+          label: `Unit ${i + 1}`,
+          bedrooms: undefined,
+          bathrooms: undefined,
+          sqft: undefined,
+          rentAmount: "",
+          deposit: "",
+          notes: "",
+        });
+      }
+    }
+    
+    // Update the form with new units
+    form.setValue("units", newUnits);
   };
 
   return (
@@ -351,15 +393,15 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
           )}
         />
 
-        {/* Default Unit Section */}
+        {/* Unit Setup Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Home className="h-5 w-5" />
-              <span>Default Unit Setup</span>
+              <span>Unit Setup</span>
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Most properties have one main unit. You can add more units later if needed.
+              Configure the units for this property. Most properties start with one main unit.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -387,7 +429,78 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
               )}
             />
             
+            {/* Multiple Units Option */}
             {form.watch("createDefaultUnit") && (
+              <FormField
+                control={form.control}
+                name="hasMultipleUnits"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                          field.onChange(checked);
+                          if (checked) {
+                            // Initialize with current number of units or default to 2
+                            const currentCount = form.getValues("numberOfUnits") || 2;
+                            form.setValue("numberOfUnits", currentCount);
+                            generateUnits(currentCount);
+                          } else {
+                            // Reset to single unit
+                            form.setValue("numberOfUnits", 1);
+                            form.setValue("units", []);
+                          }
+                        }}
+                        data-testid="checkbox-multiple-units"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        This property has multiple units
+                      </FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        For duplexes, apartments, or buildings with separate units
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
+            
+            {/* Number of Units Selection */}
+            {form.watch("createDefaultUnit") && form.watch("hasMultipleUnits") && (
+              <FormField
+                control={form.control}
+                name="numberOfUnits"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Number of Units</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="2"
+                        max="50"
+                        placeholder="2"
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseInt(e.target.value) : 2;
+                          field.onChange(value);
+                          if (value >= 2 && value <= 50) {
+                            generateUnits(value);
+                          }
+                        }}
+                        data-testid="input-number-of-units"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
+            {/* Single Unit Setup */}
+            {form.watch("createDefaultUnit") && !form.watch("hasMultipleUnits") && (
               <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -532,6 +645,170 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
                     </FormItem>
                   )}
                 />
+              </div>
+            )}
+            
+            {/* Multiple Units Setup */}
+            {form.watch("createDefaultUnit") && form.watch("hasMultipleUnits") && (
+              <div className="space-y-4">
+                <h4 className="font-medium text-sm">Configure Units</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Set up each unit individually. You can customize details for each one.
+                </p>
+                
+                {unitFields.map((unit, index) => (
+                  <div key={unit.id} className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="font-medium text-sm">Unit {index + 1}</h5>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.label`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit Label</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder={`Unit ${index + 1}`} 
+                                {...field}
+                                data-testid={`input-unit-label-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.bedrooms`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bedrooms</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0"
+                                placeholder="3" 
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                data-testid={`input-unit-bedrooms-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.bathrooms`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bathrooms</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0"
+                                step="0.5"
+                                placeholder="2" 
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                data-testid={`input-unit-bathrooms-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.sqft`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Square Feet</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0"
+                                placeholder="1200" 
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                data-testid={`input-unit-sqft-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.rentAmount`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Expected Rent</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0"
+                                step="0.01"
+                                placeholder="2500" 
+                                {...field}
+                                data-testid={`input-unit-rent-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.deposit`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Expected Deposit</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0"
+                                step="0.01"
+                                placeholder="2500" 
+                                {...field}
+                                data-testid={`input-unit-deposit-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="mt-4">
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.notes`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit Notes (Optional)</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Notes about this unit..." 
+                                {...field}
+                                data-testid={`textarea-unit-notes-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
