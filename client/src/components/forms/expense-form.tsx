@@ -1028,9 +1028,31 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
             Cancel
           </Button>
           <Button 
-            type="submit" 
+            type="button" 
             disabled={isLoading} 
-            onClick={() => console.log("Button clicked! Form valid:", form.formState.isValid, "Errors:", form.formState.errors)}
+            onClick={(e) => {
+              console.log("Button clicked!");
+              e.preventDefault();
+              const formData = form.getValues();
+              console.log("Current form data:", formData);
+              console.log("Form errors:", form.formState.errors);
+              console.log("Is form valid:", form.formState.isValid);
+              
+              // Manually trigger form submission
+              form.handleSubmit(
+                (data) => {
+                  console.log("Manual form validation passed, submitting:", data);
+                  const submissionData = {
+                    ...data,
+                    receiptUrl: uploadedReceiptUrl,
+                  };
+                  onSubmit(submissionData);
+                },
+                (errors) => {
+                  console.log("Manual form validation failed with errors:", errors);
+                }
+              )();
+            }}
             data-testid="button-submit-expense"
           >
             {isLoading ? "Logging..." : (expense ? "Update Expense" : "Log Expense")}
