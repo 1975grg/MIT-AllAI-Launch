@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, Building2, Home } from "lucide-react";
@@ -16,6 +16,16 @@ import type { OwnershipEntity } from "@shared/schema";
 const ownershipSchema = z.object({
   entityId: z.string().min(1, "Entity is required"),
   percent: z.number().min(0.01).max(100),
+});
+
+const applianceSchema = z.object({
+  name: z.string().min(1, "Appliance name is required"),
+  manufacturer: z.string().optional(),
+  model: z.string().optional(),
+  year: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
+  expectedLifetime: z.number().min(1).max(50).optional(), // years
+  alertBeforeExpiry: z.number().min(1).max(60).optional(), // months
+  notes: z.string().optional(),
 });
 
 const unitSchema = z.object({
@@ -34,6 +44,8 @@ const unitSchema = z.object({
   waterHeaterModel: z.string().optional(),
   waterHeaterYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
   applianceNotes: z.string().optional(),
+  // Custom appliances
+  appliances: z.array(applianceSchema).optional().default([]),
 });
 
 const propertySchema = z.object({
@@ -118,6 +130,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         waterHeaterModel: "",
         waterHeaterYear: undefined,
         applianceNotes: "",
+        appliances: [],
       },
       units: [],
       ownerships: [{ entityId: "", percent: 100 }],
@@ -133,6 +146,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   const { fields: unitFields, append: appendUnit, remove: removeUnit } = useFieldArray({
     control: form.control,
     name: "units",
+  });
+
+  const { fields: applianceFields, append: appendAppliance, remove: removeAppliance } = useFieldArray({
+    control: form.control,
+    name: "defaultUnit.appliances",
   });
 
   const calculateTotalPercent = () => {
@@ -165,6 +183,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
           waterHeaterModel: "",
           waterHeaterYear: undefined,
           applianceNotes: "",
+          appliances: [],
         });
       }
     }
@@ -838,6 +857,190 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                       </FormItem>
                     )}
                   />
+                  
+                  {/* Custom Appliances Section */}
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-sm">Custom Appliances (Optional)</h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => appendAppliance({ 
+                          name: "", 
+                          manufacturer: "", 
+                          model: "", 
+                          year: undefined,
+                          expectedLifetime: undefined,
+                          alertBeforeExpiry: undefined,
+                          notes: ""
+                        })}
+                        data-testid="button-add-appliance"
+                      >
+                        + Add Appliance
+                      </Button>
+                    </div>
+                    
+                    {applianceFields.map((appliance, index) => (
+                      <div key={appliance.id} className="p-4 border rounded-lg bg-muted/10 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-medium text-sm">Appliance {index + 1}</h5>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAppliance(index)}
+                            data-testid={`button-remove-appliance-${index}`}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name={`defaultUnit.appliances.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Appliance Name *</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="e.g., Refrigerator, Dishwasher" 
+                                    {...field}
+                                    data-testid={`input-appliance-name-${index}`}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name={`defaultUnit.appliances.${index}.manufacturer`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Manufacturer</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="e.g., GE, Whirlpool" 
+                                    {...field}
+                                    data-testid={`input-appliance-manufacturer-${index}`}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name={`defaultUnit.appliances.${index}.model`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Model</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Model number" 
+                                    {...field}
+                                    data-testid={`input-appliance-model-${index}`}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name={`defaultUnit.appliances.${index}.year`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Install Year</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number"
+                                    min="1900"
+                                    max={new Date().getFullYear() + 1}
+                                    placeholder="2020" 
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                    data-testid={`input-appliance-year-${index}`}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name={`defaultUnit.appliances.${index}.expectedLifetime`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Expected Lifetime (Years)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number"
+                                    min="1"
+                                    max="50"
+                                    placeholder="15" 
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                    data-testid={`input-appliance-lifetime-${index}`}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name={`defaultUnit.appliances.${index}.alertBeforeExpiry`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Alert Before Expiry (Months)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number"
+                                    min="1"
+                                    max="60"
+                                    placeholder="12" 
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                    data-testid={`input-appliance-alert-${index}`}
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Get reminders this many months before expected replacement
+                                </FormDescription>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        <FormField
+                          control={form.control}
+                          name={`defaultUnit.appliances.${index}.notes`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Notes</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Additional notes about this appliance..." 
+                                  {...field}
+                                  data-testid={`textarea-appliance-notes-${index}`}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    ))}
+                    
+                    {applianceFields.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">
+                        No custom appliances added yet. Click "Add Appliance" to track specific equipment.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <FormField

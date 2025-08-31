@@ -123,6 +123,20 @@ export const units = pgTable("units", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Custom appliances for units
+export const unitAppliances = pgTable("unit_appliances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  unitId: varchar("unit_id").notNull().references(() => units.id),
+  name: varchar("name").notNull(), // e.g., "Refrigerator", "Dishwasher"
+  manufacturer: varchar("manufacturer"), // e.g., "GE", "Whirlpool"
+  model: varchar("model"),
+  year: integer("year"),
+  expectedLifetime: integer("expected_lifetime"), // years
+  alertBeforeExpiry: integer("alert_before_expiry"), // months before expected end of life
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Tenant groups (for multiple tenants per unit)
 export const tenantGroups = pgTable("tenant_groups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
