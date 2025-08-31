@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Plus, Calendar, FileText, Globe } from "lucide-react";
+import { useLocation } from "wouter";
 import type { OwnershipEntity } from "@shared/schema";
 import EntityForm from "@/components/forms/entity-form";
 
@@ -19,6 +20,7 @@ export default function Entities() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showEntityForm, setShowEntityForm] = useState(false);
   const [editingEntity, setEditingEntity] = useState<OwnershipEntity | null>(null);
+  const [, setLocation] = useLocation();
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -257,7 +259,13 @@ export default function Entities() {
                     </div>
                     
                     <div className="flex space-x-2 mt-4">
-                      <Button variant="outline" size="sm" className="flex-1" data-testid={`button-view-performance-${index}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1" 
+                        onClick={() => setLocation(`/entities/${entity.id}/performance`)}
+                        data-testid={`button-view-performance-${index}`}
+                      >
                         View Performance
                       </Button>
                       <Button 

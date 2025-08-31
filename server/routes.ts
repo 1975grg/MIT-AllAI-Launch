@@ -111,6 +111,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/entities/:id/performance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const performance = await storage.getEntityPerformance(req.params.id, org.id);
+      if (!performance) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+      
+      res.json(performance);
+    } catch (error) {
+      console.error("Error fetching entity performance:", error);
+      res.status(500).json({ message: "Failed to fetch entity performance" });
+    }
+  });
+
   // Property routes
   app.get('/api/properties', isAuthenticated, async (req: any, res) => {
     try {

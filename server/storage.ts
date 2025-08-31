@@ -68,6 +68,7 @@ export interface IStorage {
   createOwnershipEntity(entity: InsertOwnershipEntity): Promise<OwnershipEntity>;
   updateOwnershipEntity(id: string, entity: Partial<InsertOwnershipEntity>): Promise<OwnershipEntity>;
   deleteOwnershipEntity(id: string): Promise<void>;
+  getEntityPerformance(entityId: string, orgId: string): Promise<any>;
   
   // Property operations
   getProperties(orgId: string): Promise<Property[]>;
@@ -222,6 +223,78 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOwnershipEntity(id: string): Promise<void> {
     await db.delete(ownershipEntities).where(eq(ownershipEntities.id, id));
+  }
+
+  async getEntityPerformance(entityId: string, orgId: string): Promise<any> {
+    // Get the entity
+    const [entity] = await db
+      .select()
+      .from(ownershipEntities)
+      .where(and(eq(ownershipEntities.id, entityId), eq(ownershipEntities.orgId, orgId)));
+    
+    if (!entity) {
+      return null;
+    }
+
+    // Get properties owned by this entity
+    const propertiesResult = await db
+      .select({
+        id: properties.id,
+        name: properties.name,
+        type: properties.type,
+        street: properties.street,
+        city: properties.city,
+        state: properties.state,
+        ownershipPercent: propertyOwnerships.percent,
+      })
+      .from(properties)
+      .innerJoin(propertyOwnerships, eq(properties.id, propertyOwnerships.propertyId))
+      .where(and(
+        eq(propertyOwnerships.entityId, entityId),
+        eq(properties.orgId, orgId)
+      ))
+      .orderBy(asc(properties.name));
+
+    // Calculate metrics (simplified for now - in a real app you'd have actual financial data)
+    const totalProperties = propertiesResult.length;
+    const estimatedPropertyValue = 250000; // Default estimated value per property
+    
+    let totalValue = 0;
+    let totalOwnershipValue = 0;
+    
+    const propertiesWithValues = propertiesResult.map(property => {
+      const propertyValue = estimatedPropertyValue;
+      const ownershipPercent = Number(property.ownershipPercent);
+      const ownershipValue = propertyValue * (ownershipPercent / 100);
+      
+      totalValue += propertyValue;
+      totalOwnershipValue += ownershipValue;
+      
+      return {
+        ...property,
+        estimatedValue: propertyValue,
+      };
+    });
+
+    // Simplified financial metrics (in a real app, these would come from actual lease/expense data)
+    const avgOwnershipPercent = totalProperties > 0 ? 
+      propertiesResult.reduce((sum, p) => sum + Number(p.ownershipPercent), 0) / totalProperties : 0;
+    const monthlyRevenue = totalProperties * 2000 * (avgOwnershipPercent / 100);
+    const monthlyExpenses = totalProperties * 500 * (avgOwnershipPercent / 100);
+    const netCashFlow = monthlyRevenue - monthlyExpenses;
+
+    return {
+      entity,
+      properties: propertiesWithValues,
+      metrics: {
+        totalProperties,
+        totalValue,
+        monthlyRevenue: Math.round(monthlyRevenue),
+        monthlyExpenses: Math.round(monthlyExpenses),
+        netCashFlow: Math.round(netCashFlow),
+        totalOwnershipValue: Math.round(totalOwnershipValue),
+      },
+    };
   }
 
   // Property operations
