@@ -74,7 +74,14 @@ export default function ReminderForm({ properties, onSubmit, isLoading }: Remind
             <FormItem>
               <FormLabel>Reminder Title</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Property insurance renewal" {...field} data-testid="input-reminder-title" />
+                <Input 
+                  placeholder="e.g., Property insurance renewal" 
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  data-testid="input-reminder-title" 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -154,7 +161,14 @@ export default function ReminderForm({ properties, onSubmit, isLoading }: Remind
                 </Select>
               ) : (
                 <FormControl>
-                  <Input placeholder="Enter scope ID" {...field} data-testid="input-reminder-scope-id" />
+                  <Input 
+                    placeholder="Enter scope ID" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-reminder-scope-id" 
+                  />
                 </FormControl>
               )}
               <FormMessage />

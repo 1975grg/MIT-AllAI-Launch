@@ -78,7 +78,14 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
             <FormItem>
               <FormLabel>Tenant Group Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Smith Family, John & Jane Doe" {...field} data-testid="input-tenant-group-name" />
+                <Input 
+                  placeholder="e.g., Smith Family, John & Jane Doe" 
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  data-testid="input-tenant-group-name" 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -118,7 +125,14 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John" {...field} data-testid={`input-tenant-first-name-${index}`} />
+                        <Input 
+                          placeholder="John" 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          data-testid={`input-tenant-first-name-${index}`} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -132,7 +146,14 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Doe" {...field} data-testid={`input-tenant-last-name-${index}`} />
+                        <Input 
+                          placeholder="Doe" 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          data-testid={`input-tenant-last-name-${index}`} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -146,7 +167,15 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="john@example.com" {...field} data-testid={`input-tenant-email-${index}`} />
+                        <Input 
+                          type="email" 
+                          placeholder="john@example.com" 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          data-testid={`input-tenant-email-${index}`} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -160,7 +189,14 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
                     <FormItem>
                       <FormLabel>Phone</FormLabel>
                       <FormControl>
-                        <Input placeholder="(555) 123-4567" {...field} data-testid={`input-tenant-phone-${index}`} />
+                        <Input 
+                          placeholder="(555) 123-4567" 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          data-testid={`input-tenant-phone-${index}`} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -174,7 +210,14 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
                     <FormItem>
                       <FormLabel>Emergency Contact</FormLabel>
                       <FormControl>
-                        <Input placeholder="Jane Doe" {...field} data-testid={`input-tenant-emergency-contact-${index}`} />
+                        <Input 
+                          placeholder="Jane Doe" 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          data-testid={`input-tenant-emergency-contact-${index}`} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -188,7 +231,14 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
                     <FormItem>
                       <FormLabel>Emergency Phone</FormLabel>
                       <FormControl>
-                        <Input placeholder="(555) 987-6543" {...field} data-testid={`input-tenant-emergency-phone-${index}`} />
+                        <Input 
+                          placeholder="(555) 987-6543" 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          data-testid={`input-tenant-emergency-phone-${index}`} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -203,7 +253,14 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
                   <FormItem>
                     <FormLabel>Notes</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Additional notes about this tenant..." {...field} data-testid={`textarea-tenant-notes-${index}`} />
+                      <Textarea 
+                        placeholder="Additional notes about this tenant..." 
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        data-testid={`textarea-tenant-notes-${index}`} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

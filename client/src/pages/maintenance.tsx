@@ -235,7 +235,14 @@ export default function Maintenance() {
                           <FormItem>
                             <FormLabel>Title</FormLabel>
                             <FormControl>
-                              <Input placeholder="Describe the issue" {...field} data-testid="input-case-title" />
+                              <Input 
+                                placeholder="Describe the issue" 
+                                value={field.value || ""}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                name={field.name}
+                                data-testid="input-case-title" 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -249,7 +256,14 @@ export default function Maintenance() {
                           <FormItem>
                             <FormLabel>Description</FormLabel>
                             <FormControl>
-                              <Textarea placeholder="Provide additional details..." {...field} data-testid="textarea-case-description" />
+                              <Textarea 
+                                placeholder="Provide additional details..." 
+                                value={field.value || ""}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                name={field.name}
+                                data-testid="textarea-case-description" 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -312,7 +326,14 @@ export default function Maintenance() {
                           <FormItem>
                             <FormLabel>Category</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g., Plumbing, Electrical, HVAC" {...field} data-testid="input-case-category" />
+                              <Input 
+                                placeholder="e.g., Plumbing, Electrical, HVAC" 
+                                value={field.value || ""}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                name={field.name}
+                                data-testid="input-case-category" 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

@@ -83,7 +83,14 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
             <FormItem>
               <FormLabel>Property Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Sunset Apartments" {...field} data-testid="input-property-name" />
+                <Input 
+                  placeholder="e.g., Sunset Apartments" 
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  data-testid="input-property-name" 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -126,7 +133,14 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
               <FormItem className="col-span-2">
                 <FormLabel>Street Address</FormLabel>
                 <FormControl>
-                  <Input placeholder="123 Main Street" {...field} data-testid="input-property-street" />
+                  <Input 
+                    placeholder="123 Main Street" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-property-street" 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -140,7 +154,14 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
               <FormItem>
                 <FormLabel>City</FormLabel>
                 <FormControl>
-                  <Input placeholder="City" {...field} data-testid="input-property-city" />
+                  <Input 
+                    placeholder="City" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-property-city" 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -154,7 +175,14 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
               <FormItem>
                 <FormLabel>State</FormLabel>
                 <FormControl>
-                  <Input placeholder="CA" {...field} data-testid="input-property-state" />
+                  <Input 
+                    placeholder="CA" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-property-state" 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -168,7 +196,14 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
               <FormItem>
                 <FormLabel>ZIP Code</FormLabel>
                 <FormControl>
-                  <Input placeholder="12345" {...field} data-testid="input-property-zip" />
+                  <Input 
+                    placeholder="12345" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-property-zip" 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -224,7 +259,14 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
               <FormItem>
                 <FormLabel>HOA Name (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Sunset HOA" {...field} data-testid="input-property-hoa-name" />
+                  <Input 
+                    placeholder="Sunset HOA" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-property-hoa-name" 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -238,7 +280,14 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
               <FormItem>
                 <FormLabel>HOA Contact (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="(555) 123-4567" {...field} data-testid="input-property-hoa-contact" />
+                  <Input 
+                    placeholder="(555) 123-4567" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-property-hoa-contact" 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -253,7 +302,14 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
             <FormItem>
               <FormLabel>Notes (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Additional notes about this property..." {...field} data-testid="textarea-property-notes" />
+                <Textarea 
+                  placeholder="Additional notes about this property..." 
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  data-testid="textarea-property-notes" 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
