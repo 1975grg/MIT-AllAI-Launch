@@ -423,15 +423,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expenseData = {
         ...req.body,
         orgId: org.id,
+        type: "Expense",
         propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
         category: finalCategory,
+        amount: req.body.amount.toString(),
+        date: new Date(req.body.date),
         // Remove customCategory from the data before saving
         customCategory: undefined,
       };
       
-      const validatedData = insertExpenseSchema.parse(expenseData);
+      const validatedData = insertTransactionSchema.parse(expenseData);
       
-      const expense = await storage.createExpense(validatedData);
+      const expense = await storage.createTransaction(validatedData);
       res.json(expense);
     } catch (error) {
       console.error("Error creating expense:", error);

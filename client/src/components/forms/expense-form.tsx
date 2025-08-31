@@ -26,7 +26,7 @@ const lineItemSchema = z.object({
 
 const expenseSchema = z.object({
   description: z.string().optional(),
-  amount: z.number().min(0.01, "Amount must be greater than 0"),
+  amount: z.number({ required_error: "Amount is required" }).min(0.01, "Amount must be greater than 0"),
   category: z.string().optional(),
   customCategory: z.string().optional(),
   date: z.date(),
@@ -109,7 +109,7 @@ export default function ExpenseForm({ properties, entities, onSubmit, isLoading 
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       description: "",
-      amount: 0,
+      amount: undefined,
       category: "",
       date: new Date(),
       isDateRange: false,
@@ -279,7 +279,8 @@ export default function ExpenseForm({ properties, entities, onSubmit, isLoading 
                     step="0.01"
                     placeholder="0.00" 
                     {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                     data-testid="input-expense-amount"
                   />
                 </FormControl>
