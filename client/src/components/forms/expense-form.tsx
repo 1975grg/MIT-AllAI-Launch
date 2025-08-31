@@ -1031,8 +1031,19 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
             type="button" 
             disabled={isLoading} 
             onClick={() => {
-              alert("BUTTON CLICK WORKS!");
               console.log("Button clicked!");
+              const formData = form.getValues();
+              console.log("Form data:", formData);
+              
+              // Create submission data
+              const submissionData = {
+                ...formData,
+                receiptUrl: uploadedReceiptUrl,
+              };
+              console.log("Submitting:", submissionData);
+              
+              // Call the onSubmit function directly
+              onSubmit(submissionData);
             }}
             data-testid="button-submit-expense"
           >
