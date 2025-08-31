@@ -101,6 +101,11 @@ export default function Expenses() {
   }
 
   const expenseTransactions = expenses?.filter(t => t.type === "Expense") || [];
+  // Get filtered properties based on selected entity
+  const filteredProperties = entityFilter === "all" 
+    ? properties 
+    : properties.filter(property => property.entityId === entityFilter);
+    
   const filteredExpenses = expenseTransactions.filter(expense => {
     const categoryMatch = categoryFilter === "all" || expense.category === categoryFilter;
     const propertyMatch = propertyFilter === "all" || expense.propertyId === propertyFilter;
@@ -144,39 +149,50 @@ export default function Expenses() {
               <p className="text-muted-foreground">Track and categorize property expenses</p>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-40" data-testid="select-category-filter">
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category!}>{category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                <SelectTrigger className="w-48" data-testid="select-property-filter">
-                  <SelectValue placeholder="Filter by property" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Properties</SelectItem>
-                  {properties.map((property) => (
-                    <SelectItem key={property.id} value={property.id}>{property.address}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={entityFilter} onValueChange={setEntityFilter}>
-                <SelectTrigger className="w-40" data-testid="select-entity-filter">
-                  <SelectValue placeholder="Filter by entity" />
+            <div className="flex items-center space-x-3">
+              {/* Entity Filter - First */}
+              <Select value={entityFilter} onValueChange={(value) => {
+                setEntityFilter(value);
+                // Reset property filter when entity changes
+                if (value !== "all") {
+                  setPropertyFilter("all");
+                }
+              }}>
+                <SelectTrigger className="w-44" data-testid="select-entity-filter">
+                  <SelectValue placeholder="All Entities" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Entities</SelectItem>
                   {entities.map((entity) => (
                     <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Property Filter - Second, filtered by entity */}
+              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                <SelectTrigger className="w-52" data-testid="select-property-filter">
+                  <SelectValue placeholder="All Properties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {filteredProperties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.address}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Category Filter - Third */}
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-44" data-testid="select-category-filter">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category!}>{category}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
