@@ -201,14 +201,13 @@ export default function Properties() {
                 </Select>
               </div>
               
+              <Button onClick={() => setShowPropertyForm(true)} data-testid="button-add-property">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Property
+              </Button>
+              
               <Dialog open={showPropertyForm} onOpenChange={handleCloseForm}>
-                <DialogTrigger asChild>
-                <Button data-testid="button-add-property">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Property
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingProperty ? "Edit Property" : "Add New Property"}</DialogTitle>
                 </DialogHeader>
@@ -331,7 +330,16 @@ export default function Properties() {
                     </div>
                     
                     <div className="flex space-x-2 mt-4">
-                      <Button variant="outline" size="sm" className="flex-1" data-testid={`button-view-units-${index}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1" 
+                        onClick={() => {
+                          // Navigate to units for this property or show units modal
+                          window.location.href = `/properties/${property.id}/units`;
+                        }}
+                        data-testid={`button-view-units-${index}`}
+                      >
                         View Units
                       </Button>
                       <Button 

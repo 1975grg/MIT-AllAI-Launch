@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Properties from "@/pages/properties";
+import PropertyUnits from "@/pages/property-units";
 import Entities from "@/pages/entities";
 import EntityPerformance from "@/pages/entity-performance";
 import Tenants from "@/pages/tenants";
@@ -26,6 +27,9 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/properties" component={Properties} />
+          <Route path="/properties/:propertyId/units">
+            {(params) => <PropertyUnits propertyId={params.propertyId} />}
+          </Route>
           <Route path="/entities" component={Entities} />
           <Route path="/entities/:id/performance" component={EntityPerformance} />
           <Route path="/tenants" component={Tenants} />
