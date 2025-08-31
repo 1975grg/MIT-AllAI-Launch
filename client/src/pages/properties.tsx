@@ -164,6 +164,7 @@ export default function Properties() {
   };
 
   const handleFormSubmit = (data: any) => {
+    console.log('Form submission data:', data);
     if (editingProperty) {
       updatePropertyMutation.mutate({ id: editingProperty.id, data });
     } else {

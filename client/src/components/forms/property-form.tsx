@@ -192,9 +192,15 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
     form.setValue("units", newUnits);
   };
 
+  const handleSubmit = (data: any) => {
+    console.log('Form validation passed, submitting:', data);
+    console.log('Form errors:', form.formState.errors);
+    onSubmit(data);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
