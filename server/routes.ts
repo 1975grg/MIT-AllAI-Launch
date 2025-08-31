@@ -432,11 +432,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update property and ownerships
       const property = await storage.updatePropertyWithOwnerships(req.params.id, validatedData, ownerships);
       
-      // Handle unit update if provided
+      // Handle unit update if provided  
       let updatedUnit = null;
-      if (defaultUnit && defaultUnit.id) {
-        // Update existing unit with appliance data
-        const unitData = {
+      if (defaultUnit) {
+        if (defaultUnit.id) {
+          // Update existing unit with appliance data
+          const unitData = {
           label: defaultUnit.label,
           bedrooms: defaultUnit.bedrooms,
           bathrooms: defaultUnit.bathrooms ? defaultUnit.bathrooms.toString() : undefined,

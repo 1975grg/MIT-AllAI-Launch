@@ -475,6 +475,56 @@ export default function Properties() {
                                     {unit.notes}
                                   </p>
                                 )}
+                                
+                                {/* Equipment Section */}
+                                {(unit.hvacBrand || unit.waterHeaterBrand || unit.applianceNotes) && (
+                                  <div className="border-t pt-3 mt-3">
+                                    <h5 className="text-xs font-medium text-foreground mb-2">Equipment</h5>
+                                    
+                                    {/* HVAC */}
+                                    {unit.hvacBrand && (
+                                      <div className="mb-2">
+                                        <div className="flex items-center space-x-1 text-xs">
+                                          <span className="font-medium text-muted-foreground">HVAC:</span>
+                                          <span>{unit.hvacBrand}</span>
+                                          {unit.hvacModel && <span>({unit.hvacModel})</span>}
+                                          {unit.hvacYear && <span>- {unit.hvacYear}</span>}
+                                        </div>
+                                        {unit.hvacLifetime && (
+                                          <div className="text-xs text-muted-foreground">
+                                            Expected lifetime: {unit.hvacLifetime} years
+                                            {unit.hvacReminder && <span className="ml-2 text-blue-600">• Reminder set</span>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Water Heater */}
+                                    {unit.waterHeaterBrand && (
+                                      <div className="mb-2">
+                                        <div className="flex items-center space-x-1 text-xs">
+                                          <span className="font-medium text-muted-foreground">Water Heater:</span>
+                                          <span>{unit.waterHeaterBrand}</span>
+                                          {unit.waterHeaterModel && <span>({unit.waterHeaterModel})</span>}
+                                          {unit.waterHeaterYear && <span>- {unit.waterHeaterYear}</span>}
+                                        </div>
+                                        {unit.waterHeaterLifetime && (
+                                          <div className="text-xs text-muted-foreground">
+                                            Expected lifetime: {unit.waterHeaterLifetime} years
+                                            {unit.waterHeaterReminder && <span className="ml-2 text-blue-600">• Reminder set</span>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Equipment Notes */}
+                                    {unit.applianceNotes && (
+                                      <div className="text-xs text-muted-foreground">
+                                        <span className="font-medium">Notes:</span> {unit.applianceNotes}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
