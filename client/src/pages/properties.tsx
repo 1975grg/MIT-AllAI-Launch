@@ -412,8 +412,8 @@ export default function Properties() {
                         ) : (
                           <div className="text-center py-4 text-muted-foreground">
                             <Home className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No units added yet</p>
-                            <p className="text-xs">Add units to start managing tenants</p>
+                            <p className="text-sm">Default Unit</p>
+                            <p className="text-xs">This property has one main unit. Click Edit to add unit details.</p>
                           </div>
                         )}
                       </div>
@@ -432,7 +432,7 @@ export default function Properties() {
                         ) : (
                           <ChevronRight className="h-4 w-4 mr-2" />
                         )}
-                        Units ({getPropertyUnits(property.id).length || 0})
+                        Units ({Math.max(getPropertyUnits(property.id).length, 1)})
                       </Button>
                       <Button 
                         variant="outline" 
