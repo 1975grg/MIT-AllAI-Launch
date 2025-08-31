@@ -19,7 +19,7 @@ const ownershipSchema = z.object({
 });
 
 const applianceSchema = z.object({
-  name: z.string().min(1, "Appliance name is required"),
+  name: z.string().optional(),
   manufacturer: z.string().optional(),
   model: z.string().optional(),
   year: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
@@ -30,9 +30,9 @@ const applianceSchema = z.object({
 
 const unitSchema = z.object({
   label: z.string().optional(), // Make label optional for equipment-only updates
-  bedrooms: z.number().min(0).optional(),
-  bathrooms: z.number().min(0).optional(),
-  sqft: z.number().min(0).optional(),
+  bedrooms: z.number().optional(),
+  bathrooms: z.number().optional(),
+  sqft: z.number().optional(),
   rentAmount: z.string().optional(),
   deposit: z.string().optional(),
   notes: z.string().optional(),
@@ -40,12 +40,12 @@ const unitSchema = z.object({
   hvacBrand: z.string().optional(),
   hvacModel: z.string().optional(),
   hvacYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
-  hvacLifetime: z.number().min(5).max(30).optional(),
+  hvacLifetime: z.number().min(1).max(50).optional(),
   hvacReminder: z.boolean().optional(),
   waterHeaterBrand: z.string().optional(),
   waterHeaterModel: z.string().optional(),
   waterHeaterYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
-  waterHeaterLifetime: z.number().min(5).max(25).optional(),
+  waterHeaterLifetime: z.number().min(1).max(50).optional(),
   waterHeaterReminder: z.boolean().optional(),
   applianceNotes: z.string().optional(),
   // Custom appliances
@@ -1048,7 +1048,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                               name={`defaultUnit.appliances.${index}.name`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-xs">Name *</FormLabel>
+                                  <FormLabel className="text-xs">Name</FormLabel>
                                   <FormControl>
                                     <Input 
                                       placeholder="Refrigerator" 
