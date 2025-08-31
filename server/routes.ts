@@ -420,19 +420,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         finalCategory = "";
       }
       
-      const expenseData = {
-        ...req.body,
+      // Clean up the data to match schema expectations
+      const cleanedData = {
         orgId: org.id,
-        type: "Expense",
+        type: "Expense" as const,
         propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
-        category: finalCategory,
+        entityId: req.body.entityId || undefined,
+        scope: req.body.scope || "property",
         amount: req.body.amount.toString(),
-        date: new Date(req.body.date),
-        // Remove customCategory from the data before saving
-        customCategory: undefined,
+        description: req.body.description || "",
+        category: finalCategory,
+        date: req.body.date,
+        isDateRange: req.body.isDateRange || false,
+        endDate: req.body.endDate ? req.body.endDate : undefined,
+        receiptUrl: req.body.receiptUrl,
+        notes: req.body.notes,
+        isRecurring: req.body.isRecurring || false,
+        recurringFrequency: req.body.recurringFrequency,
+        recurringInterval: req.body.recurringInterval || 1,
+        recurringEndDate: req.body.recurringEndDate,
+        taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
+        isBulkEntry: req.body.isBulkEntry || false,
       };
       
-      const validatedData = insertTransactionSchema.parse(expenseData);
+      console.log("Expense data being validated:", JSON.stringify(cleanedData, null, 2));
+      const validatedData = insertExpenseSchema.parse(cleanedData);
       
       const expense = await storage.createTransaction(validatedData);
       res.json(expense);
