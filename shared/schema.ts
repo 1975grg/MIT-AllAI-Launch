@@ -112,6 +112,14 @@ export const units = pgTable("units", {
   rentAmount: decimal("rent_amount", { precision: 10, scale: 2 }),
   deposit: decimal("deposit", { precision: 10, scale: 2 }),
   notes: text("notes"),
+  // Equipment tracking (all optional)
+  hvacBrand: varchar("hvac_brand"),
+  hvacModel: varchar("hvac_model"),
+  hvacYear: integer("hvac_year"),
+  waterHeaterBrand: varchar("water_heater_brand"),
+  waterHeaterModel: varchar("water_heater_model"),
+  waterHeaterYear: integer("water_heater_year"),
+  applianceNotes: text("appliance_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

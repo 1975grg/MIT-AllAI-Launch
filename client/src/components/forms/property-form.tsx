@@ -26,6 +26,14 @@ const unitSchema = z.object({
   rentAmount: z.string().optional(),
   deposit: z.string().optional(),
   notes: z.string().optional(),
+  // Equipment tracking (all optional)
+  hvacBrand: z.string().optional(),
+  hvacModel: z.string().optional(),
+  hvacYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
+  waterHeaterBrand: z.string().optional(),
+  waterHeaterModel: z.string().optional(),
+  waterHeaterYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
+  applianceNotes: z.string().optional(),
 });
 
 const propertySchema = z.object({
@@ -92,7 +100,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       city: "",
       state: "",
       zipCode: "",
-      createDefaultUnit: true,
+      createDefaultUnit: false,
       hasMultipleUnits: false,
       numberOfUnits: 1,
       defaultUnit: {
@@ -103,6 +111,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         rentAmount: "",
         deposit: "",
         notes: "",
+        hvacBrand: "",
+        hvacModel: "",
+        hvacYear: undefined,
+        waterHeaterBrand: "",
+        waterHeaterModel: "",
+        waterHeaterYear: undefined,
+        applianceNotes: "",
       },
       units: [],
       ownerships: [{ entityId: "", percent: 100 }],
@@ -143,6 +158,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
           rentAmount: "",
           deposit: "",
           notes: "",
+          hvacBrand: "",
+          hvacModel: "",
+          hvacYear: undefined,
+          waterHeaterBrand: "",
+          waterHeaterModel: "",
+          waterHeaterYear: undefined,
+          applianceNotes: "",
         });
       }
     }
@@ -427,7 +449,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
               <span>Unit Setup</span>
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Configure the units for this property. Most properties start with one main unit.
+              Units help you manage tenants, rent collection, and maintenance more effectively.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -448,12 +470,37 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                       Create a default unit for this property
                     </FormLabel>
                     <p className="text-sm text-muted-foreground">
-                      Recommended for single-family homes and simple properties
+                      Recommended - helps track tenant details, rent amounts, and equipment maintenance
                     </p>
                   </div>
                 </FormItem>
               )}
             />
+            
+            {/* Recommendation when units not set up */}
+            {!form.watch("createDefaultUnit") && (
+              <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <Home className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                      Consider Setting Up Units Later
+                    </h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      You can always add unit details later from the property page. Units help you:
+                    </p>
+                    <ul className="text-sm text-blue-700 dark:text-blue-300 ml-4 space-y-1">
+                      <li>• Track tenant information and rent amounts</li>
+                      <li>• Monitor equipment like HVAC, water heaters, and appliances</li>
+                      <li>• Set up maintenance reminders and warranty tracking</li>
+                      <li>• Organize multiple units in buildings</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Multiple Units Option */}
             {form.watch("createDefaultUnit") && (form.watch("type") === "Residential Building" || form.watch("type") === "Commercial Building") && (
@@ -649,6 +696,145 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                           />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Equipment Tracking Section */}
+                <div className="mt-6">
+                  <h4 className="font-medium text-sm mb-3 flex items-center space-x-2">
+                    <span>Equipment Tracking (Optional)</span>
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Track appliances and systems for maintenance reminders and warranty management.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="defaultUnit.hvacBrand"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>HVAC Brand</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., Carrier, Trane" 
+                              {...field}
+                              data-testid="input-unit-hvac-brand"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="defaultUnit.hvacModel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>HVAC Model</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Model number" 
+                              {...field}
+                              data-testid="input-unit-hvac-model"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="defaultUnit.hvacYear"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>HVAC Install Year</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number"
+                              min="1900"
+                              max={new Date().getFullYear() + 1}
+                              placeholder="2020" 
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                              data-testid="input-unit-hvac-year"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="defaultUnit.waterHeaterBrand"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Water Heater Brand</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., Rheem, AO Smith" 
+                              {...field}
+                              data-testid="input-unit-water-heater-brand"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="defaultUnit.waterHeaterModel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Water Heater Model</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Model number" 
+                              {...field}
+                              data-testid="input-unit-water-heater-model"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="defaultUnit.waterHeaterYear"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Water Heater Install Year</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number"
+                              min="1900"
+                              max={new Date().getFullYear() + 1}
+                              placeholder="2018" 
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                              data-testid="input-unit-water-heater-year"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="defaultUnit.applianceNotes"
+                    render={({ field }) => (
+                      <FormItem className="mt-4">
+                        <FormLabel>Equipment Notes</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Additional equipment details, roof info, appliances, etc." 
+                            {...field}
+                            data-testid="textarea-unit-appliance-notes"
+                          />
+                        </FormControl>
                       </FormItem>
                     )}
                   />
