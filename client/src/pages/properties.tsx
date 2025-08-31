@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign } from "lucide-react";
+import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign, Settings, Bell } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Property, OwnershipEntity, Unit } from "@shared/schema";
 
@@ -479,50 +479,97 @@ export default function Properties() {
                                 {/* Equipment Section */}
                                 {(unit.hvacBrand || unit.waterHeaterBrand || unit.applianceNotes) && (
                                   <div className="border-t pt-3 mt-3">
-                                    <h5 className="text-xs font-medium text-foreground mb-2">Equipment</h5>
+                                    <div className="flex items-center justify-between mb-3">
+                                      <h5 className="text-xs font-medium text-foreground flex items-center space-x-1">
+                                        <Settings className="h-3 w-3" />
+                                        <span>Equipment</span>
+                                      </h5>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-xs"
+                                        onClick={() => handleEditProperty(property)}
+                                        data-testid={`button-edit-equipment-${index}-${unitIndex}`}
+                                      >
+                                        Edit
+                                      </Button>
+                                    </div>
                                     
-                                    {/* HVAC */}
-                                    {unit.hvacBrand && (
-                                      <div className="mb-2">
-                                        <div className="flex items-center space-x-1 text-xs">
-                                          <span className="font-medium text-muted-foreground">HVAC:</span>
-                                          <span>{unit.hvacBrand}</span>
-                                          {unit.hvacModel && <span>({unit.hvacModel})</span>}
-                                          {unit.hvacYear && <span>- {unit.hvacYear}</span>}
-                                        </div>
-                                        {unit.hvacLifetime && (
-                                          <div className="text-xs text-muted-foreground">
-                                            Expected lifetime: {unit.hvacLifetime} years
-                                            {unit.hvacReminder && <span className="ml-2 text-blue-600">• Reminder set</span>}
+                                    <div className="space-y-3">
+                                      {/* HVAC */}
+                                      {unit.hvacBrand && (
+                                        <div className="bg-blue-50 dark:bg-blue-950/20 rounded-md p-2 border-l-2 border-blue-400">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-2">
+                                              <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                                <span className="text-blue-600 dark:text-blue-400 text-xs font-medium">H</span>
+                                              </div>
+                                              <div>
+                                                <div className="text-xs font-medium text-blue-900 dark:text-blue-100">HVAC System</div>
+                                                <div className="text-xs text-blue-700 dark:text-blue-300">
+                                                  {unit.hvacBrand}
+                                                  {unit.hvacModel && ` ${unit.hvacModel}`}
+                                                  {unit.hvacYear && ` (${unit.hvacYear})`}
+                                                </div>
+                                              </div>
+                                            </div>
+                                            {unit.hvacReminder && (
+                                              <div className="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400">
+                                                <Bell className="h-3 w-3" />
+                                                <span>Reminder</span>
+                                              </div>
+                                            )}
                                           </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    
-                                    {/* Water Heater */}
-                                    {unit.waterHeaterBrand && (
-                                      <div className="mb-2">
-                                        <div className="flex items-center space-x-1 text-xs">
-                                          <span className="font-medium text-muted-foreground">Water Heater:</span>
-                                          <span>{unit.waterHeaterBrand}</span>
-                                          {unit.waterHeaterModel && <span>({unit.waterHeaterModel})</span>}
-                                          {unit.waterHeaterYear && <span>- {unit.waterHeaterYear}</span>}
+                                          {unit.hvacLifetime && (
+                                            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 ml-8">
+                                              Expected lifetime: {unit.hvacLifetime} years
+                                            </div>
+                                          )}
                                         </div>
-                                        {unit.waterHeaterLifetime && (
-                                          <div className="text-xs text-muted-foreground">
-                                            Expected lifetime: {unit.waterHeaterLifetime} years
-                                            {unit.waterHeaterReminder && <span className="ml-2 text-blue-600">• Reminder set</span>}
+                                      )}
+                                      
+                                      {/* Water Heater */}
+                                      {unit.waterHeaterBrand && (
+                                        <div className="bg-orange-50 dark:bg-orange-950/20 rounded-md p-2 border-l-2 border-orange-400">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-2">
+                                              <div className="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                                                <span className="text-orange-600 dark:text-orange-400 text-xs font-medium">W</span>
+                                              </div>
+                                              <div>
+                                                <div className="text-xs font-medium text-orange-900 dark:text-orange-100">Water Heater</div>
+                                                <div className="text-xs text-orange-700 dark:text-orange-300">
+                                                  {unit.waterHeaterBrand}
+                                                  {unit.waterHeaterModel && ` ${unit.waterHeaterModel}`}
+                                                  {unit.waterHeaterYear && ` (${unit.waterHeaterYear})`}
+                                                </div>
+                                              </div>
+                                            </div>
+                                            {unit.waterHeaterReminder && (
+                                              <div className="flex items-center space-x-1 text-xs text-orange-600 dark:text-orange-400">
+                                                <Bell className="h-3 w-3" />
+                                                <span>Reminder</span>
+                                              </div>
+                                            )}
                                           </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    
-                                    {/* Equipment Notes */}
-                                    {unit.applianceNotes && (
-                                      <div className="text-xs text-muted-foreground">
-                                        <span className="font-medium">Notes:</span> {unit.applianceNotes}
-                                      </div>
-                                    )}
+                                          {unit.waterHeaterLifetime && (
+                                            <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 ml-8">
+                                              Expected lifetime: {unit.waterHeaterLifetime} years
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Equipment Notes */}
+                                      {unit.applianceNotes && (
+                                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-md p-2 border border-gray-200 dark:border-gray-700">
+                                          <div className="text-xs">
+                                            <span className="font-medium text-gray-700 dark:text-gray-300">Equipment Notes:</span>
+                                            <div className="text-gray-600 dark:text-gray-400 mt-1">{unit.applianceNotes}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>

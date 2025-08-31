@@ -6,6 +6,7 @@ import {
   properties,
   propertyOwnerships,
   units,
+  unitAppliances,
   tenantGroups,
   tenants,
   leases,
@@ -577,14 +578,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(units).where(eq(units.id, id));
   }
 
-  async updateUnit(id: string, unitData: Partial<InsertUnit>): Promise<Unit> {
-    const [updated] = await db
-      .update(units)
-      .set(unitData)
-      .where(eq(units.id, id))
-      .returning();
-    return updated;
-  }
 
   // Unit appliance operations
   async createUnitAppliance(appliance: {

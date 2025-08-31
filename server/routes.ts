@@ -435,7 +435,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle unit update if provided  
       let updatedUnit = null;
       if (defaultUnit) {
-        if (defaultUnit.id) {
+        // Check if we have an explicit unit ID or if there are existing units for this property
+        const existingUnits = await storage.getUnits(req.params.id);
+        const targetUnitId = defaultUnit.id || (existingUnits.length > 0 ? existingUnits[0].id : null);
+        
+        if (targetUnitId) {
           // Update existing unit with appliance data
           const unitData = {
           label: defaultUnit.label,
@@ -458,16 +462,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           applianceNotes: defaultUnit.applianceNotes,
         };
         
-        updatedUnit = await storage.updateUnit(defaultUnit.id, unitData);
+        updatedUnit = await storage.updateUnit(targetUnitId, unitData);
         
         // Update custom appliances
         if (defaultUnit.appliances) {
           // Delete existing appliances and recreate
-          await storage.deleteUnitAppliances(defaultUnit.id);
+          await storage.deleteUnitAppliances(targetUnitId);
           
           for (const appliance of defaultUnit.appliances) {
             await storage.createUnitAppliance({
-              unitId: defaultUnit.id,
+              unitId: targetUnitId,
               name: appliance.name,
               manufacturer: appliance.manufacturer,
               model: appliance.model,
