@@ -8,12 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, HelpCircle, Repeat } from "lucide-react";
+import { CalendarIcon, HelpCircle, Repeat, Plus, Trash2, Receipt, X } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { useState } from "react";
 import type { Property } from "@shared/schema";
+
+const lineItemSchema = z.object({
+  description: z.string().min(1, "Description is required"),
+  amount: z.number().min(0.01, "Amount must be greater than 0"),
+  category: z.string().min(1, "Category is required"),
+  taxDeductible: z.boolean().default(true),
+});
 
 const expenseSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -25,9 +34,15 @@ const expenseSchema = z.object({
   receiptUrl: z.string().optional(),
   notes: z.string().optional(),
   isRecurring: z.boolean().default(false),
-  recurringFrequency: z.enum(["monthly", "quarterly", "biannually", "annually"]).optional(),
+  recurringFrequency: z.enum(["days", "weeks", "months", "years", "monthly", "quarterly", "biannually", "annually"]).optional(),
+  recurringInterval: z.number().min(1).default(1),
   recurringEndDate: z.date().optional(),
   taxDeductible: z.boolean().default(true),
+  isSplitExpense: z.boolean().default(false),
+  lineItems: z.array(lineItemSchema).optional(),
+  scope: z.enum(["property", "operational"]).default("property"),
+  entityId: z.string().optional(),
+  isBulkEntry: z.boolean().default(false),
 }).refine((data) => {
   if (data.isRecurring && !data.recurringFrequency) {
     return false;
@@ -36,6 +51,14 @@ const expenseSchema = z.object({
 }, {
   message: "Recurring frequency is required for recurring expenses",
   path: ["recurringFrequency"],
+}).refine((data) => {
+  if (data.isSplitExpense && (!data.lineItems || data.lineItems.length === 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Line items are required for split expenses",
+  path: ["lineItems"],
 });
 
 interface ExpenseFormProps {
@@ -45,6 +68,7 @@ interface ExpenseFormProps {
 }
 
 export default function ExpenseForm({ properties, onSubmit, isLoading }: ExpenseFormProps) {
+  const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
@@ -53,7 +77,12 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
       category: "",
       date: new Date(),
       isRecurring: false,
+      recurringInterval: 1,
       taxDeductible: true,
+      isSplitExpense: false,
+      lineItems: [],
+      scope: "property" as const,
+      isBulkEntry: false,
     },
   });
 
@@ -164,6 +193,8 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
 
   const selectedCategory = expenseCategories.find(cat => cat.value === form.watch("category"));
   const isRecurring = form.watch("isRecurring");
+  const isSplitExpense = form.watch("isSplitExpense");
+  const currentLineItems = form.watch("lineItems") || [];
 
   return (
     <Form {...form}>
@@ -330,6 +361,170 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
           />
         </div>
 
+        {/* Split Expense Options */}
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+          <FormField
+            control={form.control}
+            name="isSplitExpense"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                  <FormLabel className="flex items-center space-x-2">
+                    <Plus className="h-4 w-4" />
+                    <span>Split Expense</span>
+                  </FormLabel>
+                  <div className="text-sm text-muted-foreground">
+                    Break down this expense into multiple categories (e.g., split utility bill between repairs and utilities)
+                  </div>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (checked && currentLineItems.length === 0) {
+                        // Add first line item when enabling split
+                        form.setValue("lineItems", [{
+                          description: "",
+                          amount: 0,
+                          category: "",
+                          taxDeductible: true
+                        }]);
+                      }
+                    }}
+                    data-testid="switch-split-expense"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {isSplitExpense && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">Line Items</h4>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const items = [...currentLineItems, {
+                      description: "",
+                      amount: 0,
+                      category: "",
+                      taxDeductible: true
+                    }];
+                    form.setValue("lineItems", items);
+                  }}
+                  data-testid="button-add-line-item"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Line Item
+                </Button>
+              </div>
+              
+              {currentLineItems.map((_, index) => (
+                <div key={index} className="grid grid-cols-12 gap-2 p-3 border rounded-lg bg-background">
+                  <div className="col-span-4">
+                    <FormField
+                      control={form.control}
+                      name={`lineItems.${index}.description`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input placeholder="Description" {...field} data-testid={`input-line-item-description-${index}`} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <FormField
+                      control={form.control}
+                      name={`lineItems.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="0.01"
+                              placeholder="0.00" 
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              data-testid={`input-line-item-amount-${index}`}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="col-span-4">
+                    <FormField
+                      control={form.control}
+                      name={`lineItems.${index}.category`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            const cat = expenseCategories.find(c => c.value === value);
+                            form.setValue(`lineItems.${index}.taxDeductible`, cat?.taxDeductible ?? true);
+                          }} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-line-item-category-${index}`}>
+                                <SelectValue placeholder="Category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {expenseCategories.map((category) => (
+                                <SelectItem key={category.value} value={category.value}>
+                                  <div className="flex items-center justify-between w-full">
+                                    <span>{category.label}</span>
+                                    <span className="text-xs ml-2">
+                                      {category.taxDeductible ? "✓" : "⚠"}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="col-span-2 flex items-center justify-end">
+                    {currentLineItems.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const items = currentLineItems.filter((_, i) => i !== index);
+                          form.setValue("lineItems", items);
+                        }}
+                        data-testid={`button-remove-line-item-${index}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {currentLineItems.length > 0 && (
+                <div className="text-sm text-muted-foreground p-2 bg-muted rounded">
+                  Total: ${currentLineItems.reduce((sum, item) => sum + (item.amount || 0), 0).toFixed(2)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Recurring Expense Options */}
         <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
           <FormField
@@ -358,90 +553,186 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
           />
 
           {isRecurring && (
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="recurringFrequency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Frequency</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="recurringInterval"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Every</FormLabel>
                       <FormControl>
-                        <SelectTrigger data-testid="select-recurring-frequency">
-                          <SelectValue placeholder="How often?" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="quarterly">Quarterly (Every 3 months)</SelectItem>
-                        <SelectItem value="biannually">Bi-annually (Every 6 months)</SelectItem>
-                        <SelectItem value="annually">Annually (Every year)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="recurringEndDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>End Date (Optional)</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "justify-start text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                            data-testid="button-recurring-end-date"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>No end date</span>
-                            )}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date()
-                          }
-                          initialFocus
+                        <Input 
+                          type="number" 
+                          min="1"
+                          placeholder="1" 
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                          data-testid="input-recurring-interval"
                         />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="recurringFrequency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Period</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-recurring-frequency">
+                            <SelectValue placeholder="Period" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="days">Days</SelectItem>
+                          <SelectItem value="weeks">Weeks</SelectItem>
+                          <SelectItem value="months">Months</SelectItem>
+                          <SelectItem value="years">Years</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="recurringEndDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>End Date (Optional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              data-testid="button-recurring-end-date"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>No end date</span>
+                              )}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date < new Date()
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
           )}
         </div>
 
-        <FormField
-          control={form.control}
-          name="receiptUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Receipt URL (Optional)</FormLabel>
-              <FormControl>
-                <Input placeholder="https://example.com/receipt.pdf" {...field} data-testid="input-expense-receipt" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Receipt Upload */}
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+          <div className="flex items-center space-x-2">
+            <Receipt className="h-4 w-4" />
+            <h4 className="text-sm font-medium">Receipt (Optional)</h4>
+          </div>
+          
+          <div className="space-y-3">
+            <FormField
+              control={form.control}
+              name="receiptUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Receipt URL</FormLabel>
+                  <div className="flex space-x-2">
+                    <FormControl>
+                      <Input 
+                        placeholder="https://example.com/receipt.pdf or upload a file below" 
+                        {...field}
+                        value={uploadedReceiptUrl || field.value || ""}
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                          if (e.target.value !== uploadedReceiptUrl) {
+                            setUploadedReceiptUrl(null);
+                          }
+                        }}
+                        data-testid="input-expense-receipt" 
+                      />
+                    </FormControl>
+                    {(uploadedReceiptUrl || field.value) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          field.onChange("");
+                          setUploadedReceiptUrl(null);
+                        }}
+                        data-testid="button-clear-receipt"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">or</span>
+              <ObjectUploader
+                maxNumberOfFiles={1}
+                maxFileSize={10485760} // 10MB
+                onGetUploadParameters={async () => {
+                  const response = await fetch("/api/objects/upload", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                  });
+                  if (!response.ok) throw new Error("Failed to get upload URL");
+                  const { uploadURL } = await response.json();
+                  return { method: "PUT" as const, url: uploadURL };
+                }}
+                onComplete={(result) => {
+                  if (result.successful && result.successful.length > 0) {
+                    const uploadedFile = result.successful[0];
+                    const receiptUrl = uploadedFile.uploadURL || "";
+                    setUploadedReceiptUrl(receiptUrl);
+                    form.setValue("receiptUrl", receiptUrl);
+                  }
+                }}
+                buttonClassName="variant-outline"
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                Upload Receipt
+              </ObjectUploader>
+            </div>
+            
+            {uploadedReceiptUrl && (
+              <div className="text-sm text-green-600 flex items-center space-x-1">
+                <Receipt className="h-3 w-3" />
+                <span>Receipt uploaded successfully</span>
+              </div>
+            )}
+          </div>
+        </div>
 
         <FormField
           control={form.control}

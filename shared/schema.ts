@@ -282,7 +282,9 @@ export const transactions = pgTable("transactions", {
   orgId: varchar("org_id").notNull().references(() => organizations.id),
   propertyId: varchar("property_id").references(() => properties.id),
   unitId: varchar("unit_id").references(() => units.id),
+  entityId: varchar("entity_id").references(() => ownershipEntities.id), // For operational transactions
   type: transactionTypeEnum("type").notNull(),
+  scope: varchar("scope").default("property"), // "property" or "operational"
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   description: varchar("description").notNull(),
   category: varchar("category"),
@@ -291,10 +293,23 @@ export const transactions = pgTable("transactions", {
   receiptUrl: varchar("receipt_url"),
   notes: text("notes"),
   isRecurring: boolean("is_recurring").default(false),
-  recurringFrequency: varchar("recurring_frequency"), // monthly, quarterly, biannually, annually
+  recurringFrequency: varchar("recurring_frequency"), // "days", "weeks", "months", "years"
+  recurringInterval: integer("recurring_interval").default(1), // Every X (frequency)
   recurringEndDate: timestamp("recurring_end_date"),
   taxDeductible: boolean("tax_deductible").default(true),
   parentRecurringId: varchar("parent_recurring_id"), // Reference to the original transaction for recurring instances
+  isBulkEntry: boolean("is_bulk_entry").default(false), // For bulk expense entries
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Transaction Line Items (for split expenses)
+export const transactionLineItems = pgTable("transaction_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  transactionId: varchar("transaction_id").notNull().references(() => transactions.id),
+  category: varchar("category").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  description: varchar("description"),
+  taxDeductible: boolean("tax_deductible").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -449,13 +464,21 @@ export const insertSmartCaseSchema = createInsertSchema(smartCases).omit({ id: t
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
 export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true });
+// Line Item schemas
+export const insertTransactionLineItemSchema = createInsertSchema(transactionLineItems).omit({ id: true, createdAt: true });
+
 export const insertExpenseSchema = insertTransactionSchema.extend({
   type: z.literal("Expense"),
   isRecurring: z.boolean().default(false),
-  recurringFrequency: z.enum(["monthly", "quarterly", "biannually", "annually"]).optional(),
+  recurringFrequency: z.enum(["days", "weeks", "months", "years"]).optional(),
+  recurringInterval: z.number().min(1).default(1),
   recurringEndDate: z.string().datetime().optional(),
   taxDeductible: z.boolean().default(true),
   parentRecurringId: z.string().optional(),
+  scope: z.enum(["property", "operational"]).default("property"),
+  entityId: z.string().optional(),
+  isBulkEntry: z.boolean().default(false),
+  lineItems: z.array(insertTransactionLineItemSchema.omit({ transactionId: true })).optional(),
 }).refine((data) => {
   if (data.isRecurring && !data.recurringFrequency) {
     return false;
@@ -464,6 +487,14 @@ export const insertExpenseSchema = insertTransactionSchema.extend({
 }, {
   message: "Recurring frequency is required for recurring expenses",
   path: ["recurringFrequency"],
+}).refine((data) => {
+  if (data.scope === "operational" && !data.entityId) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Entity ID is required for operational expenses",
+  path: ["entityId"],
 });
 
 // Types
@@ -491,6 +522,8 @@ export type Vendor = typeof vendors.$inferSelect;
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+export type TransactionLineItem = typeof transactionLineItems.$inferSelect;
+export type InsertTransactionLineItem = z.infer<typeof insertTransactionLineItemSchema>;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Reminder = typeof reminders.$inferSelect;
 export type InsertReminder = z.infer<typeof insertReminderSchema>;

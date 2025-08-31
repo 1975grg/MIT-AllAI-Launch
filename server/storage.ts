@@ -16,6 +16,7 @@ import {
   vendors,
   camCategories,
   transactions,
+  transactionLineItems,
   camEntries,
   reminders,
   regulatoryRules,
@@ -45,7 +46,9 @@ import {
   type Vendor,
   type InsertVendor,
   type Transaction,
+  type TransactionLineItem,
   type InsertTransaction,
+  type InsertTransactionLineItem,
   type InsertExpense,
   type Reminder,
   type InsertReminder,
@@ -114,8 +117,11 @@ export interface IStorage {
   
   // Transaction operations
   getTransactions(orgId: string, type?: "Income" | "Expense"): Promise<Transaction[]>;
+  getTransactionsByEntity(entityId: string): Promise<Transaction[]>;
+  getTransactionsByProperty(propertyId: string): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   createExpense(expense: InsertExpense): Promise<Transaction>;
+  getTransactionLineItems(transactionId: string): Promise<TransactionLineItem[]>;
   
   // Reminder operations
   getReminders(orgId: string): Promise<Reminder[]>;
@@ -627,7 +633,7 @@ export class DatabaseStorage implements IStorage {
   async createExpense(expense: InsertExpense): Promise<Transaction> {
     const [newExpense] = await db.insert(transactions).values({
       ...expense,
-      recurringEndDate: expense.recurringEndDate ? new Date(expense.recurringEndDate) : undefined,
+      recurringEndDate: expense.recurringEndDate ? new Date(expense.recurringEndDate) : null,
     }).returning();
     
     // If this is a recurring expense, create future instances
@@ -635,13 +641,46 @@ export class DatabaseStorage implements IStorage {
       await this.createRecurringExpenses(newExpense);
     }
     
+    // Create line items if provided
+    if (expense.lineItems && expense.lineItems.length > 0) {
+      const lineItems = expense.lineItems.map(item => ({
+        ...item,
+        transactionId: newExpense.id,
+      }));
+      await db.insert(transactionLineItems).values(lineItems);
+    }
+
     return newExpense;
+  }
+
+  async getTransactionsByEntity(entityId: string): Promise<Transaction[]> {
+    return await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.entityId, entityId))
+      .orderBy(desc(transactions.date));
+  }
+
+  async getTransactionsByProperty(propertyId: string): Promise<Transaction[]> {
+    return await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.propertyId, propertyId))
+      .orderBy(desc(transactions.date));
+  }
+
+  async getTransactionLineItems(transactionId: string): Promise<TransactionLineItem[]> {
+    return await db
+      .select()
+      .from(transactionLineItems)
+      .where(eq(transactionLineItems.transactionId, transactionId));
   }
 
   private async createRecurringExpenses(originalExpense: Transaction): Promise<void> {
     if (!originalExpense.isRecurring || !originalExpense.recurringFrequency) return;
 
     const frequency = originalExpense.recurringFrequency;
+    const interval = originalExpense.recurringInterval || 1;
     const startDate = new Date(originalExpense.date);
     const endDate = originalExpense.recurringEndDate ? new Date(originalExpense.recurringEndDate) : null;
     
@@ -651,8 +690,21 @@ export class DatabaseStorage implements IStorage {
     const instances: Array<InsertExpense> = [];
 
     for (let i = 0; i < maxInstances; i++) {
-      // Calculate next occurrence
+      // Calculate next occurrence based on frequency and interval
       switch (frequency) {
+        case "days":
+          currentDate.setDate(currentDate.getDate() + interval);
+          break;
+        case "weeks":
+          currentDate.setDate(currentDate.getDate() + (interval * 7));
+          break;
+        case "months":
+          currentDate.setMonth(currentDate.getMonth() + interval);
+          break;
+        case "years":
+          currentDate.setFullYear(currentDate.getFullYear() + interval);
+          break;
+        // Legacy support for old format
         case "monthly":
           currentDate.setMonth(currentDate.getMonth() + 1);
           break;
@@ -677,17 +729,23 @@ export class DatabaseStorage implements IStorage {
         orgId: originalExpense.orgId,
         propertyId: originalExpense.propertyId || undefined,
         unitId: originalExpense.unitId || undefined,
+        entityId: originalExpense.entityId || undefined,
         vendorId: originalExpense.vendorId || undefined,
         type: "Expense" as const,
+        scope: (originalExpense.scope as "property" | "operational") || "property",
         amount: originalExpense.amount,
         description: originalExpense.description,
         category: originalExpense.category || undefined,
-        date: new Date(currentDate).toISOString(),
+        date: new Date(currentDate),
         receiptUrl: originalExpense.receiptUrl || undefined,
         notes: originalExpense.notes || undefined,
         isRecurring: false, // Future instances are not recurring themselves
+        recurringFrequency: undefined,
+        recurringInterval: 1,
+        recurringEndDate: undefined,
         taxDeductible: originalExpense.taxDeductible || true,
         parentRecurringId: originalExpense.id,
+        isBulkEntry: false,
       });
     }
 
