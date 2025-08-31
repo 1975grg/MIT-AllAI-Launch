@@ -1348,7 +1348,17 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading} data-testid="button-submit-property">
+          <Button 
+            type="submit" 
+            disabled={isLoading} 
+            data-testid="button-submit-property"
+            onClick={(e) => {
+              console.log('Button clicked!');
+              console.log('Form errors:', form.formState.errors);
+              console.log('Form values:', form.getValues());
+              console.log('Form is valid:', form.formState.isValid);
+            }}
+          >
             {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update Property" : "Create Property")}
           </Button>
         </div>
