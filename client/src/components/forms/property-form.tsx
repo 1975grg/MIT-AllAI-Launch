@@ -40,9 +40,13 @@ const unitSchema = z.object({
   hvacBrand: z.string().optional(),
   hvacModel: z.string().optional(),
   hvacYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
+  hvacLifetime: z.number().min(5).max(30).optional(),
+  hvacReminder: z.boolean().optional(),
   waterHeaterBrand: z.string().optional(),
   waterHeaterModel: z.string().optional(),
   waterHeaterYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
+  waterHeaterLifetime: z.number().min(5).max(25).optional(),
+  waterHeaterReminder: z.boolean().optional(),
   applianceNotes: z.string().optional(),
   // Custom appliances
   appliances: z.array(applianceSchema).optional().default([]),
@@ -126,9 +130,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         hvacBrand: "",
         hvacModel: "",
         hvacYear: undefined,
+        hvacLifetime: undefined,
+        hvacReminder: false,
         waterHeaterBrand: "",
         waterHeaterModel: "",
         waterHeaterYear: undefined,
+        waterHeaterLifetime: undefined,
+        waterHeaterReminder: false,
         applianceNotes: "",
         appliances: [],
       },
@@ -179,9 +187,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
           hvacBrand: "",
           hvacModel: "",
           hvacYear: undefined,
+          hvacLifetime: undefined,
+          hvacReminder: false,
           waterHeaterBrand: "",
           waterHeaterModel: "",
           waterHeaterYear: undefined,
+          waterHeaterLifetime: undefined,
+          waterHeaterReminder: false,
           applianceNotes: "",
           appliances: [],
         });
@@ -248,9 +260,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                       hvacBrand: "",
                       hvacModel: "",
                       hvacYear: undefined,
+                      hvacLifetime: undefined,
+                      hvacReminder: false,
                       waterHeaterBrand: "",
                       waterHeaterModel: "",
                       waterHeaterYear: undefined,
+                      waterHeaterLifetime: undefined,
+                      waterHeaterReminder: false,
                       applianceNotes: "",
                       appliances: [],
                     });
@@ -735,116 +751,238 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                     Track appliances and systems for maintenance reminders and warranty management.
                   </p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="defaultUnit.hvacBrand"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>HVAC Brand</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="e.g., Carrier, Trane" 
-                              {...field}
-                              data-testid="input-unit-hvac-brand"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="defaultUnit.hvacModel"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>HVAC Model</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Model number" 
-                              {...field}
-                              data-testid="input-unit-hvac-model"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="defaultUnit.hvacYear"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>HVAC Install Year</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number"
-                              min="1900"
-                              max={new Date().getFullYear() + 1}
-                              placeholder="2020" 
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                              data-testid="input-unit-hvac-year"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="defaultUnit.waterHeaterBrand"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Water Heater Brand</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="e.g., Rheem, AO Smith" 
-                              {...field}
-                              data-testid="input-unit-water-heater-brand"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="defaultUnit.waterHeaterModel"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Water Heater Model</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Model number" 
-                              {...field}
-                              data-testid="input-unit-water-heater-model"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="defaultUnit.waterHeaterYear"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Water Heater Install Year</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number"
-                              min="1900"
-                              max={new Date().getFullYear() + 1}
-                              placeholder="2018" 
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                              data-testid="input-unit-water-heater-year"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                  {/* HVAC - Compact Layout */}
+                  <div className="space-y-3">
+                    <h5 className="text-sm font-medium text-muted-foreground">HVAC System</h5>
+                    <div className="grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-3">
+                        <FormField
+                          control={form.control}
+                          name="defaultUnit.hvacBrand"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Brand</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Carrier" 
+                                  {...field}
+                                  data-testid="input-unit-hvac-brand"
+                                  className="h-8 text-sm"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="col-span-3">
+                        <FormField
+                          control={form.control}
+                          name="defaultUnit.hvacModel"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Model</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="25HPA436A003" 
+                                  {...field}
+                                  data-testid="input-unit-hvac-model"
+                                  className="h-8 text-sm"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <FormField
+                          control={form.control}
+                          name="defaultUnit.hvacYear"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Year</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number"
+                                  min="1900"
+                                  max={new Date().getFullYear() + 1}
+                                  placeholder="2020" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                  data-testid="input-unit-hvac-year"
+                                  className="h-8 text-sm"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <FormField
+                          control={form.control}
+                          name="defaultUnit.hvacLifetime"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Life (Yrs)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number"
+                                  min="5"
+                                  max="30"
+                                  placeholder="15" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                  data-testid="input-unit-hvac-lifetime"
+                                  className="h-8 text-sm"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="col-span-2 flex items-center">
+                        {form.watch('defaultUnit.hvacYear') && form.watch('defaultUnit.hvacLifetime') && (
+                          <FormField
+                            control={form.control}
+                            name="defaultUnit.hvacReminder"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value === true}
+                                    onCheckedChange={field.onChange}
+                                    data-testid="checkbox-hvac-reminder"
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-xs font-normal cursor-pointer">
+                                  📅 1yr reminder
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Water Heater - Compact Layout */}
+                  <div className="space-y-3">
+                    <h5 className="text-sm font-medium text-muted-foreground">Water Heater</h5>
+                    <div className="grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-3">
+                        <FormField
+                          control={form.control}
+                          name="defaultUnit.waterHeaterBrand"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Brand</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Rheem" 
+                                  {...field}
+                                  data-testid="input-unit-water-heater-brand"
+                                  className="h-8 text-sm"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="col-span-3">
+                        <FormField
+                          control={form.control}
+                          name="defaultUnit.waterHeaterModel"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Model</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="XE50M06ST45U1" 
+                                  {...field}
+                                  data-testid="input-unit-water-heater-model"
+                                  className="h-8 text-sm"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <FormField
+                          control={form.control}
+                          name="defaultUnit.waterHeaterYear"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Year</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number"
+                                  min="1900"
+                                  max={new Date().getFullYear() + 1}
+                                  placeholder="2018" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                  data-testid="input-unit-water-heater-year"
+                                  className="h-8 text-sm"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <FormField
+                          control={form.control}
+                          name="defaultUnit.waterHeaterLifetime"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Life (Yrs)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number"
+                                  min="5"
+                                  max="25"
+                                  placeholder="12" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                  data-testid="input-unit-water-heater-lifetime"
+                                  className="h-8 text-sm"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="col-span-2 flex items-center">
+                        {form.watch('defaultUnit.waterHeaterYear') && form.watch('defaultUnit.waterHeaterLifetime') && (
+                          <FormField
+                            control={form.control}
+                            name="defaultUnit.waterHeaterReminder"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value === true}
+                                    onCheckedChange={field.onChange}
+                                    data-testid="checkbox-water-heater-reminder"
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-xs font-normal cursor-pointer">
+                                  📅 1yr reminder
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+                    </div>
                   </div>
                   
                   <FormField
@@ -1031,7 +1169,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                                       />
                                     </FormControl>
                                     <FormLabel className="text-xs font-normal cursor-pointer">
-                                      📅 1yr alert
+                                      📅 1yr reminder
                                     </FormLabel>
                                   </FormItem>
                                 )}

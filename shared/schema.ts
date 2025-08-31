@@ -116,9 +116,13 @@ export const units = pgTable("units", {
   hvacBrand: varchar("hvac_brand"),
   hvacModel: varchar("hvac_model"),
   hvacYear: integer("hvac_year"),
+  hvacLifetime: integer("hvac_lifetime"), // years
+  hvacReminder: boolean("hvac_reminder").default(false),
   waterHeaterBrand: varchar("water_heater_brand"),
   waterHeaterModel: varchar("water_heater_model"),
   waterHeaterYear: integer("water_heater_year"),
+  waterHeaterLifetime: integer("water_heater_lifetime"), // years
+  waterHeaterReminder: boolean("water_heater_reminder").default(false),
   applianceNotes: text("appliance_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
