@@ -193,6 +193,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   };
 
   const handleSubmit = (data: any) => {
+    console.log('Form submitted with data:', data);
+    console.log('Form validation errors:', form.formState.errors);
+    console.log('Form is valid:', form.formState.isValid);
     onSubmit(data);
   };
 
