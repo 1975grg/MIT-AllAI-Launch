@@ -116,18 +116,6 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
 
   const expenseCategories = [
     {
-      value: "none",
-      label: "No Category",
-      description: "Leave category blank (not tax deductible)",
-      taxDeductible: false
-    },
-    {
-      value: "custom",
-      label: "Custom Category",
-      description: "Enter your own category name (not tax deductible)",
-      taxDeductible: false
-    },
-    {
       value: "Advertising",
       label: "Advertising",
       description: "Costs of marketing the property (online ads, signs, listings)",
@@ -227,6 +215,18 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
       value: "Capital Distribution",
       label: "Capital Distribution",
       description: "Money withdrawn from the property or business (not tax deductible)",
+      taxDeductible: false
+    },
+    {
+      value: "none",
+      label: "No Category",
+      description: "Leave category blank (not tax deductible)",
+      taxDeductible: false
+    },
+    {
+      value: "custom",
+      label: "Custom Category",
+      description: "Enter your own category name (not tax deductible)",
       taxDeductible: false
     }
   ];
