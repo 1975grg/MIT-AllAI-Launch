@@ -498,7 +498,18 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
 export const insertOwnershipEntitySchema = createInsertSchema(ownershipEntities).omit({ id: true, createdAt: true });
 export const insertPropertySchema = createInsertSchema(properties).omit({ id: true, createdAt: true });
-export const insertUnitSchema = createInsertSchema(units).omit({ id: true, createdAt: true });
+export const insertUnitSchema = createInsertSchema(units).omit({ id: true, createdAt: true }).extend({
+  bedrooms: z.number().optional(),
+  bathrooms: z.number().optional(), 
+  sqft: z.number().optional(),
+  floor: z.number().optional(),
+  rentAmount: z.string().optional(),
+  deposit: z.string().optional(),
+  hvacYear: z.number().optional(),
+  hvacLifetime: z.number().optional(),
+  waterHeaterYear: z.number().optional(),
+  waterHeaterLifetime: z.number().optional(),
+});
 export const insertTenantGroupSchema = createInsertSchema(tenantGroups).omit({ id: true, createdAt: true });
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true });
 export const insertLeaseSchema = createInsertSchema(leases).omit({ id: true, createdAt: true });
