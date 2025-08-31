@@ -93,10 +93,14 @@ export const properties = pgTable("properties", {
   buildingHvacBrand: varchar("building_hvac_brand"),
   buildingHvacModel: varchar("building_hvac_model"),
   buildingHvacYear: integer("building_hvac_year"),
+  buildingHvacLifetime: integer("building_hvac_lifetime"), // years
+  buildingHvacReminder: boolean("building_hvac_reminder").default(false),
   buildingHvacLocation: varchar("building_hvac_location"),
   buildingWaterBrand: varchar("building_water_brand"),
   buildingWaterModel: varchar("building_water_model"),
   buildingWaterYear: integer("building_water_year"),
+  buildingWaterLifetime: integer("building_water_lifetime"), // years
+  buildingWaterReminder: boolean("building_water_reminder").default(false),
   buildingWaterLocation: varchar("building_water_location"),
   buildingWaterShutoff: varchar("building_water_shutoff"),
   buildingElectricalPanel: varchar("building_electrical_panel"),
