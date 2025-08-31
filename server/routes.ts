@@ -437,9 +437,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (defaultUnit) {
         // Check if we have an explicit unit ID or if there are existing units for this property
         const existingUnits = await storage.getUnits(req.params.id);
-        const targetUnitId = defaultUnit.id || (existingUnits.length > 0 ? existingUnits[0].id : null);
+        console.log("🔍 Existing units count:", existingUnits.length);
+        console.log("🔍 Existing unit IDs:", existingUnits.map(u => u.id));
         
-        if (targetUnitId) {
+        if (existingUnits.length > 0) {
+          // Always update the first existing unit
+          const targetUnitId = defaultUnit.id || existingUnits[0].id;
+          console.log("✏️ Updating existing unit ID:", targetUnitId);
           // Update existing unit with appliance data
           const unitData = {
           label: defaultUnit.label,
