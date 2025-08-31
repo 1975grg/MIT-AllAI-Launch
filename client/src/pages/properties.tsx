@@ -58,11 +58,10 @@ export default function Properties() {
     retry: false,
   });
 
-  // Fetch units for expanded properties
+  // Fetch units for properties
   const { data: allUnits = [] } = useQuery<Unit[]>({
     queryKey: ["/api/units"],
     retry: false,
-    enabled: expandedProperties.size > 0,
   });
 
   const createPropertyMutation = useMutation({
