@@ -89,6 +89,18 @@ export const properties = pgTable("properties", {
   hoaName: varchar("hoa_name"),
   hoaContact: varchar("hoa_contact"),
   notes: text("notes"),
+  // Building-level equipment (for buildings only)
+  buildingHvacBrand: varchar("building_hvac_brand"),
+  buildingHvacModel: varchar("building_hvac_model"),
+  buildingHvacYear: integer("building_hvac_year"),
+  buildingHvacLocation: varchar("building_hvac_location"),
+  buildingWaterBrand: varchar("building_water_brand"),
+  buildingWaterModel: varchar("building_water_model"),
+  buildingWaterYear: integer("building_water_year"),
+  buildingWaterLocation: varchar("building_water_location"),
+  buildingWaterShutoff: varchar("building_water_shutoff"),
+  buildingElectricalPanel: varchar("building_electrical_panel"),
+  buildingEquipmentNotes: text("building_equipment_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
