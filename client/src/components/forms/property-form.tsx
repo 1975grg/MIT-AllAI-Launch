@@ -76,24 +76,7 @@ const propertySchema = z.object({
     },
     "Ownership percentages must add up to 100%"
   ),
-}).refine(
-  (data) => {
-    // If createDefaultUnit is true, we need either defaultUnit or units
-    if (data.createDefaultUnit) {
-      if (data.hasMultipleUnits && (!data.units || data.units.length === 0)) {
-        return false;
-      }
-      if (!data.hasMultipleUnits && !data.defaultUnit) {
-        return false;
-      }
-    }
-    return true;
-  },
-  {
-    message: "Unit information is required when creating units",
-    path: ["units"],
-  }
-);
+});
 
 interface PropertyFormProps {
   entities: OwnershipEntity[];
@@ -753,7 +736,27 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   
                   {/* HVAC - Compact Layout */}
                   <div className="space-y-3">
-                    <h5 className="text-sm font-medium text-muted-foreground">HVAC System</h5>
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-sm font-medium text-muted-foreground">HVAC System</h5>
+                      {(form.watch("defaultUnit.hvacBrand") || form.watch("defaultUnit.hvacModel") || form.watch("defaultUnit.hvacYear")) && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => {
+                            form.setValue("defaultUnit.hvacBrand", "");
+                            form.setValue("defaultUnit.hvacModel", "");
+                            form.setValue("defaultUnit.hvacYear", undefined);
+                            form.setValue("defaultUnit.hvacLifetime", undefined);
+                            form.setValue("defaultUnit.hvacReminder", false);
+                          }}
+                          data-testid="button-clear-hvac"
+                        >
+                          Clear HVAC
+                        </Button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-3">
                         <FormField
@@ -870,7 +873,27 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   
                   {/* Water Heater - Compact Layout */}
                   <div className="space-y-3">
-                    <h5 className="text-sm font-medium text-muted-foreground">Water Heater</h5>
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-sm font-medium text-muted-foreground">Water Heater</h5>
+                      {(form.watch("defaultUnit.waterHeaterBrand") || form.watch("defaultUnit.waterHeaterModel") || form.watch("defaultUnit.waterHeaterYear")) && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => {
+                            form.setValue("defaultUnit.waterHeaterBrand", "");
+                            form.setValue("defaultUnit.waterHeaterModel", "");
+                            form.setValue("defaultUnit.waterHeaterYear", undefined);
+                            form.setValue("defaultUnit.waterHeaterLifetime", undefined);
+                            form.setValue("defaultUnit.waterHeaterReminder", false);
+                          }}
+                          data-testid="button-clear-water-heater"
+                        >
+                          Clear Water Heater
+                        </Button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-3">
                         <FormField
