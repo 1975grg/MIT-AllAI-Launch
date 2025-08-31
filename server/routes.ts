@@ -499,6 +499,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get appliances for a specific unit
+  app.get('/api/units/:id/appliances', isAuthenticated, async (req: any, res) => {
+    try {
+      const appliances = await storage.getUnitAppliances(req.params.id);
+      res.json(appliances);
+    } catch (error) {
+      console.error("Error fetching unit appliances:", error);
+      res.status(500).json({ message: "Failed to fetch appliances" });
+    }
+  });
+
   app.get('/api/properties/:propertyId/units', isAuthenticated, async (req: any, res) => {
     try {
       const units = await storage.getUnits(req.params.propertyId);

@@ -153,8 +153,51 @@ export default function Properties() {
     return property.ownerships?.some((ownership: any) => ownership.entityId === selectedEntity);
   }) || [];
 
-  const handleEditProperty = (property: PropertyWithOwnerships) => {
+  const handleEditProperty = async (property: PropertyWithOwnerships) => {
     setEditingProperty(property);
+    
+    // Fetch the property's units to get appliance data
+    try {
+      const unitsResponse = await apiRequest("GET", `/api/units`);
+      const units: Unit[] = await unitsResponse.json();
+      const propertyUnits = units.filter(unit => unit.propertyId === property.id);
+      
+      // Add the first unit as defaultUnit to the editing property
+      if (propertyUnits.length > 0) {
+        const firstUnit = propertyUnits[0];
+        
+        // Fetch appliances for this unit
+        const appliancesResponse = await apiRequest("GET", `/api/units/${firstUnit.id}/appliances`);
+        const appliances = await appliancesResponse.json();
+        
+        (property as any).defaultUnit = {
+          id: firstUnit.id,
+          label: firstUnit.label,
+          bedrooms: firstUnit.bedrooms,
+          bathrooms: firstUnit.bathrooms ? parseFloat(firstUnit.bathrooms) : undefined,
+          sqft: firstUnit.sqft,
+          rentAmount: firstUnit.rentAmount,
+          deposit: firstUnit.deposit,
+          notes: firstUnit.notes,
+          hvacBrand: firstUnit.hvacBrand,
+          hvacModel: firstUnit.hvacModel,
+          hvacYear: firstUnit.hvacYear,
+          hvacLifetime: firstUnit.hvacLifetime,
+          hvacReminder: firstUnit.hvacReminder,
+          waterHeaterBrand: firstUnit.waterHeaterBrand,
+          waterHeaterModel: firstUnit.waterHeaterModel,
+          waterHeaterYear: firstUnit.waterHeaterYear,
+          waterHeaterLifetime: firstUnit.waterHeaterLifetime,
+          waterHeaterReminder: firstUnit.waterHeaterReminder,
+          applianceNotes: firstUnit.applianceNotes,
+          appliances: appliances || [],
+        };
+      }
+    } catch (error) {
+      console.error("Error loading unit data:", error);
+      // Continue with editing even if unit data fails to load
+    }
+    
     setShowPropertyForm(true);
   };
 
@@ -255,7 +298,29 @@ export default function Properties() {
                     ownerships: editingProperty.ownerships?.map(o => ({
                       entityId: o.entityId,
                       percent: o.percent
-                    })) || []
+                    })) || [],
+                    createDefaultUnit: (editingProperty as any).defaultUnit ? true : false,
+                    defaultUnit: (editingProperty as any).defaultUnit || {
+                      label: "",
+                      bedrooms: undefined,
+                      bathrooms: undefined,
+                      sqft: undefined,
+                      rentAmount: "",
+                      deposit: "",
+                      notes: "",
+                      hvacBrand: "",
+                      hvacModel: "",
+                      hvacYear: undefined,
+                      hvacLifetime: undefined,
+                      hvacReminder: false,
+                      waterHeaterBrand: "",
+                      waterHeaterModel: "",
+                      waterHeaterYear: undefined,
+                      waterHeaterLifetime: undefined,
+                      waterHeaterReminder: false,
+                      applianceNotes: "",
+                      appliances: [],
+                    }
                   } : undefined}
                 />
               </DialogContent>
