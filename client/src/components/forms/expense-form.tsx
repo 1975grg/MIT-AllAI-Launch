@@ -18,14 +18,14 @@ import { useState } from "react";
 import type { Property } from "@shared/schema";
 
 const lineItemSchema = z.object({
-  description: z.string().min(1, "Description is required"),
+  description: z.string().optional(),
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   category: z.string().min(1, "Category is required"),
   taxDeductible: z.boolean().default(true),
 });
 
 const expenseSchema = z.object({
-  description: z.string().min(1, "Description is required"),
+  description: z.string().optional(),
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   category: z.string().optional(),
   customCategory: z.string().optional(),
