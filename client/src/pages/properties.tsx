@@ -62,12 +62,19 @@ export default function Properties() {
       const response = await apiRequest("POST", "/api/properties", data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      // Invalidate both properties and units queries since we might have created a unit too
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       setShowPropertyForm(false);
+      
+      const message = response.unit 
+        ? "Property and default unit created successfully" 
+        : "Property created successfully";
+      
       toast({
         title: "Success",
-        description: "Property created successfully",
+        description: message,
       });
     },
     onError: (error) => {

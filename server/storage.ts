@@ -400,6 +400,42 @@ export class DatabaseStorage implements IStorage {
     return newProperty;
   }
 
+  async createPropertyWithOwnershipsAndUnit(
+    property: InsertProperty, 
+    ownerships: Array<{entityId: string, percent: number}>,
+    defaultUnit?: {
+      label: string;
+      bedrooms?: number;
+      bathrooms?: number;
+      sqft?: number;
+      rentAmount?: string;
+      deposit?: string;
+      notes?: string;
+    }
+  ): Promise<{property: Property, unit?: Unit}> {
+    // First create the property with ownerships
+    const newProperty = await this.createPropertyWithOwnerships(property, ownerships);
+    
+    let newUnit = undefined;
+    if (defaultUnit) {
+      // Create the default unit
+      const unitData: InsertUnit = {
+        propertyId: newProperty.id,
+        label: defaultUnit.label,
+        bedrooms: defaultUnit.bedrooms,
+        bathrooms: defaultUnit.bathrooms ? defaultUnit.bathrooms.toString() : undefined,
+        sqft: defaultUnit.sqft,
+        rentAmount: defaultUnit.rentAmount ? defaultUnit.rentAmount : undefined,
+        deposit: defaultUnit.deposit ? defaultUnit.deposit : undefined,
+        notes: defaultUnit.notes,
+      };
+      
+      newUnit = await this.createUnit(unitData);
+    }
+    
+    return { property: newProperty, unit: newUnit };
+  }
+
   async updateProperty(id: string, property: Partial<InsertProperty>): Promise<Property> {
     const [updated] = await db
       .update(properties)
@@ -439,6 +475,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Unit operations
+  async getAllUnits(orgId: string): Promise<Unit[]> {
+    return await db
+      .select({
+        id: units.id,
+        propertyId: units.propertyId,
+        label: units.label,
+        bedrooms: units.bedrooms,
+        bathrooms: units.bathrooms,
+        sqft: units.sqft,
+        floor: units.floor,
+        rentAmount: units.rentAmount,
+        deposit: units.deposit,
+        notes: units.notes,
+        createdAt: units.createdAt,
+      })
+      .from(units)
+      .innerJoin(properties, eq(units.propertyId, properties.id))
+      .where(eq(properties.orgId, orgId))
+      .orderBy(asc(units.label));
+  }
+
   async getUnits(propertyId: string): Promise<Unit[]> {
     return await db
       .select()

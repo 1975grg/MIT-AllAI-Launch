@@ -9,12 +9,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Minus, Building2 } from "lucide-react";
+import { Plus, Minus, Building2, Home } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { OwnershipEntity } from "@shared/schema";
 
 const ownershipSchema = z.object({
   entityId: z.string().min(1, "Entity is required"),
   percent: z.number().min(0.01).max(100),
+});
+
+const defaultUnitSchema = z.object({
+  label: z.string().min(1, "Unit label is required"),
+  bedrooms: z.number().min(0).optional(),
+  bathrooms: z.number().min(0).optional(),
+  sqft: z.number().min(0).optional(),
+  rentAmount: z.string().optional(),
+  deposit: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 const propertySchema = z.object({
@@ -29,6 +40,8 @@ const propertySchema = z.object({
   hoaName: z.string().optional(),
   hoaContact: z.string().optional(),
   notes: z.string().optional(),
+  createDefaultUnit: z.boolean().default(true),
+  defaultUnit: defaultUnitSchema.optional(),
   ownerships: z.array(ownershipSchema).min(1, "At least one owner is required").refine(
     (ownerships) => {
       const total = ownerships.reduce((sum, o) => sum + o.percent, 0);
@@ -36,7 +49,19 @@ const propertySchema = z.object({
     },
     "Ownership percentages must add up to 100%"
   ),
-});
+}).refine(
+  (data) => {
+    // If createDefaultUnit is true, defaultUnit is required
+    if (data.createDefaultUnit && !data.defaultUnit) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "Default unit information is required",
+    path: ["defaultUnit"],
+  }
+);
 
 interface PropertyFormProps {
   entities: OwnershipEntity[];
@@ -58,6 +83,16 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
       city: "",
       state: "",
       zipCode: "",
+      createDefaultUnit: true,
+      defaultUnit: {
+        label: "Main Unit",
+        bedrooms: undefined,
+        bathrooms: undefined,
+        sqft: undefined,
+        rentAmount: "",
+        deposit: "",
+        notes: "",
+      },
       ownerships: [{ entityId: "", percent: 100 }],
       ...initialData,
     },
@@ -315,6 +350,192 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
             </FormItem>
           )}
         />
+
+        {/* Default Unit Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Home className="h-5 w-5" />
+              <span>Default Unit Setup</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Most properties have one main unit. You can add more units later if needed.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="createDefaultUnit"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-create-default-unit"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Create a default unit for this property
+                    </FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Recommended for single-family homes and simple properties
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+            
+            {form.watch("createDefaultUnit") && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="defaultUnit.label"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit Label</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Main Unit" 
+                            {...field}
+                            data-testid="input-unit-label" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="defaultUnit.bedrooms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bedrooms</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            placeholder="3" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            data-testid="input-unit-bedrooms"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="defaultUnit.bathrooms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bathrooms</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            step="0.5"
+                            placeholder="2" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            data-testid="input-unit-bathrooms"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="defaultUnit.sqft"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Square Feet</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            placeholder="1200" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            data-testid="input-unit-sqft"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="defaultUnit.rentAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Expected Rent (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            step="0.01"
+                            placeholder="2500" 
+                            {...field}
+                            data-testid="input-unit-rent"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="defaultUnit.deposit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Expected Deposit (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            step="0.01"
+                            placeholder="2500" 
+                            {...field}
+                            data-testid="input-unit-deposit"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="defaultUnit.notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Notes about this unit..." 
+                          {...field}
+                          data-testid="textarea-unit-notes" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Ownership Section */}
         <Card>

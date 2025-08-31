@@ -291,15 +291,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const { ownerships, ...propertyData } = req.body;
+      const { ownerships, createDefaultUnit, defaultUnit, ...propertyData } = req.body;
       
       const validatedData = insertPropertySchema.parse({
         ...propertyData,
         orgId: org.id,
       });
       
-      const property = await storage.createPropertyWithOwnerships(validatedData, ownerships);
-      res.json(property);
+      // Check if we should create a default unit
+      if (createDefaultUnit && defaultUnit) {
+        // Use the new method that creates both property and unit
+        const result = await storage.createPropertyWithOwnershipsAndUnit(
+          validatedData, 
+          ownerships, 
+          defaultUnit
+        );
+        res.json({ property: result.property, unit: result.unit });
+      } else {
+        // Use the old method for just property creation
+        const property = await storage.createPropertyWithOwnerships(validatedData, ownerships);
+        res.json({ property, unit: null });
+      }
     } catch (error) {
       console.error("Error creating property:", error);
       res.status(500).json({ message: "Failed to create property" });
@@ -327,6 +339,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unit routes
+  app.get('/api/units', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const units = await storage.getAllUnits(org.id);
+      res.json(units);
+    } catch (error) {
+      console.error("Error fetching all units:", error);
+      res.status(500).json({ message: "Failed to fetch units" });
+    }
+  });
+
   app.get('/api/properties/:propertyId/units', isAuthenticated, async (req: any, res) => {
     try {
       const units = await storage.getUnits(req.params.propertyId);
