@@ -179,7 +179,7 @@ export default function Expenses() {
                   <SelectItem value="all">All Properties</SelectItem>
                   {filteredProperties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
-                      {property.address}
+                      {property.street}, {property.city}
                     </SelectItem>
                   ))}
                 </SelectContent>
