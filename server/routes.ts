@@ -43,8 +43,8 @@ async function createEquipmentReminders({
     
     const reminderData = {
       orgId: org.id,
-      scope: "unit" as const,
-      scopeId: unit.id,
+      scope: "property" as const,
+      scopeId: property.id,
       title: `HVAC System Replacement - ${property.address}`,
       description: `HVAC system installed in ${unitData.hvacYear} (${unitData.hvacBrand || 'Unknown'} ${unitData.hvacModel || ''}) is approaching its expected lifetime of ${unitData.hvacLifetime} years.`,
       type: "maintenance" as const,
@@ -64,8 +64,8 @@ async function createEquipmentReminders({
     
     const reminderData = {
       orgId: org.id,
-      scope: "unit" as const,
-      scopeId: unit.id,
+      scope: "property" as const,
+      scopeId: property.id,
       title: `Water Heater Replacement - ${property.address}`,
       description: `Water heater installed in ${unitData.waterHeaterYear} (${unitData.waterHeaterBrand || 'Unknown'} ${unitData.waterHeaterModel || ''}) is approaching its expected lifetime of ${unitData.waterHeaterLifetime} years.`,
       type: "maintenance" as const,
