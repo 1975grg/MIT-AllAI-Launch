@@ -274,7 +274,19 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
   return (
     <div className="max-h-[80vh] overflow-y-auto">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+        <form onSubmit={form.handleSubmit(
+          (data) => {
+            console.log("Form validation passed, submitting:", data);
+            const submissionData = {
+              ...data,
+              receiptUrl: uploadedReceiptUrl,
+            };
+            onSubmit(submissionData);
+          },
+          (errors) => {
+            console.log("Form validation failed with errors:", errors);
+          }
+        )} className="space-y-3">
         <FormField
           control={form.control}
           name="description"
@@ -300,7 +312,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                   <Input 
                     type="text" 
                     placeholder="0.00" 
-                    value={value?.toString() ?? ""}
+                    value={value !== undefined ? value.toString() : ""}
                     onChange={(e) => {
                       const inputValue = e.target.value;
                       // Allow only numbers and decimal point
@@ -1014,11 +1026,11 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
         />
 
         <div className="flex justify-end space-x-2">
-          <Button type="button" variant="outline" data-testid="button-cancel-expense">
+          <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-expense">
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} data-testid="button-submit-expense">
-            {isLoading ? "Logging..." : "Log Expense"}
+            {isLoading ? "Logging..." : (expense ? "Update Expense" : "Log Expense")}
           </Button>
         </div>
         </form>
