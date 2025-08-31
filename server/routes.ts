@@ -423,10 +423,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const { ownerships, defaultUnit, ...propertyData } = req.body;
+      const { ownerships, defaultUnit, units, ...propertyData } = req.body;
       
       console.log("🏠 Updating property ID:", req.params.id);
       console.log("🔧 Has unit data:", !!defaultUnit);
+      console.log("🏢 Has multiple units data:", !!(units && Array.isArray(units) && units.length > 0));
       if (defaultUnit) {
         console.log("📋 Unit details:", {
           hasId: !!defaultUnit.id,
@@ -434,6 +435,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hvacModel: defaultUnit.hvacModel,
           label: defaultUnit.label
         });
+      }
+      if (units && Array.isArray(units)) {
+        console.log("📋 Multiple units count:", units.length);
       }
       
       // Validate the property data (excluding required fields for updates)
@@ -443,7 +447,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update property and ownerships
       const property = await storage.updatePropertyWithOwnerships(req.params.id, validatedData, ownerships);
       
-      // Handle unit update if provided  
+      // Handle multiple units update for buildings
+      if (units && Array.isArray(units) && units.length > 0) {
+        console.log("🏢 Updating building with multiple units");
+        
+        // Get existing units
+        const existingUnits = await storage.getUnits(req.params.id);
+        console.log("🔍 Existing units count:", existingUnits.length);
+        
+        // Delete all existing units
+        for (const existingUnit of existingUnits) {
+          console.log("🗑️ Deleting existing unit:", existingUnit.id);
+          await storage.deleteUnit(existingUnit.id);
+        }
+        
+        // Create new units
+        const createdUnits = [];
+        for (const unitData of units) {
+          console.log("➕ Creating new unit:", unitData.label);
+          const unitInsertData = {
+            propertyId: req.params.id,
+            label: unitData.label || 'Unit',
+            bedrooms: unitData.bedrooms,
+            bathrooms: unitData.bathrooms,
+            sqft: unitData.sqft,
+            rentAmount: unitData.rentAmount ? String(unitData.rentAmount) : undefined,
+            deposit: unitData.deposit ? String(unitData.deposit) : undefined,
+            notes: unitData.notes,
+            hvacBrand: unitData.hvacBrand,
+            hvacModel: unitData.hvacModel,
+            hvacYear: unitData.hvacYear,
+            hvacLifetime: unitData.hvacLifetime,
+            hvacReminder: unitData.hvacReminder,
+            waterHeaterBrand: unitData.waterHeaterBrand,
+            waterHeaterModel: unitData.waterHeaterModel,
+            waterHeaterYear: unitData.waterHeaterYear,
+            waterHeaterLifetime: unitData.waterHeaterLifetime,
+            waterHeaterReminder: unitData.waterHeaterReminder,
+            applianceNotes: unitData.applianceNotes,
+          };
+          
+          const newUnit = await storage.createUnit(unitInsertData);
+          createdUnits.push(newUnit);
+          
+          // Handle custom appliances for this unit
+          if (unitData.appliances && unitData.appliances.length > 0) {
+            for (const appliance of unitData.appliances) {
+              await storage.createUnitAppliance({
+                unitId: newUnit.id,
+                name: appliance.name,
+                manufacturer: appliance.manufacturer,
+                model: appliance.model,
+                year: appliance.year,
+                expectedLifetime: appliance.expectedLifetime,
+                alertBeforeExpiry: appliance.alertBeforeExpiry,
+                notes: appliance.notes,
+              });
+            }
+          }
+        }
+        
+        console.log("✅ Successfully updated building with", createdUnits.length, "units");
+        res.json({ property, units: createdUnits });
+        return;
+      }
+      
+      // Handle single unit update if provided  
       let updatedUnit = null;
       if (defaultUnit) {
         // Check if we have an explicit unit ID or if there are existing units for this property
