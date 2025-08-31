@@ -321,14 +321,14 @@ export default function Expenses() {
                           <p className="text-xl font-bold text-foreground" data-testid={`text-expense-amount-${index}`}>
                             ${Number(expense.amount).toLocaleString()}
                           </p>
-                          {expense.propertyId && (
+                          {expense.scope === 'property' && expense.propertyId && (
                             <p className="text-sm text-muted-foreground" data-testid={`text-expense-property-${index}`}>
                               {properties.find(p => p.id === expense.propertyId)?.address || 'Property'}
                             </p>
                           )}
-                          {expense.entityId && (
+                          {expense.scope === 'operational' && expense.entityId && (
                             <p className="text-sm text-muted-foreground" data-testid={`text-expense-entity-${index}`}>
-                              {entities.find(e => e.id === expense.entityId)?.name || 'Entity'}
+                              {entities.find(e => e.id === expense.entityId)?.name || 'Operational'}
                             </p>
                           )}
                         </div>

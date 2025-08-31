@@ -427,7 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
         entityId: req.body.entityId || undefined,
         scope: req.body.scope || "property",
-        amount: req.body.amount.toString(),
+        amount: req.body.amount ? req.body.amount.toString() : "0",
         description: req.body.description || "",
         category: finalCategory,
         date: typeof req.body.date === 'string' ? new Date(req.body.date) : req.body.date,
@@ -469,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cleanedData = {
         id: req.params.id,
         type: "Expense",
-        amount: req.body.amount.toString(),
+        amount: req.body.amount ? req.body.amount.toString() : "0",
         description: req.body.description || "",
         category: finalCategory,
         date: typeof req.body.date === 'string' ? new Date(req.body.date) : req.body.date,

@@ -321,7 +321,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                     type="number" 
                     step="0.01"
                     placeholder="0.00" 
-                    value={field.value || ""}
+                    defaultValue={field.value || ""}
                     onChange={(e) => {
                       const value = e.target.value;
                       field.onChange(value === "" ? undefined : parseFloat(value) || undefined);
