@@ -188,13 +188,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       }
     }
     
-    // Update the form with new units
+    // Update the form with new units  
     form.setValue("units", newUnits);
   };
 
   const handleSubmit = (data: any) => {
-    console.log('Form validation passed, submitting:', data);
-    console.log('Form errors:', form.formState.errors);
     onSubmit(data);
   };
 
@@ -247,6 +245,14 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                       rentAmount: "",
                       deposit: "",
                       notes: "",
+                      hvacBrand: "",
+                      hvacModel: "",
+                      hvacYear: undefined,
+                      waterHeaterBrand: "",
+                      waterHeaterModel: "",
+                      waterHeaterYear: undefined,
+                      applianceNotes: "",
+                      appliances: [],
                     });
                   }
                   form.setValue("units", units);
@@ -514,14 +520,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                       Consider Setting Up Units Later
                     </h4>
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      You can always add unit details later from the property page. Units help you:
+                      Units help track tenants, rent, equipment maintenance, and organize multi-unit properties.
                     </p>
-                    <ul className="text-sm text-blue-700 dark:text-blue-300 ml-4 space-y-1">
-                      <li>• Track tenant information and rent amounts</li>
-                      <li>• Monitor equipment like HVAC, water heaters, and appliances</li>
-                      <li>• Set up maintenance reminders and warranty tracking</li>
-                      <li>• Organize multiple units in buildings</li>
-                    </ul>
                   </div>
                 </div>
               </div>
