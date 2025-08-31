@@ -21,6 +21,8 @@ export default function Expenses() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Transaction | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [entityFilter, setEntityFilter] = useState<string>("all");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -53,14 +55,10 @@ export default function Expenses() {
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: any) => {
-      console.log("Mutation data:", data);
-      console.log("Editing expense:", editingExpense);
       if (editingExpense) {
-        console.log("Making PUT request to update expense");
         const response = await apiRequest("PUT", `/api/expenses/${editingExpense.id}`, data);
         return response.json();
       } else {
-        console.log("Making POST request to create expense");
         const response = await apiRequest("POST", "/api/expenses", data);
         return response.json();
       }
@@ -103,9 +101,12 @@ export default function Expenses() {
   }
 
   const expenseTransactions = expenses?.filter(t => t.type === "Expense") || [];
-  const filteredExpenses = expenseTransactions.filter(expense => 
-    categoryFilter === "all" || expense.category === categoryFilter
-  );
+  const filteredExpenses = expenseTransactions.filter(expense => {
+    const categoryMatch = categoryFilter === "all" || expense.category === categoryFilter;
+    const propertyMatch = propertyFilter === "all" || expense.propertyId === propertyFilter;
+    const entityMatch = entityFilter === "all" || expense.entityId === entityFilter;
+    return categoryMatch && propertyMatch && entityMatch;
+  });
 
   const categories = Array.from(new Set(expenseTransactions.map(e => e.category).filter(Boolean)));
   const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
@@ -152,6 +153,30 @@ export default function Expenses() {
                   <SelectItem value="all">All Categories</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category} value={category!}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                <SelectTrigger className="w-48" data-testid="select-property-filter">
+                  <SelectValue placeholder="Filter by property" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {properties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>{property.address}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={entityFilter} onValueChange={setEntityFilter}>
+                <SelectTrigger className="w-40" data-testid="select-entity-filter">
+                  <SelectValue placeholder="Filter by entity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Entities</SelectItem>
+                  {entities.map((entity) => (
+                    <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
