@@ -430,9 +430,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: req.body.amount.toString(),
         description: req.body.description || "",
         category: finalCategory,
-        date: new Date(req.body.date),
+        date: typeof req.body.date === 'string' ? new Date(req.body.date) : req.body.date,
         isDateRange: req.body.isDateRange || false,
-        endDate: req.body.endDate ? req.body.endDate : undefined,
+        endDate: req.body.endDate ? (typeof req.body.endDate === 'string' ? new Date(req.body.endDate) : req.body.endDate) : undefined,
         receiptUrl: req.body.receiptUrl,
         notes: req.body.notes,
         isRecurring: req.body.isRecurring || false,
@@ -443,6 +443,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isBulkEntry: req.body.isBulkEntry || false,
       };
       
+      console.log("Data types being sent to validation:", {
+        date: typeof cleanedData.date,
+        dateValue: cleanedData.date,
+        endDate: typeof cleanedData.endDate,
+        endDateValue: cleanedData.endDate
+      });
       const validatedData = insertExpenseSchema.parse(cleanedData);
       
       const expense = await storage.createTransaction(validatedData);

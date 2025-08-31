@@ -278,10 +278,17 @@ export default function ExpenseForm({ properties, entities, onSubmit, isLoading 
                     type="number" 
                     step="0.01"
                     placeholder="0.00" 
-                    value={field.value ?? ""}
+                    value={field.value?.toString() ?? ""}
                     onChange={(e) => {
                       const value = e.target.value;
-                      field.onChange(value ? parseFloat(value) : undefined);
+                      if (value === "") {
+                        field.onChange(undefined);
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                          field.onChange(numValue);
+                        }
+                      }
                     }}
                     onBlur={field.onBlur}
                     name={field.name}
