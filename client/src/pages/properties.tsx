@@ -209,7 +209,7 @@ export default function Properties() {
                     <SelectValue placeholder="Filter by ownership" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Properties</SelectItem>
+                    <SelectItem value="all">All Entities</SelectItem>
                     {entities?.map((entity) => (
                       <SelectItem key={entity.id} value={entity.id}>
                         <div className="flex items-center space-x-2">
