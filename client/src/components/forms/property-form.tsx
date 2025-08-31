@@ -902,124 +902,142 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                           </Button>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name={`defaultUnit.appliances.${index}.name`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Appliance Name *</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    placeholder="e.g., Refrigerator, Dishwasher" 
-                                    {...field}
-                                    data-testid={`input-appliance-name-${index}`}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                        {/* Single line layout for appliance details */}
+                        <div className="grid grid-cols-12 gap-2 items-end">
+                          <div className="col-span-3">
+                            <FormField
+                              control={form.control}
+                              name={`defaultUnit.appliances.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Name *</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="Refrigerator" 
+                                      {...field}
+                                      data-testid={`input-appliance-name-${index}`}
+                                      className="h-8 text-sm"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           
-                          <FormField
-                            control={form.control}
-                            name={`defaultUnit.appliances.${index}.manufacturer`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Manufacturer</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    placeholder="e.g., GE, Whirlpool" 
-                                    {...field}
-                                    data-testid={`input-appliance-manufacturer-${index}`}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
+                          <div className="col-span-2">
+                            <FormField
+                              control={form.control}
+                              name={`defaultUnit.appliances.${index}.manufacturer`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Brand</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="GE" 
+                                      {...field}
+                                      data-testid={`input-appliance-manufacturer-${index}`}
+                                      className="h-8 text-sm"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           
-                          <FormField
-                            control={form.control}
-                            name={`defaultUnit.appliances.${index}.model`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Model</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    placeholder="Model number" 
-                                    {...field}
-                                    data-testid={`input-appliance-model-${index}`}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
+                          <div className="col-span-2">
+                            <FormField
+                              control={form.control}
+                              name={`defaultUnit.appliances.${index}.model`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Model</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="ABC123" 
+                                      {...field}
+                                      data-testid={`input-appliance-model-${index}`}
+                                      className="h-8 text-sm"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           
-                          <FormField
-                            control={form.control}
-                            name={`defaultUnit.appliances.${index}.year`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Install Year</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number"
-                                    min="1900"
-                                    max={new Date().getFullYear() + 1}
-                                    placeholder="2020" 
-                                    {...field}
-                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                                    data-testid={`input-appliance-year-${index}`}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
+                          <div className="col-span-2">
+                            <FormField
+                              control={form.control}
+                              name={`defaultUnit.appliances.${index}.year`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Year</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number"
+                                      min="1900"
+                                      max={new Date().getFullYear() + 1}
+                                      placeholder="2020" 
+                                      {...field}
+                                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                      data-testid={`input-appliance-year-${index}`}
+                                      className="h-8 text-sm"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           
-                          <FormField
-                            control={form.control}
-                            name={`defaultUnit.appliances.${index}.expectedLifetime`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Expected Lifetime (Years)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number"
-                                    min="1"
-                                    max="50"
-                                    placeholder="15" 
-                                    {...field}
-                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                                    data-testid={`input-appliance-lifetime-${index}`}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
+                          <div className="col-span-2">
+                            <FormField
+                              control={form.control}
+                              name={`defaultUnit.appliances.${index}.expectedLifetime`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Life (Yrs)</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number"
+                                      min="1"
+                                      max="50"
+                                      placeholder="15" 
+                                      {...field}
+                                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                      data-testid={`input-appliance-lifetime-${index}`}
+                                      className="h-8 text-sm"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           
-                          <FormField
-                            control={form.control}
-                            name={`defaultUnit.appliances.${index}.alertBeforeExpiry`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Alert Before Expiry (Months)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number"
-                                    min="1"
-                                    max="60"
-                                    placeholder="12" 
-                                    {...field}
-                                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                                    data-testid={`input-appliance-alert-${index}`}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Get reminders this many months before expected replacement
-                                </FormDescription>
-                              </FormItem>
+                          <div className="col-span-1 flex items-center">
+                            {form.watch(`defaultUnit.appliances.${index}.year`) && 
+                             form.watch(`defaultUnit.appliances.${index}.expectedLifetime`) && (
+                              <FormField
+                                control={form.control}
+                                name={`defaultUnit.appliances.${index}.alertBeforeExpiry`}
+                                render={({ field }) => (
+                                  <FormItem className="flex items-center space-x-2">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value === 12}
+                                        onCheckedChange={(checked) => {
+                                          field.onChange(checked ? 12 : undefined);
+                                        }}
+                                        data-testid={`checkbox-appliance-reminder-${index}`}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-xs font-normal cursor-pointer">
+                                      📅 1yr alert
+                                    </FormLabel>
+                                  </FormItem>
+                                )}
+                              />
                             )}
-                          />
+                          </div>
                         </div>
                         
                         <FormField
