@@ -225,37 +225,15 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                 field.onChange(value);
                 // Automatically enable multiple units for building types
                 if (value === "Residential Building" || value === "Commercial Building") {
+                  form.setValue("createDefaultUnit", true); // Buildings always have units
                   form.setValue("hasMultipleUnits", true);
                   // Initialize with 2 units by default
                   const currentCount = form.getValues("numberOfUnits") || 2;
                   form.setValue("numberOfUnits", Math.max(currentCount, 2));
-                  // Initialize units array
-                  const units = [];
-                  for (let i = 0; i < Math.max(currentCount, 2); i++) {
-                    units.push({
-                      label: `Unit ${String.fromCharCode(65 + i)}`, // A, B, C, etc.
-                      bedrooms: undefined,
-                      bathrooms: undefined,
-                      sqft: undefined,
-                      rentAmount: "",
-                      deposit: "",
-                      notes: "",
-                      hvacBrand: "",
-                      hvacModel: "",
-                      hvacYear: undefined,
-                      hvacLifetime: undefined,
-                      hvacReminder: false,
-                      waterHeaterBrand: "",
-                      waterHeaterModel: "",
-                      waterHeaterYear: undefined,
-                      waterHeaterLifetime: undefined,
-                      waterHeaterReminder: false,
-                      applianceNotes: "",
-                      appliances: [],
-                    });
-                  }
-                  form.setValue("units", units);
+                  generateUnits(Math.max(currentCount, 2));
                 } else {
+                  // For single-unit properties, reset to default state
+                  form.setValue("createDefaultUnit", false);
                   form.setValue("hasMultipleUnits", false);
                   form.setValue("numberOfUnits", 1);
                   form.setValue("units", []);
@@ -483,32 +461,50 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="createDefaultUnit"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-create-default-unit"
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Create a default unit for this property
-                    </FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Recommended - helps track tenant details, rent amounts, and equipment maintenance
-                    </p>
-                  </div>
-                </FormItem>
-              )}
-            />
+            {/* Only show checkbox for single-unit properties */}
+            {form.watch("type") !== "Residential Building" && form.watch("type") !== "Commercial Building" && (
+              <FormField
+                control={form.control}
+                name="createDefaultUnit"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-create-default-unit"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Create a default unit for this property
+                      </FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Recommended - helps track tenant details, rent amounts, and equipment maintenance
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* For buildings, show direct unit setup message */}
+            {(form.watch("type") === "Residential Building" || form.watch("type") === "Commercial Building") && (
+              <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <h4 className="font-medium text-green-900 dark:text-green-100">
+                    Building Units Required
+                  </h4>
+                </div>
+                <p className="text-sm text-green-800 dark:text-green-200 mt-1">
+                  This building will have multiple units. Configure each unit below with its own details, rent amounts, and equipment.
+                </p>
+              </div>
+            )}
             
-            {/* Recommendation when units not set up */}
-            {!form.watch("createDefaultUnit") && (
+            {/* Recommendation when units not set up - only for single-unit properties */}
+            {!form.watch("createDefaultUnit") && form.watch("type") !== "Residential Building" && form.watch("type") !== "Commercial Building" && (
               <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
@@ -526,53 +522,14 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
               </div>
             )}
             
-            {/* Multiple Units Option */}
-            {form.watch("createDefaultUnit") && (form.watch("type") === "Residential Building" || form.watch("type") === "Commercial Building") && (
-              <FormField
-                control={form.control}
-                name="hasMultipleUnits"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={(checked) => {
-                          field.onChange(checked);
-                          if (checked) {
-                            // Initialize with current number of units or default to 2
-                            const currentCount = form.getValues("numberOfUnits") || 2;
-                            form.setValue("numberOfUnits", currentCount);
-                            generateUnits(currentCount);
-                          } else {
-                            // Reset to single unit
-                            form.setValue("numberOfUnits", 1);
-                            form.setValue("units", []);
-                          }
-                        }}
-                        data-testid="checkbox-multiple-units"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        This property has multiple units
-                      </FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Configure multiple units in this building
-                      </p>
-                    </div>
-                  </FormItem>
-                )}
-              />
-            )}
-            
-            {/* Number of Units Selection */}
-            {form.watch("createDefaultUnit") && form.watch("hasMultipleUnits") && (
+            {/* Number of Units Selection - Show directly for buildings */}
+            {(form.watch("type") === "Residential Building" || form.watch("type") === "Commercial Building") && (
               <FormField
                 control={form.control}
                 name="numberOfUnits"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Number of Units</FormLabel>
+                    <FormLabel>Number of Units in Building</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -590,14 +547,17 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         data-testid="input-number-of-units"
                       />
                     </FormControl>
+                    <p className="text-sm text-muted-foreground">
+                      Enter the total number of units in this building (2-50)
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             )}
             
-            {/* Single Unit Setup */}
-            {form.watch("createDefaultUnit") && !form.watch("hasMultipleUnits") && (
+            {/* Single Unit Setup - Show for single-unit properties when createDefaultUnit is checked */}
+            {form.watch("createDefaultUnit") && form.watch("type") !== "Residential Building" && form.watch("type") !== "Commercial Building" && (
               <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -1248,8 +1208,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
               </div>
             )}
             
-            {/* Multiple Units Setup */}
-            {form.watch("createDefaultUnit") && form.watch("hasMultipleUnits") && (
+            {/* Multiple Units Setup - Show for buildings */}
+            {(form.watch("type") === "Residential Building" || form.watch("type") === "Commercial Building") && form.watch("numberOfUnits") >= 2 && (
               <div className="space-y-4">
                 <h4 className="font-medium text-sm">Configure Units</h4>
                 <p className="text-sm text-muted-foreground mb-4">
