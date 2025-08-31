@@ -279,19 +279,22 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
         Errors: {Object.keys(form.formState.errors).join(', ') || 'None'}
       </div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(
-          (data) => {
-            console.log("Form validation passed, submitting:", data);
-            const submissionData = {
-              ...data,
-              receiptUrl: uploadedReceiptUrl,
-            };
-            onSubmit(submissionData);
-          },
-          (errors) => {
-            console.log("Form validation failed with errors:", errors);
-          }
-        )} className="space-y-3">
+        <form onSubmit={(e) => {
+          console.log("Form onSubmit triggered!");
+          form.handleSubmit(
+            (data) => {
+              console.log("Form validation passed, submitting:", data);
+              const submissionData = {
+                ...data,
+                receiptUrl: uploadedReceiptUrl,
+              };
+              onSubmit(submissionData);
+            },
+            (errors) => {
+              console.log("Form validation failed with errors:", errors);
+            }
+          )(e);
+        }} className="space-y-3">
         <FormField
           control={form.control}
           name="description"
@@ -1024,7 +1027,12 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
           <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-expense">
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading} data-testid="button-submit-expense">
+          <Button 
+            type="submit" 
+            disabled={isLoading} 
+            onClick={() => console.log("Button clicked! Form valid:", form.formState.isValid, "Errors:", form.formState.errors)}
+            data-testid="button-submit-expense"
+          >
             {isLoading ? "Logging..." : (expense ? "Update Expense" : "Log Expense")}
           </Button>
         </div>
