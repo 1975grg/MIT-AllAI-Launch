@@ -7,18 +7,23 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import TenantForm from "@/components/forms/tenant-form";
+import LeaseForm from "@/components/forms/lease-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Plus, Mail, Phone, User } from "lucide-react";
-import type { TenantGroup, Property, OwnershipEntity } from "@shared/schema";
+import { Users, Plus, Mail, Phone, User, FileText, DollarSign, Calendar, AlertTriangle } from "lucide-react";
+import type { TenantGroup, Property, OwnershipEntity, Lease, Unit, InsertLease } from "@shared/schema";
 
 export default function Tenants() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showTenantForm, setShowTenantForm] = useState(false);
+  const [showLeaseForm, setShowLeaseForm] = useState(false);
+  const [selectedTenantGroup, setSelectedTenantGroup] = useState<TenantGroup | null>(null);
+  const [selectedLease, setSelectedLease] = useState<Lease | null>(null);
+  const [isRenewalMode, setIsRenewalMode] = useState(false);
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
 
@@ -52,6 +57,16 @@ export default function Tenants() {
     retry: false,
   });
 
+  const { data: leases = [] } = useQuery<Lease[]>({
+    queryKey: ["/api/leases"],
+    retry: false,
+  });
+
+  const { data: units = [] } = useQuery<Unit[]>({
+    queryKey: ["/api/units"],
+    retry: false,
+  });
+
   const createTenantMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/tenants", data);
@@ -80,6 +95,41 @@ export default function Tenants() {
       toast({
         title: "Error",
         description: "Failed to create tenant",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createLeaseMutation = useMutation({
+    mutationFn: async (data: InsertLease) => {
+      const response = await apiRequest("POST", "/api/leases", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+      setShowLeaseForm(false);
+      setSelectedTenantGroup(null);
+      toast({
+        title: "Success",
+        description: "Lease created successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create lease",
         variant: "destructive",
       });
     },
@@ -175,6 +225,44 @@ export default function Tenants() {
                   />
                 </DialogContent>
               </Dialog>
+
+              {/* Lease Management Dialog */}
+              <Dialog open={showLeaseForm} onOpenChange={setShowLeaseForm}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Lease Management</DialogTitle>
+                  </DialogHeader>
+                  {selectedTenantGroup && (
+                    <LeaseForm
+                      tenantGroup={selectedTenantGroup}
+                      units={units}
+                      properties={properties}
+                      existingLease={selectedLease || undefined}
+                      isRenewal={isRenewalMode}
+                      onSubmit={(data) => {
+                        if (isRenewalMode) {
+                          // For renewal, create a new lease with updated dates and rent
+                          const renewalData = {
+                            ...data,
+                            // Set start date as day after current lease ends
+                            startDate: selectedLease?.endDate ? new Date(new Date(selectedLease.endDate).getTime() + 24 * 60 * 60 * 1000) : data.startDate,
+                          };
+                          createLeaseMutation.mutate(renewalData);
+                        } else {
+                          createLeaseMutation.mutate(data);
+                        }
+                      }}
+                      onCancel={() => {
+                        setShowLeaseForm(false);
+                        setSelectedTenantGroup(null);
+                        setSelectedLease(null);
+                        setIsRenewalMode(false);
+                      }}
+                      isLoading={createLeaseMutation.isPending}
+                    />
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -194,7 +282,16 @@ export default function Tenants() {
             </div>
           ) : (filteredTenantGroups && filteredTenantGroups.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTenantGroups.map((group, index) => (
+              {filteredTenantGroups.map((group, index) => {
+              const groupLeases = leases.filter(lease => lease.tenantGroupId === group.id);
+              const activeLease = groupLeases.find(lease => lease.status === "Active");
+              const isLeaseEndingSoon = (endDate: string | Date | null) => {
+                if (!endDate) return false;
+                const daysUntilEnd = Math.ceil((new Date(endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                return daysUntilEnd <= 90 && daysUntilEnd > 0;
+              };
+              
+              return (
                 <Card key={group.id} className="hover:shadow-md transition-shadow" data-testid={`card-tenant-${index}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -225,19 +322,46 @@ export default function Tenants() {
                           </div>
                         )}
                         
+                        {/* Lease Information */}
+                        {activeLease ? (
+                          <>
+                            <div className="flex items-center space-x-2 mb-2">
+                              <DollarSign className="h-4 w-4 text-green-600" />
+                              <span data-testid={`text-lease-rent-${index}`}>
+                                ${activeLease.rent}/month
+                              </span>
+                              {isLeaseEndingSoon(activeLease.endDate) && (
+                                <Badge variant="destructive" className="ml-2">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  Expiring Soon
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center space-x-2 mb-2">
+                              <Calendar className="h-4 w-4" />
+                              <span data-testid={`text-lease-dates-${index}`}>
+                                {activeLease.startDate ? new Date(activeLease.startDate).toLocaleDateString() : 'N/A'} - {activeLease.endDate ? new Date(activeLease.endDate).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2 mb-2">
+                              <FileText className="h-4 w-4" />
+                              <span data-testid={`text-lease-status-${index}`}>
+                                Lease: {activeLease.status}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center space-x-2 mb-2 text-orange-600">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span data-testid={`text-no-lease-${index}`}>No Active Lease</span>
+                          </div>
+                        )}
+                        
                         <div className="flex items-center space-x-2 mb-2">
                           <User className="h-4 w-4" />
                           <span data-testid={`text-tenant-type-${index}`}>Tenant Group</span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Mail className="h-4 w-4" />
-                          <span data-testid={`text-tenant-email-${index}`}>contact@example.com</span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Phone className="h-4 w-4" />
-                          <span data-testid={`text-tenant-phone-${index}`}>(555) 123-4567</span>
                         </div>
                       </div>
                       
@@ -247,16 +371,67 @@ export default function Tenants() {
                     </div>
                     
                     <div className="flex space-x-2 mt-4">
-                      <Button variant="outline" size="sm" className="flex-1" data-testid={`button-view-lease-${index}`}>
-                        View Lease
-                      </Button>
-                      <Button variant="outline" size="sm" className="flex-1" data-testid={`button-edit-tenant-${index}`}>
-                        Edit
-                      </Button>
+                      {activeLease ? (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1" 
+                            onClick={() => {
+                              setSelectedTenantGroup(group);
+                              setShowLeaseForm(true);
+                            }}
+                            data-testid={`button-view-lease-${index}`}
+                          >
+                            <FileText className="h-3 w-3 mr-1" />
+                            Manage Lease
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1" 
+                            onClick={() => {
+                              setSelectedTenantGroup(group);
+                              setSelectedLease(activeLease);
+                              setIsRenewalMode(true);
+                              setShowLeaseForm(true);
+                            }}
+                            data-testid={`button-renew-lease-${index}`}
+                          >
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Renew
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="flex-1" 
+                            onClick={() => {
+                              setSelectedTenantGroup(group);
+                              setShowLeaseForm(true);
+                            }}
+                            data-testid={`button-create-lease-${index}`}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Create Lease
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1" 
+                            data-testid={`button-edit-tenant-${index}`}
+                          >
+                            Edit
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              );
+            })}
             </div>
           ) : (
             <Card>
