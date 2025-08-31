@@ -414,6 +414,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { ownerships, defaultUnit, ...propertyData } = req.body;
       
+      console.log("🏠 Updating property ID:", req.params.id);
+      console.log("🔧 Has unit data:", !!defaultUnit);
+      if (defaultUnit) {
+        console.log("📋 Unit details:", {
+          hasId: !!defaultUnit.id,
+          hvacBrand: defaultUnit.hvacBrand,
+          hvacModel: defaultUnit.hvacModel,
+          label: defaultUnit.label
+        });
+      }
+      
       // Validate the property data (excluding required fields for updates)
       const updatePropertySchema = insertPropertySchema.partial().omit({ orgId: true });
       const validatedData = updatePropertySchema.parse(propertyData);
@@ -467,6 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else {
           // Create new unit with equipment data if none exists  
+          console.log("📦 Creating new unit for property:", req.params.id);
           const unitData = {
             propertyId: req.params.id,
             label: defaultUnit.label || "Unit 1", // Default label if not provided
