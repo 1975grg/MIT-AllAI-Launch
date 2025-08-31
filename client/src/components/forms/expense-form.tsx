@@ -29,6 +29,8 @@ const expenseSchema = z.object({
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   category: z.string().min(1, "Category is required"),
   date: z.date(),
+  isDateRange: z.boolean().default(false),
+  endDate: z.date().optional(),
   propertyId: z.string().optional(),
   vendorId: z.string().optional(),
   receiptUrl: z.string().optional(),
@@ -59,6 +61,22 @@ const expenseSchema = z.object({
 }, {
   message: "Line items are required for split expenses",
   path: ["lineItems"],
+}).refine((data) => {
+  if (data.isDateRange && !data.endDate) {
+    return false;
+  }
+  return true;
+}, {
+  message: "End date is required when using date range",
+  path: ["endDate"],
+}).refine((data) => {
+  if (data.isDateRange && data.endDate && data.endDate <= data.date) {
+    return false;
+  }
+  return true;
+}, {
+  message: "End date must be after start date",
+  path: ["endDate"],
 });
 
 interface ExpenseFormProps {
@@ -76,6 +94,7 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
       amount: 0,
       category: "",
       date: new Date(),
+      isDateRange: false,
       isRecurring: false,
       recurringInterval: 1,
       taxDeductible: true,
@@ -194,6 +213,7 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
   const selectedCategory = expenseCategories.find(cat => cat.value === form.watch("category"));
   const isRecurring = form.watch("isRecurring");
   const isSplitExpense = form.watch("isSplitExpense");
+  const isDateRange = form.watch("isDateRange");
   const currentLineItems = form.watch("lineItems") || [];
 
   return (
@@ -290,50 +310,152 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* Date Selection */}
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
           <FormField
             control={form.control}
-            name="date"
+            name="isDateRange"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "justify-start text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                        data-testid="button-expense-date"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                  <FormLabel className="flex items-center space-x-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    <span>Date Range (Bulk Entry)</span>
+                  </FormLabel>
+                  <div className="text-sm text-muted-foreground">
+                    Enter expenses for a date range instead of a single date
+                  </div>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="switch-date-range"
+                  />
+                </FormControl>
               </FormItem>
             )}
           />
 
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>{isDateRange ? "Start Date" : "Date"}</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          data-testid="button-expense-date"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {isDateRange ? (
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>End Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-expense-end-date"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick end date</span>
+                            )}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01") || (form.getValues("date") && date <= form.getValues("date"))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <FormField
+                control={form.control}
+                name="propertyId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Property (Optional)</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-expense-property">
+                          <SelectValue placeholder="Select property" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No specific property</SelectItem>
+                        {properties.map((property) => (
+                          <SelectItem key={property.id} value={property.id}>
+                            {property.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Property Selection (when in date range mode) */}
+        {isDateRange && (
           <FormField
             control={form.control}
             name="propertyId"
@@ -359,7 +481,7 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
               </FormItem>
             )}
           />
-        </div>
+        )}
 
         {/* Split Expense Options */}
         <div className="space-y-4 p-4 border rounded-lg bg-muted/30">

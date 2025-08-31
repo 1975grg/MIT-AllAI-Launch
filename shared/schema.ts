@@ -289,6 +289,8 @@ export const transactions = pgTable("transactions", {
   description: varchar("description").notNull(),
   category: varchar("category"),
   date: timestamp("date").notNull(),
+  isDateRange: boolean("is_date_range").default(false), // For bulk date range entries
+  endDate: timestamp("end_date"), // End date for bulk entries
   vendorId: varchar("vendor_id").references(() => vendors.id),
   receiptUrl: varchar("receipt_url"),
   notes: text("notes"),
