@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, Building2, Home } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import AddressAutocomplete from "@/components/AddressAutocomplete";
 import type { OwnershipEntity } from "@shared/schema";
 
 const ownershipSchema = z.object({
@@ -236,20 +235,16 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
             render={({ field }) => (
               <FormItem className="col-span-2">
                 <FormLabel>Street Address</FormLabel>
-                <AddressAutocomplete 
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  placeholder="Start typing address..."
-                  data-testid="input-property-street"
-                  onAddressSelect={(addressDetails) => {
-                    // Auto-fill city, state, and zip code
-                    form.setValue("city", addressDetails.city);
-                    form.setValue("state", addressDetails.state);
-                    form.setValue("zipCode", addressDetails.zipCode);
-                  }}
-                />
+                <FormControl>
+                  <Input 
+                    placeholder="123 Main Street" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-property-street" 
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
