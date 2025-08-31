@@ -99,15 +99,38 @@ const expenseSchema = z.object({
 interface ExpenseFormProps {
   properties: Property[];
   entities: Array<{ id: string; name: string; }>;
+  expense?: any | null;
   onSubmit: (data: z.infer<typeof expenseSchema>) => void;
+  onClose?: () => void;
   isLoading: boolean;
 }
 
-export default function ExpenseForm({ properties, entities, onSubmit, isLoading }: ExpenseFormProps) {
+export default function ExpenseForm({ properties, entities, expense, onSubmit, onClose, isLoading }: ExpenseFormProps) {
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: {
+    defaultValues: expense ? {
+      description: expense.description || "",
+      amount: parseFloat(expense.amount),
+      category: expense.category || "",
+      date: new Date(expense.date),
+      isDateRange: expense.isDateRange || false,
+      endDate: expense.endDate ? new Date(expense.endDate) : undefined,
+      propertyId: expense.propertyId || undefined,
+      vendorId: expense.vendorId || undefined,
+      receiptUrl: expense.receiptUrl || undefined,
+      notes: expense.notes || "",
+      isRecurring: expense.isRecurring || false,
+      recurringFrequency: expense.recurringFrequency,
+      recurringInterval: expense.recurringInterval || 1,
+      recurringEndDate: expense.recurringEndDate ? new Date(expense.recurringEndDate) : undefined,
+      taxDeductible: expense.taxDeductible !== undefined ? expense.taxDeductible : true,
+      isSplitExpense: expense.isSplitExpense || false,
+      lineItems: expense.lineItems || [],
+      scope: expense.scope || "property",
+      entityId: expense.entityId || undefined,
+      isBulkEntry: expense.isBulkEntry || false,
+    } : {
       description: "",
       amount: undefined,
       category: "",
@@ -270,28 +293,30 @@ export default function ExpenseForm({ properties, entities, onSubmit, isLoading 
           <FormField
             control={form.control}
             name="amount"
-            render={({ field }) => (
+            render={({ field: { onChange, onBlur, name, value } }) => (
               <FormItem>
                 <FormLabel>Amount</FormLabel>
                 <FormControl>
                   <Input 
-                    type="number" 
-                    step="0.01"
+                    type="text" 
                     placeholder="0.00" 
-                    value={field.value?.toString() ?? ""}
+                    value={value?.toString() ?? ""}
                     onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === "") {
-                        field.onChange(undefined);
-                      } else {
-                        const numValue = parseFloat(value);
-                        if (!isNaN(numValue)) {
-                          field.onChange(numValue);
+                      const inputValue = e.target.value;
+                      // Allow only numbers and decimal point
+                      if (/^\d*\.?\d*$/.test(inputValue) || inputValue === "") {
+                        if (inputValue === "") {
+                          onChange(undefined);
+                        } else {
+                          const numValue = parseFloat(inputValue);
+                          if (!isNaN(numValue)) {
+                            onChange(numValue);
+                          }
                         }
                       }
                     }}
-                    onBlur={field.onBlur}
-                    name={field.name}
+                    onBlur={onBlur}
+                    name={name}
                     data-testid="input-expense-amount"
                   />
                 </FormControl>

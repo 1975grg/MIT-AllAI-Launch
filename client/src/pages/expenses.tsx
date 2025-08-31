@@ -19,6 +19,7 @@ export default function Expenses() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Transaction | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   useEffect(() => {
@@ -52,15 +53,21 @@ export default function Expenses() {
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/expenses", data);
-      return response.json();
+      if (editingExpense) {
+        const response = await apiRequest("PUT", `/api/expenses/${editingExpense.id}`, data);
+        return response.json();
+      } else {
+        const response = await apiRequest("POST", "/api/expenses", data);
+        return response.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       setShowExpenseForm(false);
+      setEditingExpense(null);
       toast({
         title: "Success",
-        description: "Expense logged successfully",
+        description: editingExpense ? "Expense updated successfully" : "Expense logged successfully",
       });
     },
     onError: (error) => {
@@ -77,7 +84,7 @@ export default function Expenses() {
       }
       toast({
         title: "Error",
-        description: "Failed to log expense",
+        description: editingExpense ? "Failed to update expense" : "Failed to log expense",
         variant: "destructive",
       });
     },
@@ -154,12 +161,17 @@ export default function Expenses() {
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Log New Expense</DialogTitle>
+                    <DialogTitle>{editingExpense ? "Edit Expense" : "Log New Expense"}</DialogTitle>
                   </DialogHeader>
                   <ExpenseForm 
                     properties={properties}
                     entities={entities}
+                    expense={editingExpense}
                     onSubmit={(data) => createExpenseMutation.mutate(data)}
+                    onClose={() => {
+                      setShowExpenseForm(false);
+                      setEditingExpense(null);
+                    }}
                     isLoading={createExpenseMutation.isPending}
                   />
                 </DialogContent>
@@ -275,15 +287,28 @@ export default function Expenses() {
                         </div>
                       </div>
                       
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-foreground" data-testid={`text-expense-amount-${index}`}>
-                          ${Number(expense.amount).toLocaleString()}
-                        </p>
-                        {expense.propertyId && (
-                          <p className="text-sm text-muted-foreground" data-testid={`text-expense-property-${index}`}>
-                            Property expense
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-foreground" data-testid={`text-expense-amount-${index}`}>
+                            ${Number(expense.amount).toLocaleString()}
                           </p>
-                        )}
+                          {expense.propertyId && (
+                            <p className="text-sm text-muted-foreground" data-testid={`text-expense-property-${index}`}>
+                              Property expense
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingExpense(expense);
+                            setShowExpenseForm(true);
+                          }}
+                          data-testid={`button-edit-expense-${index}`}
+                        >
+                          Edit
+                        </Button>
                       </div>
                     </div>
                     

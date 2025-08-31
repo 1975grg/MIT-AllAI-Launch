@@ -120,6 +120,7 @@ export interface IStorage {
   getTransactionsByEntity(entityId: string): Promise<Transaction[]>;
   getTransactionsByProperty(propertyId: string): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction>;
   createExpense(expense: InsertExpense): Promise<Transaction>;
   getTransactionLineItems(transactionId: string): Promise<TransactionLineItem[]>;
   
@@ -630,10 +631,19 @@ export class DatabaseStorage implements IStorage {
     return newTransaction;
   }
 
+  async updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction> {
+    const [updated] = await db
+      .update(transactions)
+      .set(transaction)
+      .where(eq(transactions.id, id))
+      .returning();
+    return updated;
+  }
+
   async createExpense(expense: InsertExpense): Promise<Transaction> {
     const [newExpense] = await db.insert(transactions).values({
       ...expense,
-      recurringEndDate: expense.recurringEndDate ? new Date(expense.recurringEndDate) : null,
+      recurringEndDate: expense.recurringEndDate ? (typeof expense.recurringEndDate === 'string' ? new Date(expense.recurringEndDate) : expense.recurringEndDate) : null,
     }).returning();
     
     // If this is a recurring expense, create future instances

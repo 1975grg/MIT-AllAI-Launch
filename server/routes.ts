@@ -438,24 +438,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isRecurring: req.body.isRecurring || false,
         recurringFrequency: req.body.recurringFrequency,
         recurringInterval: req.body.recurringInterval || 1,
-        recurringEndDate: req.body.recurringEndDate,
+        recurringEndDate: req.body.recurringEndDate ? (typeof req.body.recurringEndDate === 'string' ? new Date(req.body.recurringEndDate) : req.body.recurringEndDate) : undefined,
         taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
         isBulkEntry: req.body.isBulkEntry || false,
       };
       
-      console.log("Data types being sent to validation:", {
-        date: typeof cleanedData.date,
-        dateValue: cleanedData.date,
-        endDate: typeof cleanedData.endDate,
-        endDateValue: cleanedData.endDate
-      });
       const validatedData = insertExpenseSchema.parse(cleanedData);
       
-      const expense = await storage.createTransaction(validatedData);
+      const expense = await storage.createTransaction(validatedData as any);
       res.json(expense);
     } catch (error) {
       console.error("Error creating expense:", error);
       res.status(500).json({ message: "Failed to create expense" });
+    }
+  });
+
+  // Update an expense
+  app.put("/api/expenses/:id", isAuthenticated, async (req, res) => {
+    try {
+      console.log("Updating expense ID:", req.params.id);
+
+      const { category, customCategory, scope, ...requestBody } = req.body;
+
+      let finalCategory = category;
+      if (category === "custom" && customCategory) {
+        finalCategory = customCategory;
+      }
+
+      const cleanedData = {
+        id: req.params.id,
+        type: "Expense",
+        amount: req.body.amount.toString(),
+        description: req.body.description || "",
+        category: finalCategory,
+        date: typeof req.body.date === 'string' ? new Date(req.body.date) : req.body.date,
+        isDateRange: req.body.isDateRange || false,
+        endDate: req.body.endDate ? (typeof req.body.endDate === 'string' ? new Date(req.body.endDate) : req.body.endDate) : undefined,
+        receiptUrl: req.body.receiptUrl,
+        notes: req.body.notes,
+        isRecurring: req.body.isRecurring || false,
+        recurringFrequency: req.body.recurringFrequency,
+        recurringInterval: req.body.recurringInterval || 1,
+        recurringEndDate: req.body.recurringEndDate ? (typeof req.body.recurringEndDate === 'string' ? new Date(req.body.recurringEndDate) : req.body.recurringEndDate) : undefined,
+        propertyId: scope === "property" ? req.body.propertyId : undefined,
+        entityId: scope === "operational" ? req.body.entityId : undefined,
+        vendorId: req.body.vendorId,
+        userId: (req.user as any).claims.sub,
+        scope: req.body.scope || "property",
+        taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
+        isBulkEntry: req.body.isBulkEntry || false,
+      };
+
+      const updatedExpense = await storage.updateTransaction(req.params.id, cleanedData as any);
+      res.json(updatedExpense);
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      res.status(500).json({ message: "Failed to update expense" });
     }
   });
 
