@@ -310,30 +310,20 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
           <FormField
             control={form.control}
             name="amount"
-            render={({ field: { onChange, onBlur, name, value } }) => (
+            render={({ field }) => (
               <FormItem>
                 <FormLabel>Amount</FormLabel>
                 <FormControl>
                   <Input 
-                    type="text" 
+                    type="number" 
+                    step="0.01"
                     placeholder="0.00" 
-                    value={value !== undefined ? value.toString() : ""}
+                    {...field}
+                    value={field.value || ""}
                     onChange={(e) => {
-                      const inputValue = e.target.value;
-                      // Allow only numbers and decimal point
-                      if (/^\d*\.?\d*$/.test(inputValue) || inputValue === "") {
-                        if (inputValue === "") {
-                          onChange(undefined);
-                        } else {
-                          const numValue = parseFloat(inputValue);
-                          if (!isNaN(numValue)) {
-                            onChange(numValue);
-                          }
-                        }
-                      }
+                      const value = e.target.value;
+                      field.onChange(value === "" ? undefined : parseFloat(value) || undefined);
                     }}
-                    onBlur={onBlur}
-                    name={name}
                     data-testid="input-expense-amount"
                   />
                 </FormControl>
@@ -1034,7 +1024,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
           <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-expense">
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading || !form.formState.isValid} data-testid="button-submit-expense">
+          <Button type="submit" disabled={isLoading} data-testid="button-submit-expense">
             {isLoading ? "Logging..." : (expense ? "Update Expense" : "Log Expense")}
           </Button>
         </div>
