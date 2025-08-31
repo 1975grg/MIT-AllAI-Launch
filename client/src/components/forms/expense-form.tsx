@@ -302,7 +302,14 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Plumbing repair, Property insurance" {...field} data-testid="input-expense-description" />
+                <Input 
+                  placeholder="e.g., Plumbing repair, Property insurance" 
+                  defaultValue={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  data-testid="input-expense-description" 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -401,7 +408,10 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                   <FormControl>
                     <Input 
                       placeholder="Enter your custom category name" 
-                      {...field} 
+                      defaultValue={field.value || ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
                       data-testid="input-custom-category"
                     />
                   </FormControl>
@@ -708,7 +718,14 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <Input placeholder="Description" {...field} data-testid={`input-line-item-description-${index}`} />
+                            <Input 
+                              placeholder="Description" 
+                              defaultValue={field.value || ""}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              data-testid={`input-line-item-description-${index}`} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -727,8 +744,13 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                               type="number" 
                               step="0.01"
                               placeholder="0.00" 
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              defaultValue={field.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                field.onChange(value === "" ? 0 : parseFloat(value) || 0);
+                              }}
+                              onBlur={field.onBlur}
+                              name={field.name}
                               data-testid={`input-line-item-amount-${index}`}
                             />
                           </FormControl>
@@ -1017,7 +1039,14 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
             <FormItem>
               <FormLabel>Notes (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Additional notes about this expense..." {...field} data-testid="textarea-expense-notes" />
+                <Textarea 
+                  placeholder="Additional notes about this expense..."
+                  defaultValue={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  data-testid="textarea-expense-notes" 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
