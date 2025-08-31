@@ -40,8 +40,13 @@ export default function Expenses() {
     retry: false,
   });
 
-  const { data: properties } = useQuery<Property[]>({
+  const { data: properties = [] } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const { data: entities = [] } = useQuery({
+    queryKey: ["/api/entities"],
     retry: false,
   });
 
@@ -152,7 +157,8 @@ export default function Expenses() {
                     <DialogTitle>Log New Expense</DialogTitle>
                   </DialogHeader>
                   <ExpenseForm 
-                    properties={properties || []}
+                    properties={properties}
+                    entities={entities}
                     onSubmit={(data) => createExpenseMutation.mutate(data)}
                     isLoading={createExpenseMutation.isPending}
                   />

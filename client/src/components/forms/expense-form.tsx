@@ -86,15 +86,24 @@ const expenseSchema = z.object({
 }, {
   message: "Custom category name is required",
   path: ["customCategory"],
+}).refine((data) => {
+  if (data.scope === "operational" && !data.entityId) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Entity selection is required for operational expenses",
+  path: ["entityId"],
 });
 
 interface ExpenseFormProps {
   properties: Property[];
+  entities: Array<{ id: string; name: string; }>;
   onSubmit: (data: z.infer<typeof expenseSchema>) => void;
   isLoading: boolean;
 }
 
-export default function ExpenseForm({ properties, onSubmit, isLoading }: ExpenseFormProps) {
+export default function ExpenseForm({ properties, entities, onSubmit, isLoading }: ExpenseFormProps) {
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
@@ -527,6 +536,58 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
             )}
           />
         )}
+
+        {/* Expense Scope Selection */}
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+          <FormField
+            control={form.control}
+            name="scope"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Expense Type</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-expense-scope">
+                      <SelectValue placeholder="Select expense type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="property">Property Expense</SelectItem>
+                    <SelectItem value="operational">Operational/Entity Expense</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          {form.watch("scope") === "operational" && (
+            <FormField
+              control={form.control}
+              name="entityId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Entity</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-expense-entity">
+                        <SelectValue placeholder="Select entity" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {entities.map((entity) => (
+                        <SelectItem key={entity.id} value={entity.id}>
+                          {entity.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </div>
 
         {/* Split Expense Options */}
         <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
