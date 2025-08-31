@@ -27,7 +27,8 @@ const lineItemSchema = z.object({
 const expenseSchema = z.object({
   description: z.string().min(1, "Description is required"),
   amount: z.number().min(0.01, "Amount must be greater than 0"),
-  category: z.string().min(1, "Category is required"),
+  category: z.string().optional(),
+  customCategory: z.string().optional(),
   date: z.date(),
   isDateRange: z.boolean().default(false),
   endDate: z.date().optional(),
@@ -77,6 +78,14 @@ const expenseSchema = z.object({
 }, {
   message: "End date must be after start date",
   path: ["endDate"],
+}).refine((data) => {
+  if (data.category === "custom" && (!data.customCategory || data.customCategory.trim() === "")) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Custom category name is required",
+  path: ["customCategory"],
 });
 
 interface ExpenseFormProps {
@@ -106,6 +115,18 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
   });
 
   const expenseCategories = [
+    {
+      value: "",
+      label: "No Category",
+      description: "Leave category blank (not tax deductible)",
+      taxDeductible: false
+    },
+    {
+      value: "custom",
+      label: "Custom Category",
+      description: "Enter your own category name (not tax deductible)",
+      taxDeductible: false
+    },
     {
       value: "Advertising",
       label: "Advertising",
@@ -215,10 +236,13 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
   const isSplitExpense = form.watch("isSplitExpense");
   const isDateRange = form.watch("isDateRange");
   const currentLineItems = form.watch("lineItems") || [];
+  const watchedCategory = form.watch("category");
+  const showCustomCategoryInput = watchedCategory === "custom";
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <div className="max-h-[80vh] overflow-y-auto">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
         <FormField
           control={form.control}
           name="description"
@@ -308,6 +332,27 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
               </FormItem>
             )}
           />
+
+          {/* Custom Category Input */}
+          {showCustomCategoryInput && (
+            <FormField
+              control={form.control}
+              name="customCategory"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Custom Category Name</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter your custom category name" 
+                      {...field} 
+                      data-testid="input-custom-category"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {/* Date Selection */}
@@ -878,7 +923,8 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
             {isLoading ? "Logging..." : "Log Expense"}
           </Button>
         </div>
-      </form>
-    </Form>
+        </form>
+      </Form>
+    </div>
   );
 }

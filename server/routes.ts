@@ -412,10 +412,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
+      // Handle custom category logic
+      let finalCategory = req.body.category;
+      if (req.body.category === "custom" && req.body.customCategory) {
+        finalCategory = req.body.customCategory;
+      }
+      
       const expenseData = {
         ...req.body,
         orgId: org.id,
         propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
+        category: finalCategory,
+        // Remove customCategory from the data before saving
+        customCategory: undefined,
       };
       
       const validatedData = insertExpenseSchema.parse(expenseData);
