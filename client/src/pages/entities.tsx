@@ -127,6 +127,13 @@ export default function Entities() {
     setEditingEntity(null);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setShowEntityForm(open);
+    if (!open) {
+      setEditingEntity(null);
+    }
+  };
+
   const handleFormSubmit = (data: any) => {
     if (editingEntity) {
       updateEntityMutation.mutate({ id: editingEntity.id, data });
@@ -160,7 +167,7 @@ export default function Entities() {
               <p className="text-muted-foreground">Manage your LLCs, partnerships, and individual ownership</p>
             </div>
             
-            <Dialog open={showEntityForm} onOpenChange={handleCloseForm}>
+            <Dialog open={showEntityForm} onOpenChange={handleOpenChange}>
               <DialogTrigger asChild>
                 <Button data-testid="button-add-entity">
                   <Plus className="h-4 w-4 mr-2" />
