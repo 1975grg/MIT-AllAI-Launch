@@ -193,9 +193,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   };
 
   const handleSubmit = (data: any) => {
-    console.log('Form submitted with data:', data);
-    console.log('Form validation errors:', form.formState.errors);
-    console.log('Form is valid:', form.formState.isValid);
     onSubmit(data);
   };
 
@@ -523,7 +520,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                       Consider Setting Up Units Later
                     </h4>
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      Units help track tenants, rent, equipment maintenance, and organize multi-unit properties.
+                      Units help track tenants, rent, equipment maintenance.
                     </p>
                   </div>
                 </div>
@@ -1352,12 +1349,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
             type="submit" 
             disabled={isLoading} 
             data-testid="button-submit-property"
-            onClick={(e) => {
-              console.log('Button clicked!');
-              console.log('Form errors:', form.formState.errors);
-              console.log('Form values:', form.getValues());
-              console.log('Form is valid:', form.formState.isValid);
-            }}
           >
             {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update Property" : "Create Property")}
           </Button>
