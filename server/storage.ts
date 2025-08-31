@@ -411,6 +411,18 @@ export class DatabaseStorage implements IStorage {
       rentAmount?: string;
       deposit?: string;
       notes?: string;
+      hvacBrand?: string;
+      hvacModel?: string;
+      hvacYear?: number;
+      hvacLifetime?: number;
+      hvacReminder?: boolean;
+      waterHeaterBrand?: string;
+      waterHeaterModel?: string;
+      waterHeaterYear?: number;
+      waterHeaterLifetime?: number;
+      waterHeaterReminder?: boolean;
+      applianceNotes?: string;
+      appliances?: Array<any>;
     }
   ): Promise<{property: Property, unit?: Unit}> {
     // First create the property with ownerships
@@ -418,7 +430,7 @@ export class DatabaseStorage implements IStorage {
     
     let newUnit = undefined;
     if (defaultUnit) {
-      // Create the default unit
+      // Create the default unit with appliance data
       const unitData: InsertUnit = {
         propertyId: newProperty.id,
         label: defaultUnit.label,
@@ -428,9 +440,36 @@ export class DatabaseStorage implements IStorage {
         rentAmount: defaultUnit.rentAmount ? defaultUnit.rentAmount : undefined,
         deposit: defaultUnit.deposit ? defaultUnit.deposit : undefined,
         notes: defaultUnit.notes,
+        hvacBrand: defaultUnit.hvacBrand,
+        hvacModel: defaultUnit.hvacModel,
+        hvacYear: defaultUnit.hvacYear,
+        hvacLifetime: defaultUnit.hvacLifetime,
+        hvacReminder: defaultUnit.hvacReminder,
+        waterHeaterBrand: defaultUnit.waterHeaterBrand,
+        waterHeaterModel: defaultUnit.waterHeaterModel,
+        waterHeaterYear: defaultUnit.waterHeaterYear,
+        waterHeaterLifetime: defaultUnit.waterHeaterLifetime,
+        waterHeaterReminder: defaultUnit.waterHeaterReminder,
+        applianceNotes: defaultUnit.applianceNotes,
       };
       
       newUnit = await this.createUnit(unitData);
+      
+      // Handle custom appliances
+      if (defaultUnit.appliances && defaultUnit.appliances.length > 0) {
+        for (const appliance of defaultUnit.appliances) {
+          await this.createUnitAppliance({
+            unitId: newUnit.id,
+            name: appliance.name,
+            manufacturer: appliance.manufacturer,
+            model: appliance.model,
+            year: appliance.year,
+            expectedLifetime: appliance.expectedLifetime,
+            alertBeforeExpiry: appliance.alertBeforeExpiry,
+            notes: appliance.notes,
+          });
+        }
+      }
     }
     
     return { property: newProperty, unit: newUnit };
@@ -488,6 +527,17 @@ export class DatabaseStorage implements IStorage {
         rentAmount: units.rentAmount,
         deposit: units.deposit,
         notes: units.notes,
+        hvacBrand: units.hvacBrand,
+        hvacModel: units.hvacModel,
+        hvacYear: units.hvacYear,
+        hvacLifetime: units.hvacLifetime,
+        hvacReminder: units.hvacReminder,
+        waterHeaterBrand: units.waterHeaterBrand,
+        waterHeaterModel: units.waterHeaterModel,
+        waterHeaterYear: units.waterHeaterYear,
+        waterHeaterLifetime: units.waterHeaterLifetime,
+        waterHeaterReminder: units.waterHeaterReminder,
+        applianceNotes: units.applianceNotes,
         createdAt: units.createdAt,
       })
       .from(units)
@@ -525,6 +575,38 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUnit(id: string): Promise<void> {
     await db.delete(units).where(eq(units.id, id));
+  }
+
+  async updateUnit(id: string, unitData: Partial<InsertUnit>): Promise<Unit> {
+    const [updated] = await db
+      .update(units)
+      .set(unitData)
+      .where(eq(units.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Unit appliance operations
+  async createUnitAppliance(appliance: {
+    unitId: string;
+    name: string;
+    manufacturer?: string;
+    model?: string;
+    year?: number;
+    expectedLifetime?: number;
+    alertBeforeExpiry?: number;
+    notes?: string;
+  }): Promise<any> {
+    const [newAppliance] = await db.insert(unitAppliances).values(appliance).returning();
+    return newAppliance;
+  }
+
+  async getUnitAppliances(unitId: string): Promise<any[]> {
+    return await db.select().from(unitAppliances).where(eq(unitAppliances.unitId, unitId));
+  }
+
+  async deleteUnitAppliances(unitId: string): Promise<void> {
+    await db.delete(unitAppliances).where(eq(unitAppliances.unitId, unitId));
   }
 
   // Tenant operations

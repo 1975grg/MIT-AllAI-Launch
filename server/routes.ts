@@ -20,6 +20,94 @@ import {
 } from "@shared/schema";
 import { startCronJobs } from "./cronJobs";
 
+// Helper function to create equipment reminders
+async function createEquipmentReminders({
+  org,
+  property,
+  unit,
+  unitData,
+  storage
+}: {
+  org: any;
+  property: any;
+  unit: any;
+  unitData: any;
+  storage: any;
+}) {
+  const reminderPromises = [];
+  
+  // HVAC Reminder
+  if (unitData.hvacReminder && unitData.hvacYear && unitData.hvacLifetime) {
+    const replacementYear = unitData.hvacYear + unitData.hvacLifetime;
+    const reminderDate = new Date(replacementYear - 1, 0, 1); // 1 year before
+    
+    const reminderData = {
+      orgId: org.id,
+      scope: "unit" as const,
+      scopeId: unit.id,
+      title: `HVAC System Replacement - ${property.address}`,
+      description: `HVAC system installed in ${unitData.hvacYear} (${unitData.hvacBrand || 'Unknown'} ${unitData.hvacModel || ''}) is approaching its expected lifetime of ${unitData.hvacLifetime} years.`,
+      type: "maintenance" as const,
+      dueAt: reminderDate,
+      leadDays: 365,
+      channel: "inapp" as const,
+      status: "Pending" as const,
+    };
+    
+    reminderPromises.push(storage.createReminder(reminderData));
+  }
+  
+  // Water Heater Reminder
+  if (unitData.waterHeaterReminder && unitData.waterHeaterYear && unitData.waterHeaterLifetime) {
+    const replacementYear = unitData.waterHeaterYear + unitData.waterHeaterLifetime;
+    const reminderDate = new Date(replacementYear - 1, 0, 1); // 1 year before
+    
+    const reminderData = {
+      orgId: org.id,
+      scope: "unit" as const,
+      scopeId: unit.id,
+      title: `Water Heater Replacement - ${property.address}`,
+      description: `Water heater installed in ${unitData.waterHeaterYear} (${unitData.waterHeaterBrand || 'Unknown'} ${unitData.waterHeaterModel || ''}) is approaching its expected lifetime of ${unitData.waterHeaterLifetime} years.`,
+      type: "maintenance" as const,
+      dueAt: reminderDate,
+      leadDays: 365,
+      channel: "inapp" as const,
+      status: "Pending" as const,
+    };
+    
+    reminderPromises.push(storage.createReminder(reminderData));
+  }
+  
+  // Custom Appliance Reminders
+  if (unitData.appliances) {
+    for (const appliance of unitData.appliances) {
+      if (appliance.alertBeforeExpiry && appliance.year && appliance.expectedLifetime) {
+        const replacementYear = appliance.year + appliance.expectedLifetime;
+        const reminderDate = new Date(replacementYear, 0, 1);
+        reminderDate.setMonth(reminderDate.getMonth() - appliance.alertBeforeExpiry);
+        
+        const reminderData = {
+          orgId: org.id,
+          scope: "unit" as const,
+          scopeId: unit.id,
+          title: `${appliance.name} Replacement - ${property.address}`,
+          description: `${appliance.name} installed in ${appliance.year} (${appliance.manufacturer || 'Unknown'} ${appliance.model || ''}) is approaching its expected lifetime of ${appliance.expectedLifetime} years.`,
+          type: "maintenance" as const,
+          dueAt: reminderDate,
+          leadDays: appliance.alertBeforeExpiry * 30,
+          channel: "inapp" as const,
+          status: "Pending" as const,
+        };
+        
+        reminderPromises.push(storage.createReminder(reminderData));
+      }
+    }
+  }
+  
+  // Create all reminders
+  await Promise.all(reminderPromises);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -324,14 +412,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const { ownerships, ...propertyData } = req.body;
+      const { ownerships, defaultUnit, ...propertyData } = req.body;
       
       // Validate the property data (excluding required fields for updates)
       const updatePropertySchema = insertPropertySchema.partial().omit({ orgId: true });
       const validatedData = updatePropertySchema.parse(propertyData);
       
+      // Update property and ownerships
       const property = await storage.updatePropertyWithOwnerships(req.params.id, validatedData, ownerships);
-      res.json(property);
+      
+      // Handle unit update if provided
+      let updatedUnit = null;
+      if (defaultUnit && defaultUnit.id) {
+        // Update existing unit with appliance data
+        const unitData = {
+          label: defaultUnit.label,
+          bedrooms: defaultUnit.bedrooms,
+          bathrooms: defaultUnit.bathrooms ? defaultUnit.bathrooms.toString() : undefined,
+          sqft: defaultUnit.sqft,
+          rentAmount: defaultUnit.rentAmount,
+          deposit: defaultUnit.deposit,
+          notes: defaultUnit.notes,
+          hvacBrand: defaultUnit.hvacBrand,
+          hvacModel: defaultUnit.hvacModel,
+          hvacYear: defaultUnit.hvacYear,
+          hvacLifetime: defaultUnit.hvacLifetime,
+          hvacReminder: defaultUnit.hvacReminder,
+          waterHeaterBrand: defaultUnit.waterHeaterBrand,
+          waterHeaterModel: defaultUnit.waterHeaterModel,
+          waterHeaterYear: defaultUnit.waterHeaterYear,
+          waterHeaterLifetime: defaultUnit.waterHeaterLifetime,
+          waterHeaterReminder: defaultUnit.waterHeaterReminder,
+          applianceNotes: defaultUnit.applianceNotes,
+        };
+        
+        updatedUnit = await storage.updateUnit(defaultUnit.id, unitData);
+        
+        // Update custom appliances
+        if (defaultUnit.appliances) {
+          // Delete existing appliances and recreate
+          await storage.deleteUnitAppliances(defaultUnit.id);
+          
+          for (const appliance of defaultUnit.appliances) {
+            await storage.createUnitAppliance({
+              unitId: defaultUnit.id,
+              name: appliance.name,
+              manufacturer: appliance.manufacturer,
+              model: appliance.model,
+              year: appliance.year,
+              expectedLifetime: appliance.expectedLifetime,
+              alertBeforeExpiry: appliance.alertBeforeExpiry,
+              notes: appliance.notes,
+            });
+          }
+        }
+        
+        // Create equipment reminders if requested
+        await createEquipmentReminders({
+          org,
+          property,
+          unit: updatedUnit,
+          unitData: defaultUnit,
+          storage
+        });
+      }
+      
+      res.json({ property, unit: updatedUnit });
     } catch (error) {
       console.error("Error updating property:", error);
       res.status(500).json({ message: "Failed to update property" });
