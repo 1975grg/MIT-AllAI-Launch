@@ -298,7 +298,12 @@ export default function Expenses() {
                           </p>
                           {expense.propertyId && (
                             <p className="text-sm text-muted-foreground" data-testid={`text-expense-property-${index}`}>
-                              Property expense
+                              {properties.find(p => p.id === expense.propertyId)?.address || 'Property'}
+                            </p>
+                          )}
+                          {expense.entityId && (
+                            <p className="text-sm text-muted-foreground" data-testid={`text-expense-entity-${index}`}>
+                              {entities.find(e => e.id === expense.entityId)?.name || 'Entity'}
                             </p>
                           )}
                         </div>
