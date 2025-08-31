@@ -125,6 +125,7 @@ export default function Expenses() {
   const getCategoryColor = (category: string) => {
     const colors = {
       "Maintenance": "bg-yellow-100 text-yellow-800",
+      "Cleaning and Maintenance": "bg-yellow-100 text-yellow-800",
       "Repairs": "bg-red-100 text-red-800",
       "Insurance": "bg-blue-100 text-blue-800",
       "Utilities": "bg-green-100 text-green-800",
@@ -132,6 +133,9 @@ export default function Expenses() {
       "Supplies": "bg-orange-100 text-orange-800",
       "Legal": "bg-gray-100 text-gray-800",
       "Marketing": "bg-pink-100 text-pink-800",
+      "Taxes": "bg-indigo-100 text-indigo-800",
+      "Advertising": "bg-cyan-100 text-cyan-800",
+      "Professional Services": "bg-teal-100 text-teal-800",
     };
     return colors[category as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
@@ -338,16 +342,27 @@ export default function Expenses() {
                           <p className="text-xl font-bold text-foreground" data-testid={`text-expense-amount-${index}`}>
                             ${Number(expense.amount).toLocaleString()}
                           </p>
-                          {expense.scope === 'property' && expense.propertyId && (
-                            <p className="text-sm text-muted-foreground" data-testid={`text-expense-property-${index}`}>
-                              {properties.find(p => p.id === expense.propertyId)?.address || 'Property'}
-                            </p>
-                          )}
-                          {expense.scope === 'operational' && expense.entityId && (
-                            <p className="text-sm text-muted-foreground" data-testid={`text-expense-entity-${index}`}>
-                              {entities.find(e => e.id === expense.entityId)?.name || 'Operational'}
-                            </p>
-                          )}
+                          <div className="text-sm text-muted-foreground">
+                            {expense.scope === 'property' && expense.propertyId && (
+                              <>
+                                <p data-testid={`text-expense-scope-${index}`}>Property</p>
+                                <p data-testid={`text-expense-property-${index}`}>
+                                  {(() => {
+                                    const property = properties.find(p => p.id === expense.propertyId);
+                                    return property ? `${property.street}, ${property.city}` : 'Property';
+                                  })()}
+                                </p>
+                              </>
+                            )}
+                            {expense.scope === 'operational' && (
+                              <>
+                                <p data-testid={`text-expense-scope-${index}`}>Operational</p>
+                                <p data-testid={`text-expense-entity-${index}`}>
+                                  {entities.find(e => e.id === expense.entityId)?.name || 'Entity'}
+                                </p>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <Button
                           variant="outline"
