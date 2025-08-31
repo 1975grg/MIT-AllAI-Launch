@@ -411,10 +411,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const validatedData = insertExpenseSchema.parse({
+      const expenseData = {
         ...req.body,
         orgId: org.id,
-      });
+        propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
+      };
+      
+      const validatedData = insertExpenseSchema.parse(expenseData);
       
       const expense = await storage.createExpense(validatedData);
       res.json(expense);

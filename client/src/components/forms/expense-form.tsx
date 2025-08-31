@@ -316,7 +316,7 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">No specific property</SelectItem>
+                    <SelectItem value="none">No specific property</SelectItem>
                     {properties.map((property) => (
                       <SelectItem key={property.id} value={property.id}>
                         {property.name}
