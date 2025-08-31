@@ -112,6 +112,7 @@ export default function Properties() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       setShowPropertyForm(false);
       setEditingProperty(null);
       toast({

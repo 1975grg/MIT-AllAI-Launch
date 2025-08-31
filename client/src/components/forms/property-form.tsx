@@ -188,15 +188,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   };
 
   const handleSubmit = (data: any) => {
-    console.log("🎯 Form submission data:", {
-      type: data.type,
-      hasUnits: !!data.units,
-      unitsLength: data.units?.length,
-      hasDefaultUnit: !!data.defaultUnit,
-      createDefaultUnit: data.createDefaultUnit,
-      hasMultipleUnits: data.hasMultipleUnits,
-      numberOfUnits: data.numberOfUnits
-    });
     onSubmit(data);
   };
 
