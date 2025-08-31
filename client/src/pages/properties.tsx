@@ -192,6 +192,9 @@ export default function Properties() {
           applianceNotes: firstUnit.applianceNotes,
           appliances: appliances || [],
         };
+        
+        // Mark that this property should have the unit checkbox checked
+        (property as any).hasExistingUnit = true;
       }
     } catch (error) {
       console.error("Error loading unit data:", error);
@@ -299,7 +302,8 @@ export default function Properties() {
                       entityId: o.entityId,
                       percent: o.percent
                     })) || [],
-                    createDefaultUnit: (editingProperty as any).defaultUnit ? true : false,
+                    createDefaultUnit: (editingProperty as any).hasExistingUnit || (editingProperty as any).defaultUnit ? true : false,
+                    hasMultipleUnits: false,
                     defaultUnit: (editingProperty as any).defaultUnit || {
                       label: "",
                       bedrooms: undefined,
