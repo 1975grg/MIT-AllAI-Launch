@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Plus, Calendar, FileText, Globe } from "lucide-react";
+import { Building2, Plus, Calendar, FileText, Globe, Bell } from "lucide-react";
 import { useLocation } from "wouter";
 import type { OwnershipEntity } from "@shared/schema";
 import EntityForm from "@/components/forms/entity-form";
@@ -109,6 +109,38 @@ export default function Entities() {
     },
   });
 
+  const backfillRemindersMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/entities/backfill-reminders", {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      toast({
+        title: "Success",
+        description: data.message || "Reminders created successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create reminders",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -167,13 +199,24 @@ export default function Entities() {
               <p className="text-muted-foreground">Manage your LLCs, partnerships, and individual ownership</p>
             </div>
             
-            <Dialog open={showEntityForm} onOpenChange={handleOpenChange}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-add-entity">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Entity
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => backfillRemindersMutation.mutate()}
+                disabled={backfillRemindersMutation.isPending}
+                data-testid="button-backfill-reminders"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                {backfillRemindersMutation.isPending ? "Creating..." : "Create Missing Reminders"}
+              </Button>
+              
+              <Dialog open={showEntityForm} onOpenChange={handleOpenChange}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-add-entity">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Entity
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>{editingEntity ? "Edit Ownership Entity" : "Add New Ownership Entity"}</DialogTitle>
@@ -193,6 +236,7 @@ export default function Entities() {
                 />
               </DialogContent>
             </Dialog>
+            </div>
           </div>
 
           {entitiesLoading ? (

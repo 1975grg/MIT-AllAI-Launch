@@ -63,6 +63,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to create renewal reminder for an entity
+  const createEntityRenewalReminder = async (entity: any, orgId: string) => {
+    if (!entity.renewalMonth || entity.renewalMonth < 1 || entity.renewalMonth > 12) {
+      return false;
+    }
+
+    const currentYear = new Date().getFullYear();
+    let renewalYear = currentYear;
+    
+    // If renewal month has passed this year, set for next year
+    const currentMonth = new Date().getMonth() + 1;
+    if (entity.renewalMonth < currentMonth) {
+      renewalYear = currentYear + 1;
+    }
+    
+    // Set due date 30 days before renewal (1st of the month)
+    const renewalDate = new Date(renewalYear, entity.renewalMonth - 1, 1);
+    const reminderDate = new Date(renewalDate);
+    reminderDate.setDate(reminderDate.getDate() - 30);
+    
+    const reminderData = {
+      orgId: orgId,
+      scope: "entity" as const,
+      scopeId: entity.id,
+      title: `${entity.name} Registration Renewal`,
+      type: "regulatory" as const,
+      dueAt: reminderDate,
+      leadDays: 30,
+      channel: "inapp" as const,
+      status: "Pending" as const,
+    };
+    
+    await storage.createReminder(reminderData);
+    console.log(`Created renewal reminder for entity: ${entity.name}`);
+    return true;
+  };
+
+  // Backfill reminders for existing entities
+  app.post('/api/entities/backfill-reminders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const entities = await storage.getOwnershipEntities(org.id);
+      const existingReminders = await storage.getReminders(org.id);
+      
+      let created = 0;
+      for (const entity of entities) {
+        if (entity.renewalMonth) {
+          // Check if reminder already exists
+          const hasRenewalReminder = existingReminders.some(r => 
+            r.scope === "entity" && 
+            r.scopeId === entity.id && 
+            r.type === "regulatory" && 
+            r.title.includes("Registration Renewal")
+          );
+          
+          if (!hasRenewalReminder) {
+            await createEntityRenewalReminder(entity, org.id);
+            created++;
+          }
+        }
+      }
+      
+      res.json({ message: `Created ${created} renewal reminders` });
+    } catch (error) {
+      console.error("Error backfilling reminders:", error);
+      res.status(500).json({ message: "Failed to backfill reminders" });
+    }
+  });
+
   // Ownership entity routes
   app.get('/api/entities', isAuthenticated, async (req: any, res) => {
     try {
@@ -90,6 +162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const entity = await storage.createOwnershipEntity(validatedData);
+      
+      // Auto-create renewal reminder if entity has renewal month
+      await createEntityRenewalReminder(entity, org.id);
+      
       res.json(entity);
     } catch (error) {
       console.error("Error creating entity:", error);
@@ -105,6 +181,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertOwnershipEntitySchema.partial().parse(req.body);
       const entity = await storage.updateOwnershipEntity(req.params.id, validatedData);
+      
+      // Auto-create/update renewal reminder if renewal month was changed
+      if (validatedData.renewalMonth !== undefined && entity.renewalMonth && entity.renewalMonth >= 1 && entity.renewalMonth <= 12) {
+        // Check if there's already a renewal reminder for this entity
+        const existingReminders = await storage.getReminders(org.id);
+        const existingRenewalReminder = existingReminders.find(r => 
+          r.scope === "entity" && 
+          r.scopeId === entity.id && 
+          r.type === "regulatory" && 
+          r.title.includes("Registration Renewal")
+        );
+        
+        const currentYear = new Date().getFullYear();
+        let renewalYear = currentYear;
+        
+        // If renewal month has passed this year, set for next year
+        const currentMonth = new Date().getMonth() + 1;
+        if (entity.renewalMonth < currentMonth) {
+          renewalYear = currentYear + 1;
+        }
+        
+        // Set due date 30 days before renewal (1st of the month)
+        const renewalDate = new Date(renewalYear, entity.renewalMonth - 1, 1);
+        const reminderDate = new Date(renewalDate);
+        reminderDate.setDate(reminderDate.getDate() - 30);
+        
+        if (existingRenewalReminder) {
+          // Update existing reminder
+          await storage.updateReminder(existingRenewalReminder.id, {
+            title: `${entity.name} Registration Renewal`,
+            dueAt: reminderDate,
+          });
+          console.log(`Updated renewal reminder for entity: ${entity.name}`);
+        } else {
+          // Create new reminder
+          const reminderData = {
+            orgId: org.id,
+            scope: "entity" as const,
+            scopeId: entity.id,
+            title: `${entity.name} Registration Renewal`,
+            type: "regulatory" as const,
+            dueAt: reminderDate,
+            leadDays: 30,
+            channel: "inapp" as const,
+            status: "Pending" as const,
+          };
+          
+          await storage.createReminder(reminderData);
+          console.log(`Created renewal reminder for entity: ${entity.name}`);
+        }
+      }
+      
       res.json(entity);
     } catch (error) {
       console.error("Error updating entity:", error);
