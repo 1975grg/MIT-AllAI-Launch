@@ -30,22 +30,22 @@ const applianceSchema = z.object({
 
 const unitSchema = z.object({
   label: z.string().optional(), // Make label optional for equipment-only updates
-  bedrooms: z.number().optional(),
-  bathrooms: z.number().optional(),
-  sqft: z.number().optional(),
-  rentAmount: z.string().optional(),
-  deposit: z.string().optional(),
+  bedrooms: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().optional()),
+  bathrooms: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().optional()),
+  sqft: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().optional()),
+  rentAmount: z.preprocess((val) => val === null || val === undefined ? undefined : String(val), z.string().optional()),
+  deposit: z.preprocess((val) => val === null || val === undefined ? undefined : String(val), z.string().optional()),
   notes: z.string().optional(),
   // Equipment tracking (all optional)
   hvacBrand: z.string().optional(),
   hvacModel: z.string().optional(),
-  hvacYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
-  hvacLifetime: z.number().min(1).max(50).optional(),
+  hvacYear: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(1900).max(new Date().getFullYear() + 1).optional()),
+  hvacLifetime: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(1).max(50).optional()),
   hvacReminder: z.boolean().optional(),
   waterHeaterBrand: z.string().optional(),
   waterHeaterModel: z.string().optional(),
-  waterHeaterYear: z.number().min(1900).max(new Date().getFullYear() + 1).optional(),
-  waterHeaterLifetime: z.number().min(1).max(50).optional(),
+  waterHeaterYear: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(1900).max(new Date().getFullYear() + 1).optional()),
+  waterHeaterLifetime: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(1).max(50).optional()),
   waterHeaterReminder: z.boolean().optional(),
   applianceNotes: z.string().optional(),
   // Custom appliances
