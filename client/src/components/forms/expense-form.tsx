@@ -116,7 +116,7 @@ export default function ExpenseForm({ properties, onSubmit, isLoading }: Expense
 
   const expenseCategories = [
     {
-      value: "",
+      value: "none",
       label: "No Category",
       description: "Leave category blank (not tax deductible)",
       taxDeductible: false

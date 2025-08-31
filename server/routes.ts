@@ -416,6 +416,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let finalCategory = req.body.category;
       if (req.body.category === "custom" && req.body.customCategory) {
         finalCategory = req.body.customCategory;
+      } else if (req.body.category === "none") {
+        finalCategory = "";
       }
       
       const expenseData = {
