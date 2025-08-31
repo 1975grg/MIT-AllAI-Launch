@@ -55,8 +55,7 @@ export function startCronJobs() {
     console.log('Checking for lease expirations...');
     
     try {
-      // Implementation would check for leases expiring in 120/90/60/30 days
-      // and create appropriate reminders and notifications
+      await storage.createLeaseEndReminders();
       console.log('Lease expiration check completed');
     } catch (error) {
       console.error('Error checking lease expirations:', error);

@@ -13,6 +13,7 @@ import Tenants from "@/pages/tenants";
 import Maintenance from "@/pages/maintenance";
 import Expenses from "@/pages/expenses";
 import Reminders from "@/pages/reminders";
+import Leases from "@/pages/leases";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -29,6 +30,7 @@ function Router() {
           <Route path="/entities" component={Entities} />
           <Route path="/entities/:id/performance" component={EntityPerformance} />
           <Route path="/tenants" component={Tenants} />
+          <Route path="/leases" component={Leases} />
           <Route path="/maintenance" component={Maintenance} />
           <Route path="/expenses" component={Expenses} />
           <Route path="/reminders" component={Reminders} />

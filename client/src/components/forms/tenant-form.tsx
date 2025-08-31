@@ -27,10 +27,11 @@ const tenantSchema = z.object({
 
 interface TenantFormProps {
   onSubmit: (data: z.infer<typeof tenantSchema>) => void;
+  onCancel: () => void;
   isLoading: boolean;
 }
 
-export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
+export default function TenantForm({ onSubmit, onCancel, isLoading }: TenantFormProps) {
   const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
     retry: false,
@@ -329,7 +330,7 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
         </div>
 
         <div className="flex justify-end space-x-2">
-          <Button type="button" variant="outline" data-testid="button-cancel-tenant">
+          <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel-tenant">
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} data-testid="button-submit-tenant">

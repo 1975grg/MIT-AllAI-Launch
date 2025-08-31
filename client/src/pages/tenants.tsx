@@ -170,6 +170,7 @@ export default function Tenants() {
                   </DialogHeader>
                   <TenantForm 
                     onSubmit={(data) => createTenantMutation.mutate(data)}
+                    onCancel={() => setShowTenantForm(false)}
                     isLoading={createTenantMutation.isPending}
                   />
                 </DialogContent>

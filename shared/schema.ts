@@ -155,6 +155,20 @@ export const leases = pgTable("leases", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Rent payments (specific tracking for lease payments)
+export const rentPayments = pgTable("rent_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leaseId: varchar("lease_id").notNull().references(() => leases.id),
+  transactionId: varchar("transaction_id").references(() => transactions.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  isLate: boolean("is_late").default(false),
+  lateFee: decimal("late_fee", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Assets/Appliances
 export const assetCategoryEnum = pgEnum("asset_category", ["HVAC", "Boiler", "Water Heater", "Fridge", "Range/Oven", "Microwave", "Dishwasher", "Washer", "Dryer", "Disposal", "Smoke/CO", "Roof", "Windows", "Irrigation", "Sump Pump", "Panel", "Garage Door", "Security"]);
 
@@ -531,3 +545,5 @@ export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Reminder = typeof reminders.$inferSelect;
 export type InsertReminder = z.infer<typeof insertReminderSchema>;
 export type Notification = typeof notifications.$inferSelect;
+export type RentPayment = typeof rentPayments.$inferSelect;
+export type InsertRentPayment = typeof rentPayments.$inferInsert;

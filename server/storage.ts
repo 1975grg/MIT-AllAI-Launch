@@ -752,7 +752,7 @@ export class DatabaseStorage implements IStorage {
         isRecurring: false, // Future instances are not recurring themselves
         recurringFrequency: undefined,
         recurringInterval: 1,
-        recurringEndDate: undefined,
+        recurringEndDate: null,
         taxDeductible: originalExpense.taxDeductible || true,
         parentRecurringId: originalExpense.id,
         isBulkEntry: false,
@@ -799,6 +799,88 @@ export class DatabaseStorage implements IStorage {
       .where(eq(reminders.id, id))
       .returning();
     return updated;
+  }
+
+  // Create lease end reminders (similar to entity renewal reminders)
+  async createLeaseEndReminders(): Promise<void> {
+    const now = new Date();
+    const reminderIntervals = [120, 90, 60, 30]; // Days before lease end
+    
+    // Get all active leases
+    const activeLeases = await db
+      .select({
+        id: leases.id,
+        endDate: leases.endDate,
+        rent: leases.rent,
+        unitId: leases.unitId,
+        tenantGroupId: leases.tenantGroupId,
+        unitLabel: units.label,
+        propertyName: properties.name,
+        propertyId: properties.id,
+        orgId: properties.orgId,
+        tenantGroupName: tenantGroups.name,
+      })
+      .from(leases)
+      .leftJoin(units, eq(leases.unitId, units.id))
+      .leftJoin(properties, eq(units.propertyId, properties.id))
+      .leftJoin(tenantGroups, eq(leases.tenantGroupId, tenantGroups.id))
+      .where(eq(leases.status, "Active"));
+
+    for (const lease of activeLeases) {
+      if (!lease.endDate || !lease.orgId) continue;
+
+      const endDate = new Date(lease.endDate);
+      const daysUntilEnd = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Create reminders for each interval if lease ends within that timeframe
+      for (const intervalDays of reminderIntervals) {
+        if (daysUntilEnd <= intervalDays && daysUntilEnd > 0) {
+          // Check if reminder already exists
+          const existingReminder = await db
+            .select()
+            .from(reminders)
+            .where(
+              and(
+                eq(reminders.orgId, lease.orgId),
+                eq(reminders.scope, "lease"),
+                eq(reminders.scopeId, lease.id),
+                eq(reminders.type, "lease"),
+                eq(reminders.leadDays, intervalDays)
+              )
+            )
+            .limit(1);
+
+          if (existingReminder.length === 0) {
+            // Calculate reminder due date
+            const reminderDate = new Date(endDate);
+            reminderDate.setDate(reminderDate.getDate() - intervalDays);
+
+            const reminderData = {
+              orgId: lease.orgId,
+              scope: "lease" as const,
+              scopeId: lease.id,
+              title: `Lease Expiring - ${lease.propertyName} ${lease.unitLabel ? `(${lease.unitLabel})` : ''}`,
+              type: "lease" as const,
+              dueAt: reminderDate,
+              leadDays: intervalDays,
+              channel: "inapp" as const,
+              status: "Pending" as const,
+              payloadJson: {
+                leaseId: lease.id,
+                tenantGroup: lease.tenantGroupName,
+                property: lease.propertyName,
+                unit: lease.unitLabel,
+                endDate: lease.endDate,
+                rent: lease.rent,
+              },
+            };
+
+            await this.createReminder(reminderData);
+            console.log(`Created lease end reminder (${intervalDays} days) for: ${lease.propertyName} ${lease.unitLabel || ''}`);
+          }
+        }
+      }
+    }
   }
 
   // Notification operations
