@@ -119,6 +119,7 @@ export const units = pgTable("units", {
 export const tenantGroups = pgTable("tenant_groups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
+  propertyId: varchar("property_id").references(() => properties.id),
   orgId: varchar("org_id").notNull().references(() => organizations.id),
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -1,14 +1,18 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import type { Property, OwnershipEntity } from "@shared/schema";
 
 const tenantSchema = z.object({
   tenantGroup: z.object({
     name: z.string().min(1, "Group name is required"),
+    propertyId: z.string().min(1, "Property selection is required"),
   }),
   tenants: z.array(z.object({
     firstName: z.string().min(1, "First name is required"),
@@ -27,11 +31,22 @@ interface TenantFormProps {
 }
 
 export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
+  const { data: properties } = useQuery<Property[]>({
+    queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const { data: entities } = useQuery<OwnershipEntity[]>({
+    queryKey: ["/api/entities"],
+    retry: false,
+  });
+
   const form = useForm<z.infer<typeof tenantSchema>>({
     resolver: zodResolver(tenantSchema),
     defaultValues: {
       tenantGroup: {
         name: "",
+        propertyId: "",
       },
       tenants: [{
         firstName: "",
@@ -44,6 +59,17 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
       }],
     },
   });
+
+  const selectedPropertyId = form.watch("tenantGroup.propertyId");
+  const selectedProperty = properties?.find(p => p.id === selectedPropertyId);
+
+  // Get entity information for selected property
+  const getPropertyEntity = (property: Property) => {
+    if (!entities) return null;
+    // Properties can have multiple entities through propertyOwnerships
+    // For simplicity, we'll show the first entity or indicate multiple
+    return entities[0]; // This would need to be enhanced with actual property-entity relationships
+  };
 
   const addTenant = () => {
     const currentTenants = form.getValues("tenants");
@@ -71,26 +97,58 @@ export default function TenantForm({ onSubmit, isLoading }: TenantFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="tenantGroup.name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tenant Group Name</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="e.g., Smith Family, John & Jane Doe" 
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  data-testid="input-tenant-group-name" 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 gap-6">
+          <FormField
+            control={form.control}
+            name="tenantGroup.propertyId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Property</FormLabel>
+                <FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger data-testid="select-tenant-property">
+                      <SelectValue placeholder="Select a property" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties?.map((property) => (
+                        <SelectItem key={property.id} value={property.id}>
+                          {property.street}, {property.city}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+                {selectedProperty && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {selectedProperty.street}, {selectedProperty.city}
+                  </p>
+                )}
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="tenantGroup.name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tenant Group Name</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="e.g., Smith Family, John & Jane Doe" 
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    data-testid="input-tenant-group-name" 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">

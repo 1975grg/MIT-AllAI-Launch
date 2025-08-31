@@ -21,7 +21,6 @@ export default function Tenants() {
   const [showTenantForm, setShowTenantForm] = useState(false);
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -97,11 +96,17 @@ export default function Tenants() {
   const filteredProperties = properties || [];
   
   const filteredTenantGroups = tenantGroups?.filter(group => {
-    // For property filter, we can check if the tenant group has any connection to the selected property
-    // Note: This may need adjustment based on actual schema relationships
+    // Filter by property
     const propertyMatch = propertyFilter === "all" || group.propertyId === propertyFilter;
-    const statusMatch = statusFilter === "all" || group.status === statusFilter;
-    return propertyMatch && statusMatch;
+    
+    // Filter by entity (via property)
+    if (entityFilter !== "all") {
+      const property = properties?.find(p => p.id === group.propertyId);
+      // For now, we'll skip entity filtering since we need property-entity relationships
+      // This will be enhanced when we have the full property ownership data
+    }
+    
+    return propertyMatch;
   }) || [];
 
   return (
@@ -149,19 +154,6 @@ export default function Tenants() {
                       {property.street}, {property.city}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-
-              {/* Status Filter */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40" data-testid="select-status-filter">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
-                  <SelectItem value="Former">Former</SelectItem>
                 </SelectContent>
               </Select>
 
