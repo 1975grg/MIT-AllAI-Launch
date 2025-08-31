@@ -430,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: req.body.amount.toString(),
         description: req.body.description || "",
         category: finalCategory,
-        date: req.body.date,
+        date: new Date(req.body.date),
         isDateRange: req.body.isDateRange || false,
         endDate: req.body.endDate ? req.body.endDate : undefined,
         receiptUrl: req.body.receiptUrl,
@@ -443,7 +443,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isBulkEntry: req.body.isBulkEntry || false,
       };
       
-      console.log("Expense data being validated:", JSON.stringify(cleanedData, null, 2));
       const validatedData = insertExpenseSchema.parse(cleanedData);
       
       const expense = await storage.createTransaction(validatedData);
