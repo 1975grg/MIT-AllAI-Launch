@@ -286,7 +286,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
               console.log("Form validation passed, submitting:", data);
               const submissionData = {
                 ...data,
-                receiptUrl: uploadedReceiptUrl,
+                receiptUrl: uploadedReceiptUrl || undefined,
               };
               onSubmit(submissionData);
             },
@@ -304,7 +304,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
               <FormControl>
                 <Input 
                   placeholder="e.g., Plumbing repair, Property insurance" 
-                  defaultValue={field.value || ""}
+                  value={field.value || ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
                   name={field.name}
@@ -328,7 +328,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                     type="number" 
                     step="0.01"
                     placeholder="0.00" 
-                    defaultValue={field.value || ""}
+                    value={field.value || ""}
                     onChange={(e) => {
                       const value = e.target.value;
                       field.onChange(value === "" ? undefined : parseFloat(value) || undefined);
@@ -408,7 +408,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                   <FormControl>
                     <Input 
                       placeholder="Enter your custom category name" 
-                      defaultValue={field.value || ""}
+                      value={field.value || ""}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
                       name={field.name}
@@ -720,7 +720,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                           <FormControl>
                             <Input 
                               placeholder="Description" 
-                              defaultValue={field.value || ""}
+                              value={field.value || ""}
                               onChange={field.onChange}
                               onBlur={field.onBlur}
                               name={field.name}
@@ -744,7 +744,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                               type="number" 
                               step="0.01"
                               placeholder="0.00" 
-                              defaultValue={field.value || ""}
+                              value={field.value || ""}
                               onChange={(e) => {
                                 const value = e.target.value;
                                 field.onChange(value === "" ? 0 : parseFloat(value) || 0);
@@ -1041,7 +1041,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
               <FormControl>
                 <Textarea 
                   placeholder="Additional notes about this expense..."
-                  defaultValue={field.value || ""}
+                  value={field.value || ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
                   name={field.name}
@@ -1064,7 +1064,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
               const formData = form.getValues();
               const submissionData = {
                 ...formData,
-                receiptUrl: uploadedReceiptUrl,
+                receiptUrl: uploadedReceiptUrl || undefined,
               };
               onSubmit(submissionData);
             }}
