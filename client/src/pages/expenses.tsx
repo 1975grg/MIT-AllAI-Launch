@@ -101,10 +101,11 @@ export default function Expenses() {
   }
 
   const expenseTransactions = expenses?.filter(t => t.type === "Expense") || [];
-  // Get filtered properties based on selected entity
-  const filteredProperties = entityFilter === "all" 
-    ? properties 
-    : properties.filter(property => property.entityId === entityFilter);
+  
+  // Since properties can be owned by multiple entities (junction table relationship),
+  // we show all properties in the dropdown regardless of entity filter.
+  // The expense filtering will still work correctly based on the expense's entityId.
+  const filteredProperties = properties;
     
   const filteredExpenses = expenseTransactions.filter(expense => {
     const categoryMatch = categoryFilter === "all" || expense.category === categoryFilter;
