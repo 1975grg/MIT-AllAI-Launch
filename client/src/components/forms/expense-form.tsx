@@ -273,6 +273,11 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
 
   return (
     <div className="max-h-[80vh] overflow-y-auto">
+      {/* Debug info */}
+      <div className="text-xs text-gray-500 mb-2">
+        Debug: Form valid: {form.formState.isValid ? 'Yes' : 'No'}, 
+        Errors: {Object.keys(form.formState.errors).join(', ') || 'None'}
+      </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(
           (data) => {
@@ -1029,7 +1034,7 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
           <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-expense">
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading} data-testid="button-submit-expense">
+          <Button type="submit" disabled={isLoading || !form.formState.isValid} data-testid="button-submit-expense">
             {isLoading ? "Logging..." : (expense ? "Update Expense" : "Log Expense")}
           </Button>
         </div>
