@@ -290,6 +290,11 @@ export const transactions = pgTable("transactions", {
   vendorId: varchar("vendor_id").references(() => vendors.id),
   receiptUrl: varchar("receipt_url"),
   notes: text("notes"),
+  isRecurring: boolean("is_recurring").default(false),
+  recurringFrequency: varchar("recurring_frequency"), // monthly, quarterly, biannually, annually
+  recurringEndDate: timestamp("recurring_end_date"),
+  taxDeductible: boolean("tax_deductible").default(true),
+  parentRecurringId: varchar("parent_recurring_id"), // Reference to the original transaction for recurring instances
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -446,6 +451,19 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({ i
 export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true });
 export const insertExpenseSchema = insertTransactionSchema.extend({
   type: z.literal("Expense"),
+  isRecurring: z.boolean().default(false),
+  recurringFrequency: z.enum(["monthly", "quarterly", "biannually", "annually"]).optional(),
+  recurringEndDate: z.string().datetime().optional(),
+  taxDeductible: z.boolean().default(true),
+  parentRecurringId: z.string().optional(),
+}).refine((data) => {
+  if (data.isRecurring && !data.recurringFrequency) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Recurring frequency is required for recurring expenses",
+  path: ["recurringFrequency"],
 });
 
 // Types

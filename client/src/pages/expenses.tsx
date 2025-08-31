@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Receipt, Plus, DollarSign, Calendar, Building, Tag } from "lucide-react";
+import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle } from "lucide-react";
 import type { Transaction, Property } from "@shared/schema";
 
 export default function Expenses() {
@@ -247,6 +247,22 @@ export default function Expenses() {
                             {expense.category && (
                               <Badge className={getCategoryColor(expense.category)} data-testid={`badge-expense-category-${index}`}>
                                 {expense.category}
+                              </Badge>
+                            )}
+                            {expense.isRecurring && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-600" data-testid={`badge-recurring-${index}`}>
+                                <Repeat className="h-3 w-3 mr-1" />
+                                {expense.recurringFrequency}
+                              </Badge>
+                            )}
+                            {expense.parentRecurringId && (
+                              <Badge variant="outline" className="text-purple-600 border-purple-600" data-testid={`badge-recurring-instance-${index}`}>
+                                Auto-generated
+                              </Badge>
+                            )}
+                            {expense.taxDeductible === false && (
+                              <Badge variant="outline" className="text-orange-600 border-orange-600" data-testid={`badge-non-deductible-${index}`}>
+                                Non-deductible
                               </Badge>
                             )}
                           </div>

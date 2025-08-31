@@ -625,8 +625,76 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createExpense(expense: InsertExpense): Promise<Transaction> {
-    const [newExpense] = await db.insert(transactions).values(expense).returning();
+    const [newExpense] = await db.insert(transactions).values({
+      ...expense,
+      recurringEndDate: expense.recurringEndDate ? new Date(expense.recurringEndDate) : undefined,
+    }).returning();
+    
+    // If this is a recurring expense, create future instances
+    if (expense.isRecurring && expense.recurringFrequency) {
+      await this.createRecurringExpenses(newExpense);
+    }
+    
     return newExpense;
+  }
+
+  private async createRecurringExpenses(originalExpense: Transaction): Promise<void> {
+    if (!originalExpense.isRecurring || !originalExpense.recurringFrequency) return;
+
+    const frequency = originalExpense.recurringFrequency;
+    const startDate = new Date(originalExpense.date);
+    const endDate = originalExpense.recurringEndDate ? new Date(originalExpense.recurringEndDate) : null;
+    
+    // Calculate how many instances to create (limit to 24 months for safety)
+    const maxInstances = 24;
+    let currentDate = new Date(startDate);
+    const instances: Array<InsertExpense> = [];
+
+    for (let i = 0; i < maxInstances; i++) {
+      // Calculate next occurrence
+      switch (frequency) {
+        case "monthly":
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          break;
+        case "quarterly":
+          currentDate.setMonth(currentDate.getMonth() + 3);
+          break;
+        case "biannually":
+          currentDate.setMonth(currentDate.getMonth() + 6);
+          break;
+        case "annually":
+          currentDate.setFullYear(currentDate.getFullYear() + 1);
+          break;
+      }
+
+      // Stop if we've reached the end date
+      if (endDate && currentDate > endDate) break;
+
+      // Stop if we're more than 2 years out
+      if (currentDate > new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000)) break;
+
+      instances.push({
+        orgId: originalExpense.orgId,
+        propertyId: originalExpense.propertyId || undefined,
+        unitId: originalExpense.unitId || undefined,
+        vendorId: originalExpense.vendorId || undefined,
+        type: "Expense" as const,
+        amount: originalExpense.amount,
+        description: originalExpense.description,
+        category: originalExpense.category || undefined,
+        date: new Date(currentDate).toISOString(),
+        receiptUrl: originalExpense.receiptUrl || undefined,
+        notes: originalExpense.notes || undefined,
+        isRecurring: false, // Future instances are not recurring themselves
+        taxDeductible: originalExpense.taxDeductible || true,
+        parentRecurringId: originalExpense.id,
+      });
+    }
+
+    // Insert all future instances
+    if (instances.length > 0) {
+      await db.insert(transactions).values(instances);
+    }
   }
 
   // Reminder operations
