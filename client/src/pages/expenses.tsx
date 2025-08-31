@@ -53,10 +53,14 @@ export default function Expenses() {
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("Mutation data:", data);
+      console.log("Editing expense:", editingExpense);
       if (editingExpense) {
+        console.log("Making PUT request to update expense");
         const response = await apiRequest("PUT", `/api/expenses/${editingExpense.id}`, data);
         return response.json();
       } else {
+        console.log("Making POST request to create expense");
         const response = await apiRequest("POST", "/api/expenses", data);
         return response.json();
       }

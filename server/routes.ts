@@ -457,6 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/expenses/:id", isAuthenticated, async (req, res) => {
     try {
       console.log("Updating expense ID:", req.params.id);
+      console.log("Update request body:", JSON.stringify(req.body, null, 2));
 
       const { category, customCategory, scope, ...requestBody } = req.body;
 
