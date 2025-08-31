@@ -423,6 +423,127 @@ export default function Properties() {
                       )}
                     </div>
 
+                    {/* Central Building Equipment Section - Show when expanded and is a building */}
+                    {expandedProperties.has(property.id) && (property.type === "Residential Building" || property.type === "Commercial Building") && (
+                      <div className="border-t pt-4 mt-4">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <Settings className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium text-foreground">Central Building Equipment</span>
+                        </div>
+                        
+                        {(property.buildingHvacBrand || property.buildingWaterBrand || property.buildingWaterShutoff || property.buildingElectricalPanel || property.buildingEquipmentNotes) ? (
+                          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+                            {/* Central HVAC */}
+                            {(property.buildingHvacBrand || property.buildingHvacModel || property.buildingHvacYear) && (
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <Settings className="h-3 w-3 text-blue-500" />
+                                  <span className="text-xs font-medium text-blue-700">Central HVAC System</span>
+                                  {property.buildingHvacReminder && (
+                                    <div className="flex items-center space-x-1 text-xs text-orange-600">
+                                      <span>📅</span>
+                                      <span>Reminder</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="ml-5 text-xs text-muted-foreground space-y-1">
+                                  {property.buildingHvacBrand && (
+                                    <div><span className="font-medium">Brand:</span> {property.buildingHvacBrand}</div>
+                                  )}
+                                  {property.buildingHvacModel && (
+                                    <div><span className="font-medium">Model:</span> {property.buildingHvacModel}</div>
+                                  )}
+                                  <div className="flex items-center space-x-4">
+                                    {property.buildingHvacYear && (
+                                      <span><span className="font-medium">Year:</span> {property.buildingHvacYear}</span>
+                                    )}
+                                    {property.buildingHvacLifetime && (
+                                      <span><span className="font-medium">Expected lifetime:</span> {property.buildingHvacLifetime} years</span>
+                                    )}
+                                  </div>
+                                  {property.buildingHvacLocation && (
+                                    <div><span className="font-medium">Location:</span> {property.buildingHvacLocation}</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Central Water/Boiler */}
+                            {(property.buildingWaterBrand || property.buildingWaterModel || property.buildingWaterYear) && (
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <Settings className="h-3 w-3 text-blue-500" />
+                                  <span className="text-xs font-medium text-blue-700">Central Water/Boiler System</span>
+                                  {property.buildingWaterReminder && (
+                                    <div className="flex items-center space-x-1 text-xs text-orange-600">
+                                      <span>📅</span>
+                                      <span>Reminder</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="ml-5 text-xs text-muted-foreground space-y-1">
+                                  {property.buildingWaterBrand && (
+                                    <div><span className="font-medium">Brand:</span> {property.buildingWaterBrand}</div>
+                                  )}
+                                  {property.buildingWaterModel && (
+                                    <div><span className="font-medium">Model:</span> {property.buildingWaterModel}</div>
+                                  )}
+                                  <div className="flex items-center space-x-4">
+                                    {property.buildingWaterYear && (
+                                      <span><span className="font-medium">Year:</span> {property.buildingWaterYear}</span>
+                                    )}
+                                    {property.buildingWaterLifetime && (
+                                      <span><span className="font-medium">Expected lifetime:</span> {property.buildingWaterLifetime} years</span>
+                                    )}
+                                  </div>
+                                  {property.buildingWaterLocation && (
+                                    <div><span className="font-medium">Location:</span> {property.buildingWaterLocation}</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Building Utilities */}
+                            {(property.buildingWaterShutoff || property.buildingElectricalPanel) && (
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <Settings className="h-3 w-3 text-green-500" />
+                                  <span className="text-xs font-medium text-green-700">Building Utilities</span>
+                                </div>
+                                <div className="ml-5 text-xs text-muted-foreground space-y-1">
+                                  {property.buildingWaterShutoff && (
+                                    <div><span className="font-medium">Water shut-off:</span> {property.buildingWaterShutoff}</div>
+                                  )}
+                                  {property.buildingElectricalPanel && (
+                                    <div><span className="font-medium">Electrical panel:</span> {property.buildingElectricalPanel}</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Building Equipment Notes */}
+                            {property.buildingEquipmentNotes && (
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <Settings className="h-3 w-3 text-gray-500" />
+                                  <span className="text-xs font-medium text-gray-700">Equipment Notes</span>
+                                </div>
+                                <div className="ml-5 text-xs text-muted-foreground">
+                                  {property.buildingEquipmentNotes}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4 text-muted-foreground">
+                            <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No Central Equipment</p>
+                            <p className="text-xs">Click Edit to add building equipment details.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Units Section - Show when expanded */}
                     {expandedProperties.has(property.id) && (
                       <div className="border-t pt-4 mt-4">
