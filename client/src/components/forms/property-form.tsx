@@ -30,7 +30,7 @@ const unitSchema = z.object({
 
 const propertySchema = z.object({
   name: z.string().min(1, "Property name is required"),
-  type: z.enum(["Single Family", "Duplex", "Triplex", "Fourplex", "Apartment", "Condo", "Townhome", "Commercial"]),
+  type: z.enum(["Single Family", "Condo", "Townhome", "Residential Building", "Commercial Unit", "Commercial Building"]),
   street: z.string().min(1, "Street address is required"),
   city: z.string().min(1, "City is required"),
   state: z.string().min(2, "State is required"),
@@ -181,7 +181,34 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
           render={({ field }) => (
             <FormItem>
               <FormLabel>Property Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={(value) => {
+                field.onChange(value);
+                // Automatically enable multiple units for building types
+                if (value === "Residential Building" || value === "Commercial Building") {
+                  form.setValue("hasMultipleUnits", true);
+                  // Initialize with 2 units by default
+                  const currentCount = form.getValues("numberOfUnits") || 2;
+                  form.setValue("numberOfUnits", Math.max(currentCount, 2));
+                  // Initialize units array
+                  const units = [];
+                  for (let i = 0; i < Math.max(currentCount, 2); i++) {
+                    units.push({
+                      label: `Unit ${String.fromCharCode(65 + i)}`, // A, B, C, etc.
+                      bedrooms: undefined,
+                      bathrooms: undefined,
+                      sqft: undefined,
+                      rentAmount: "",
+                      deposit: "",
+                      notes: "",
+                    });
+                  }
+                  form.setValue("units", units);
+                } else {
+                  form.setValue("hasMultipleUnits", false);
+                  form.setValue("numberOfUnits", 1);
+                  form.setValue("units", []);
+                }
+              }} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger data-testid="select-property-type">
                     <SelectValue placeholder="Select property type" />
@@ -189,13 +216,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Single Family">Single Family</SelectItem>
-                  <SelectItem value="Duplex">Duplex</SelectItem>
-                  <SelectItem value="Triplex">Triplex</SelectItem>
-                  <SelectItem value="Fourplex">Fourplex</SelectItem>
-                  <SelectItem value="Apartment">Apartment</SelectItem>
                   <SelectItem value="Condo">Condo</SelectItem>
                   <SelectItem value="Townhome">Townhome</SelectItem>
-                  <SelectItem value="Commercial">Commercial</SelectItem>
+                  <SelectItem value="Residential Building">Residential Building (multiple units)</SelectItem>
+                  <SelectItem value="Commercial Unit">Commercial Unit</SelectItem>
+                  <SelectItem value="Commercial Building">Commercial Building (multiple units)</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -431,7 +456,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
             />
             
             {/* Multiple Units Option */}
-            {form.watch("createDefaultUnit") && (
+            {form.watch("createDefaultUnit") && (form.watch("type") === "Residential Building" || form.watch("type") === "Commercial Building") && (
               <FormField
                 control={form.control}
                 name="hasMultipleUnits"
@@ -461,7 +486,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         This property has multiple units
                       </FormLabel>
                       <p className="text-sm text-muted-foreground">
-                        For duplexes, apartments, or buildings with separate units
+                        Configure multiple units in this building
                       </p>
                     </div>
                   </FormItem>

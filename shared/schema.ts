@@ -72,7 +72,7 @@ export const ownershipEntities = pgTable("ownership_entities", {
 });
 
 // Properties
-export const propertyTypeEnum = pgEnum("property_type", ["Single Family", "Duplex", "Triplex", "Fourplex", "Apartment", "Condo", "Townhome", "Commercial"]);
+export const propertyTypeEnum = pgEnum("property_type", ["Single Family", "Condo", "Townhome", "Residential Building", "Commercial Unit", "Commercial Building"]);
 
 export const properties = pgTable("properties", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
