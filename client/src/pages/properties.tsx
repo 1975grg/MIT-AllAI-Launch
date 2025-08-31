@@ -238,6 +238,7 @@ export default function Properties() {
                 <PropertyForm 
                   entities={entities || []}
                   onSubmit={handleFormSubmit}
+                  onCancel={handleCloseForm}
                   isLoading={createPropertyMutation.isPending || updatePropertyMutation.isPending}
                   initialData={editingProperty ? {
                     name: editingProperty.name,

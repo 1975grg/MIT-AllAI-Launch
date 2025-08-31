@@ -74,11 +74,12 @@ const propertySchema = z.object({
 interface PropertyFormProps {
   entities: OwnershipEntity[];
   onSubmit: (data: z.infer<typeof propertySchema>) => void;
+  onCancel?: () => void;
   isLoading: boolean;
   initialData?: Partial<z.infer<typeof propertySchema>>;
 }
 
-export default function PropertyForm({ entities, onSubmit, isLoading, initialData }: PropertyFormProps) {
+export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, initialData }: PropertyFormProps) {
   const [showCreateEntity, setShowCreateEntity] = useState(false);
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"Individual" | "LLC" | "Partnership" | "Corporation">("Individual");
@@ -916,7 +917,12 @@ export default function PropertyForm({ entities, onSubmit, isLoading, initialDat
         </Card>
 
         <div className="flex justify-end space-x-2">
-          <Button type="button" variant="outline" data-testid="button-cancel-property">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel}
+            data-testid="button-cancel-property"
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} data-testid="button-submit-property">
