@@ -38,9 +38,10 @@ interface TenantFormProps {
   onSubmit: (data: z.infer<typeof tenantSchema>) => void;
   onCancel: () => void;
   isLoading: boolean;
+  initialData?: any;
 }
 
-export default function TenantForm({ onSubmit, onCancel, isLoading }: TenantFormProps) {
+export default function TenantForm({ onSubmit, onCancel, isLoading, initialData }: TenantFormProps) {
   const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
     retry: false,
@@ -58,7 +59,22 @@ export default function TenantForm({ onSubmit, onCancel, isLoading }: TenantForm
 
   const form = useForm<z.infer<typeof tenantSchema>>({
     resolver: zodResolver(tenantSchema),
-    defaultValues: {
+    defaultValues: initialData ? {
+      tenantGroup: {
+        name: initialData.name || "",
+        propertyId: initialData.propertyId || "",
+        unitId: initialData.unitId || "",
+      },
+      tenants: initialData.tenants || [{
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        emergencyContact: "",
+        emergencyPhone: "",
+        notes: "",
+      }],
+    } : {
       tenantGroup: {
         name: "",
         propertyId: "",

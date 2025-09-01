@@ -684,6 +684,39 @@ export class DatabaseStorage implements IStorage {
     return newTenant;
   }
 
+  async updateTenantGroup(id: string, updates: Partial<InsertTenantGroup>): Promise<TenantGroup> {
+    const [updated] = await db
+      .update(tenantGroups)
+      .set(updates)
+      .where(eq(tenantGroups.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateTenant(id: string, updates: Partial<InsertTenant>): Promise<Tenant> {
+    const [updated] = await db
+      .update(tenants)
+      .set(updates)
+      .where(eq(tenants.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTenantGroup(id: string): Promise<void> {
+    await db.delete(tenantGroups).where(eq(tenantGroups.id, id));
+  }
+
+  async deleteTenant(id: string): Promise<void> {
+    await db.delete(tenants).where(eq(tenants.id, id));
+  }
+
+  async getTenantsInGroup(groupId: string): Promise<Tenant[]> {
+    return await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.groupId, groupId));
+  }
+
   // Lease operations
   async getLeases(orgId: string): Promise<Lease[]> {
     const result = await db

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Plus, Mail, Phone, User, FileText, DollarSign, Calendar, AlertTriangle } from "lucide-react";
+import { Users, Plus, Mail, Phone, User, FileText, DollarSign, Calendar, AlertTriangle, Trash2 } from "lucide-react";
 import type { TenantGroup, Property, OwnershipEntity, Lease, Unit, InsertLease } from "@shared/schema";
 
 export default function Tenants() {
@@ -24,8 +24,21 @@ export default function Tenants() {
   const [selectedTenantGroup, setSelectedTenantGroup] = useState<TenantGroup | null>(null);
   const [selectedLease, setSelectedLease] = useState<Lease | null>(null);
   const [isRenewalMode, setIsRenewalMode] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<TenantGroup | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
+
+  // Helper function to determine tenant status
+  const getTenantStatus = (group: TenantGroup, groupLeases: Lease[]) => {
+    const activeLease = groupLeases.find(lease => lease.status === "Active");
+    if (activeLease) {
+      return "Current";
+    } else if (groupLeases.length > 0) {
+      return "Prior";
+    }
+    return "No Lease";
+  };
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -95,6 +108,74 @@ export default function Tenants() {
       toast({
         title: "Error",
         description: "Failed to create tenant",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateTenantMutation = useMutation({
+    mutationFn: async ({ groupId, data }: { groupId: string; data: any }) => {
+      const response = await apiRequest("PUT", `/api/tenants/${groupId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+      setEditingTenant(null);
+      setShowTenantForm(false);
+      toast({
+        title: "Success",
+        description: "Tenant updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update tenant",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteTenantMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      const response = await apiRequest("DELETE", `/api/tenants/${groupId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leases"] });
+      setShowDeleteConfirm(null);
+      toast({
+        title: "Success",
+        description: "Tenant deleted successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete tenant",
         variant: "destructive",
       });
     },
@@ -207,7 +288,12 @@ export default function Tenants() {
                 </SelectContent>
               </Select>
 
-              <Dialog open={showTenantForm} onOpenChange={setShowTenantForm}>
+              <Dialog open={showTenantForm} onOpenChange={(open) => {
+                setShowTenantForm(open);
+                if (!open) {
+                  setEditingTenant(null);
+                }
+              }}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-tenant">
                     <Plus className="h-4 w-4 mr-2" />
@@ -216,12 +302,22 @@ export default function Tenants() {
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Add New Tenant</DialogTitle>
+                    <DialogTitle>{editingTenant ? "Edit Tenant" : "Add New Tenant"}</DialogTitle>
                   </DialogHeader>
                   <TenantForm 
-                    onSubmit={(data) => createTenantMutation.mutate(data)}
-                    onCancel={() => setShowTenantForm(false)}
-                    isLoading={createTenantMutation.isPending}
+                    initialData={editingTenant || undefined}
+                    onSubmit={(data) => {
+                      if (editingTenant) {
+                        updateTenantMutation.mutate({ groupId: editingTenant.id, data });
+                      } else {
+                        createTenantMutation.mutate(data);
+                      }
+                    }}
+                    onCancel={() => {
+                      setShowTenantForm(false);
+                      setEditingTenant(null);
+                    }}
+                    isLoading={createTenantMutation.isPending || updateTenantMutation.isPending}
                   />
                 </DialogContent>
               </Dialog>
@@ -263,6 +359,45 @@ export default function Tenants() {
                   )}
                 </DialogContent>
               </Dialog>
+
+              {/* Delete Confirmation Dialog */}
+              <Dialog open={!!showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete Tenant</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Are you sure you want to delete this tenant? This action cannot be undone and will remove:
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                      <li>All tenant information and contacts</li>
+                      <li>Associated lease agreements</li>
+                      <li>Historical rental data</li>
+                    </ul>
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowDeleteConfirm(null)}
+                        disabled={deleteTenantMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => {
+                          if (showDeleteConfirm) {
+                            deleteTenantMutation.mutate(showDeleteConfirm);
+                          }
+                        }}
+                        disabled={deleteTenantMutation.isPending}
+                      >
+                        {deleteTenantMutation.isPending ? "Deleting..." : "Delete Tenant"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -301,7 +436,13 @@ export default function Tenants() {
                         </div>
                         <div>
                           <CardTitle className="text-lg" data-testid={`text-tenant-name-${index}`}>{group.name}</CardTitle>
-                          <Badge variant="secondary" data-testid={`badge-tenant-status-${index}`}>Active</Badge>
+                          <Badge 
+                            variant={getTenantStatus(group, groupLeases) === "Current" ? "default" : "secondary"} 
+                            className={getTenantStatus(group, groupLeases) === "Current" ? "bg-green-100 text-green-800" : ""}
+                            data-testid={`badge-tenant-status-${index}`}
+                          >
+                            {getTenantStatus(group, groupLeases)}
+                          </Badge>
                         </div>
                       </div>
                     </div>
@@ -421,9 +562,23 @@ export default function Tenants() {
                             variant="outline" 
                             size="sm" 
                             className="flex-1" 
+                            onClick={() => {
+                              setEditingTenant(group);
+                              setShowTenantForm(true);
+                            }}
                             data-testid={`button-edit-tenant-${index}`}
                           >
                             Edit
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="flex-1" 
+                            onClick={() => setShowDeleteConfirm(group.id)}
+                            data-testid={`button-delete-tenant-${index}`}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Delete
                           </Button>
                         </>
                       )}

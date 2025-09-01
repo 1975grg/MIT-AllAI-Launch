@@ -762,6 +762,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/tenants/:groupId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { groupId } = req.params;
+      const { tenantGroup, tenants } = req.body;
+      
+      // Update tenant group
+      const validatedGroup = insertTenantGroupSchema.partial().parse(tenantGroup);
+      const updatedGroup = await storage.updateTenantGroup(groupId, validatedGroup);
+      
+      // Update individual tenants if provided
+      if (tenants && tenants.length > 0) {
+        for (const tenant of tenants) {
+          if (tenant.id) {
+            // Update existing tenant
+            const validatedTenant = insertTenantSchema.partial().parse(tenant);
+            await storage.updateTenant(tenant.id, validatedTenant);
+          } else {
+            // Create new tenant
+            const validatedTenant = insertTenantSchema.parse({
+              ...tenant,
+              groupId: groupId,
+            });
+            await storage.createTenant(validatedTenant);
+          }
+        }
+      }
+      
+      res.json(updatedGroup);
+    } catch (error) {
+      console.error("Error updating tenant:", error);
+      res.status(500).json({ message: "Failed to update tenant" });
+    }
+  });
+
+  app.delete('/api/tenants/:groupId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { groupId } = req.params;
+      
+      // First, delete all individual tenants in the group
+      const tenants = await storage.getTenantsInGroup(groupId);
+      for (const tenant of tenants) {
+        await storage.deleteTenant(tenant.id);
+      }
+      
+      // Then delete the tenant group
+      await storage.deleteTenantGroup(groupId);
+      
+      res.json({ message: "Tenant group deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting tenant:", error);
+      res.status(500).json({ message: "Failed to delete tenant" });
+    }
+  });
+
   // Lease routes
   app.get('/api/leases', isAuthenticated, async (req: any, res) => {
     try {
