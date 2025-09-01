@@ -149,7 +149,31 @@ export default function Reminders() {
   const filteredReminders = reminders?.filter(reminder => {
     const typeMatch = typeFilter === "all" || reminder.type === typeFilter;
     const statusMatch = statusFilter === "all" || reminder.status === statusFilter;
-    const propertyMatch = propertyFilter === "all" || reminder.scopeId === propertyFilter;
+    
+    let propertyMatch = false;
+    if (propertyFilter === "all") {
+      propertyMatch = true;
+    } else {
+      // Direct property match
+      if (reminder.scope === 'property' && reminder.scopeId === propertyFilter) {
+        propertyMatch = true;
+      }
+      // Entity match
+      else if (reminder.scope === 'entity' && reminder.scopeId === propertyFilter) {
+        propertyMatch = true;
+      }
+      // Lease match - check if lease belongs to units in this property
+      else if (reminder.scope === 'lease') {
+        const lease = leases?.find(l => l.id === reminder.scopeId);
+        if (lease) {
+          const unit = units?.find(u => u.id === lease.unitId);
+          if (unit && unit.propertyId === propertyFilter) {
+            propertyMatch = true;
+          }
+        }
+      }
+    }
+    
     return typeMatch && statusMatch && propertyMatch;
   }) || [];
 
