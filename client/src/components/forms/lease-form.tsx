@@ -97,6 +97,9 @@ export default function LeaseForm({
       tenantGroupId: tenantGroup.id,
       rent: parseFloat(data.rent).toFixed(2),
       deposit: data.deposit ? parseFloat(data.deposit).toFixed(2) : undefined,
+      // Convert dates to ISO strings for API submission
+      startDate: data.startDate.toISOString(),
+      endDate: data.endDate.toISOString(),
     };
     onSubmit(submitData);
   };
