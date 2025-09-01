@@ -699,6 +699,10 @@ export class DatabaseStorage implements IStorage {
         lateFeeRuleJson: leases.lateFeeRuleJson,
         status: leases.status,
         createdAt: leases.createdAt,
+        // New renewal and reminder fields
+        autoRenewEnabled: leases.autoRenewEnabled,
+        expirationReminderMonths: leases.expirationReminderMonths,
+        renewalReminderEnabled: leases.renewalReminderEnabled,
       })
       .from(leases)
       .leftJoin(units, eq(leases.unitId, units.id))
