@@ -702,8 +702,13 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async deleteTenantGroup(id: string): Promise<void> {
-    await db.delete(tenantGroups).where(eq(tenantGroups.id, id));
+  async archiveTenantGroup(id: string): Promise<TenantGroup> {
+    const [updated] = await db
+      .update(tenantGroups)
+      .set({ status: "Archived" })
+      .where(eq(tenantGroups.id, id))
+      .returning();
+    return updated;
   }
 
   async deleteTenant(id: string): Promise<void> {

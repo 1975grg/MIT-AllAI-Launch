@@ -808,19 +808,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { groupId } = req.params;
       
-      // First, delete all individual tenants in the group
-      const tenants = await storage.getTenantsInGroup(groupId);
-      for (const tenant of tenants) {
-        await storage.deleteTenant(tenant.id);
-      }
+      // Archive the tenant group instead of deleting
+      const archivedTenant = await storage.archiveTenantGroup(groupId);
       
-      // Then delete the tenant group
-      await storage.deleteTenantGroup(groupId);
-      
-      res.json({ message: "Tenant group deleted successfully" });
+      res.json({ message: "Tenant archived successfully", tenant: archivedTenant });
     } catch (error) {
-      console.error("Error deleting tenant:", error);
-      res.status(500).json({ message: "Failed to delete tenant" });
+      console.error("Error archiving tenant:", error);
+      res.status(500).json({ message: "Failed to archive tenant" });
     }
   });
 

@@ -163,6 +163,7 @@ export const tenantGroups = pgTable("tenant_groups", {
   name: varchar("name").notNull(),
   propertyId: varchar("property_id").references(() => properties.id),
   orgId: varchar("org_id").notNull().references(() => organizations.id),
+  status: varchar("status").notNull().default("Active"), // Active, Former, Archived
   createdAt: timestamp("created_at").defaultNow(),
 });
 
