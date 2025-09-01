@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Property } from "@shared/schema";
+import type { Property, Reminder } from "@shared/schema";
 
 const reminderSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -26,14 +26,24 @@ const reminderSchema = z.object({
 
 interface ReminderFormProps {
   properties: Property[];
+  reminder?: Reminder;
   onSubmit: (data: z.infer<typeof reminderSchema>) => void;
+  onCancel?: () => void;
   isLoading: boolean;
 }
 
-export default function ReminderForm({ properties, onSubmit, isLoading }: ReminderFormProps) {
+export default function ReminderForm({ properties, reminder, onSubmit, onCancel, isLoading }: ReminderFormProps) {
   const form = useForm<z.infer<typeof reminderSchema>>({
     resolver: zodResolver(reminderSchema),
-    defaultValues: {
+    defaultValues: reminder ? {
+      title: reminder.title || "",
+      type: reminder.type || "custom",
+      scope: reminder.scope || "property",
+      scopeId: reminder.scopeId || "",
+      dueAt: reminder.dueAt ? new Date(reminder.dueAt) : new Date(),
+      leadDays: reminder.leadDays || 0,
+      channel: reminder.channel || "inapp",
+    } : {
       title: "",
       type: "custom",
       scope: "property",
@@ -265,11 +275,19 @@ export default function ReminderForm({ properties, onSubmit, isLoading }: Remind
         />
 
         <div className="flex justify-end space-x-2">
-          <Button type="button" variant="outline" data-testid="button-cancel-reminder">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel}
+            data-testid="button-cancel-reminder"
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} data-testid="button-submit-reminder">
-            {isLoading ? "Creating..." : "Create Reminder"}
+            {isLoading 
+              ? (reminder ? "Updating..." : "Creating...") 
+              : (reminder ? "Update Reminder" : "Create Reminder")
+            }
           </Button>
         </div>
       </form>

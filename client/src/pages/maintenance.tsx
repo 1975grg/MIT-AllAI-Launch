@@ -33,6 +33,7 @@ export default function Maintenance() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showCaseForm, setShowCaseForm] = useState(false);
+  const [editingCase, setEditingCase] = useState<SmartCase | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
@@ -69,7 +70,14 @@ export default function Maintenance() {
 
   const form = useForm<z.infer<typeof createCaseSchema>>({
     resolver: zodResolver(createCaseSchema),
-    defaultValues: {
+    defaultValues: editingCase ? {
+      title: editingCase.title || "",
+      description: editingCase.description || "",
+      propertyId: editingCase.propertyId || "",
+      unitId: editingCase.unitId || "",
+      priority: editingCase.priority || "Medium",
+      category: editingCase.category || "",
+    } : {
       title: "",
       description: "",
       priority: "Medium",
@@ -84,6 +92,7 @@ export default function Maintenance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       setShowCaseForm(false);
+      setEditingCase(null);
       form.reset();
       toast({
         title: "Success",
@@ -105,6 +114,41 @@ export default function Maintenance() {
       toast({
         title: "Error",
         description: "Failed to create maintenance case",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCaseMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: z.infer<typeof createCaseSchema> }) => {
+      const response = await apiRequest("PATCH", `/api/cases/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      setShowCaseForm(false);
+      setEditingCase(null);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Maintenance case updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update maintenance case",
         variant: "destructive",
       });
     },
@@ -196,7 +240,30 @@ export default function Maintenance() {
   const categories = Array.from(new Set(smartCases?.map(c => c.category).filter(Boolean))) || [];
 
   const onSubmit = (data: z.infer<typeof createCaseSchema>) => {
-    createCaseMutation.mutate(data);
+    if (editingCase) {
+      updateCaseMutation.mutate({ id: editingCase.id, data });
+    } else {
+      createCaseMutation.mutate(data);
+    }
+  };
+
+  const handleEditCase = (smartCase: SmartCase) => {
+    setEditingCase(smartCase);
+    form.reset({
+      title: smartCase.title || "",
+      description: smartCase.description || "",
+      propertyId: smartCase.propertyId || "",
+      unitId: smartCase.unitId || "",
+      priority: smartCase.priority || "Medium",
+      category: smartCase.category || "",
+    });
+    setShowCaseForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowCaseForm(false);
+    setEditingCase(null);
+    form.reset();
   };
 
   return (
@@ -277,7 +344,7 @@ export default function Maintenance() {
                 </SelectContent>
               </Select>
 
-              <Dialog open={showCaseForm} onOpenChange={setShowCaseForm}>
+              <Dialog open={showCaseForm} onOpenChange={handleCloseForm}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-case">
                     <Plus className="h-4 w-4 mr-2" />
@@ -286,7 +353,7 @@ export default function Maintenance() {
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Create Maintenance Case</DialogTitle>
+                    <DialogTitle>{editingCase ? "Edit Maintenance Case" : "Create Maintenance Case"}</DialogTitle>
                   </DialogHeader>
                   
                   <Form {...form}>
@@ -404,11 +471,14 @@ export default function Maintenance() {
                       />
 
                       <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={() => setShowCaseForm(false)} data-testid="button-cancel-case">
+                        <Button type="button" variant="outline" onClick={handleCloseForm} data-testid="button-cancel-case">
                           Cancel
                         </Button>
-                        <Button type="submit" disabled={createCaseMutation.isPending} data-testid="button-submit-case">
-                          {createCaseMutation.isPending ? "Creating..." : "Create Case"}
+                        <Button type="submit" disabled={createCaseMutation.isPending || updateCaseMutation.isPending} data-testid="button-submit-case">
+                          {(createCaseMutation.isPending || updateCaseMutation.isPending) 
+                            ? (editingCase ? "Updating..." : "Creating...") 
+                            : (editingCase ? "Update Case" : "Create Case")
+                          }
                         </Button>
                       </div>
                     </form>
@@ -524,6 +594,14 @@ export default function Maintenance() {
                           )}
                         </>
                       )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditCase(smartCase)}
+                        data-testid={`button-edit-case-${index}`}
+                      >
+                        Edit
+                      </Button>
                       <Button variant="outline" size="sm" data-testid={`button-view-case-${index}`}>
                         View Details
                       </Button>

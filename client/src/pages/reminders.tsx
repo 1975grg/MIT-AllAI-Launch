@@ -307,6 +307,7 @@ export default function Reminders() {
                   <ReminderForm 
                     properties={properties || []}
                     onSubmit={(data) => createReminderMutation.mutate(data)}
+                    onCancel={() => setShowReminderForm(false)}
                     isLoading={createReminderMutation.isPending}
                   />
                 </DialogContent>
