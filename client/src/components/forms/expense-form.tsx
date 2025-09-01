@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Property, Unit } from "@shared/schema";
 
 const lineItemSchema = z.object({
@@ -33,6 +33,7 @@ const expenseSchema = z.object({
   isDateRange: z.boolean().default(false),
   endDate: z.date().optional(),
   propertyId: z.string().optional(),
+  unitId: z.string().optional(),
   vendorId: z.string().optional(),
   receiptUrl: z.string().optional(),
   notes: z.string().optional(),
@@ -108,6 +109,20 @@ interface ExpenseFormProps {
 
 export default function ExpenseForm({ properties, units, entities, expense, onSubmit, onClose, isLoading }: ExpenseFormProps) {
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
+  
+  const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+  const selectedPropertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
+  const isMultiUnit = selectedPropertyUnits.length > 1;
+  
+  // Update selectedPropertyId when editing an expense
+  useEffect(() => {
+    if (expense?.propertyId) {
+      setSelectedPropertyId(expense.propertyId);
+    } else {
+      setSelectedPropertyId("");
+    }
+  }, [expense]);
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
     defaultValues: expense ? {
@@ -538,43 +553,131 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                 )}
               />
             ) : (
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="propertyId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Property (Optional)</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setSelectedPropertyId(value);
+                          // Clear unit selection when property changes
+                          form.setValue("unitId", "");
+                        }} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-expense-property">
+                            <SelectValue placeholder="Select property" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No specific property</SelectItem>
+                          {properties.map((property) => (
+                            <SelectItem key={property.id} value={property.id}>
+                              {property.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Unit Selection - only show if property is selected and has units */}
+                {selectedPropertyId && selectedPropertyId !== "none" && selectedPropertyUnits.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="unitId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isMultiUnit ? "Area/Unit" : "Apply to"}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-expense-unit">
+                              <SelectValue placeholder={`Select ${isMultiUnit ? "area or unit" : "application"}`} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="common">Common Areas/Building</SelectItem>
+                            {selectedPropertyUnits.map((unit) => (
+                              <SelectItem key={unit.id} value={unit.id}>
+                                {unit.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Property Selection (when in date range mode) */}
+        {isDateRange && (
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="propertyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Property (Optional)</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedPropertyId(value);
+                      form.setValue("unitId", "");
+                    }} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-expense-property">
+                        <SelectValue placeholder="Select property" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">No specific property</SelectItem>
+                      {properties.map((property) => (
+                        <SelectItem key={property.id} value={property.id}>
+                          {property.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Unit Selection for date range mode */}
+            {selectedPropertyId && selectedPropertyId !== "none" && selectedPropertyUnits.length > 0 && (
               <FormField
                 control={form.control}
-                name="propertyId"
+                name="unitId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Property (Optional)</FormLabel>
+                    <FormLabel>{isMultiUnit ? "Area/Unit" : "Apply to"}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-expense-property">
-                          <SelectValue placeholder="Select property" />
+                        <SelectTrigger data-testid="select-expense-unit">
+                          <SelectValue placeholder={`Select ${isMultiUnit ? "area or unit" : "application"}`} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">No specific property</SelectItem>
-                        {properties.map((property) => {
-                          const propertyUnits = units.filter(unit => unit.propertyId === property.id);
-                          const isMultiUnit = propertyUnits.length > 1;
-                          
-                          if (isMultiUnit) {
-                            return [
-                              <SelectItem key={`${property.id}-building`} value={property.id}>
-                                {property.name} (Common Areas)
-                              </SelectItem>,
-                              ...propertyUnits.map((unit) => (
-                                <SelectItem key={`${property.id}-${unit.id}`} value={unit.id}>
-                                  {property.name} - {unit.label}
-                                </SelectItem>
-                              ))
-                            ];
-                          } else {
-                            return (
-                              <SelectItem key={property.id} value={property.id}>
-                                {property.name}
-                              </SelectItem>
-                            );
-                          }
-                        }).flat()}
+                        <SelectItem value="common">Common Areas/Building</SelectItem>
+                        {selectedPropertyUnits.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -583,53 +686,6 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
               />
             )}
           </div>
-        </div>
-
-        {/* Property Selection (when in date range mode) */}
-        {isDateRange && (
-          <FormField
-            control={form.control}
-            name="propertyId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Property (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-expense-property">
-                      <SelectValue placeholder="Select property" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="none">No specific property</SelectItem>
-                    {properties.map((property) => {
-                      const propertyUnits = units.filter(unit => unit.propertyId === property.id);
-                      const isMultiUnit = propertyUnits.length > 1;
-                      
-                      if (isMultiUnit) {
-                        return [
-                          <SelectItem key={`${property.id}-building`} value={property.id}>
-                            {property.name} (Common Areas)
-                          </SelectItem>,
-                          ...propertyUnits.map((unit) => (
-                            <SelectItem key={`${property.id}-${unit.id}`} value={unit.id}>
-                              {property.name} - {unit.label}
-                            </SelectItem>
-                          ))
-                        ];
-                      } else {
-                        return (
-                          <SelectItem key={property.id} value={property.id}>
-                            {property.name}
-                          </SelectItem>
-                        );
-                      }
-                    }).flat()}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         )}
 
         {/* Expense Scope Selection */}

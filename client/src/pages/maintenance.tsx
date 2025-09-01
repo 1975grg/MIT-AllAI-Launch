@@ -38,6 +38,7 @@ export default function Maintenance() {
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -72,6 +73,19 @@ export default function Maintenance() {
     queryKey: ["/api/entities"],
     retry: false,
   });
+
+  const selectedProperty = properties?.find(p => p.id === selectedPropertyId);
+  const selectedPropertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
+  const isMultiUnit = selectedPropertyUnits.length > 1;
+  
+  // Update selectedPropertyId when editing a case
+  useEffect(() => {
+    if (editingCase?.propertyId) {
+      setSelectedPropertyId(editingCase.propertyId);
+    } else {
+      setSelectedPropertyId("");
+    }
+  }, [editingCase]);
 
   const form = useForm<z.infer<typeof createCaseSchema>>({
     resolver: zodResolver(createCaseSchema),
@@ -411,42 +425,60 @@ export default function Maintenance() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Property</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select 
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setSelectedPropertyId(value);
+                                form.setValue("unitId", "");
+                              }} 
+                              defaultValue={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger data-testid="select-case-property">
                                   <SelectValue placeholder="Select a property" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {properties?.map((property) => {
-                                  const propertyUnits = units.filter(unit => unit.propertyId === property.id);
-                                  const isMultiUnit = propertyUnits.length > 1;
-                                  
-                                  if (isMultiUnit) {
-                                    return [
-                                      <SelectItem key={`${property.id}-building`} value={property.id}>
-                                        {property.name} (Common Areas)
-                                      </SelectItem>,
-                                      ...propertyUnits.map((unit) => (
-                                        <SelectItem key={`${property.id}-${unit.id}`} value={unit.id}>
-                                          {property.name} - {unit.label}
-                                        </SelectItem>
-                                      ))
-                                    ];
-                                  } else {
-                                    return (
-                                      <SelectItem key={property.id} value={property.id}>
-                                        {property.name}
-                                      </SelectItem>
-                                    );
-                                  }
-                                }).flat()}
+                                {properties?.map((property) => (
+                                  <SelectItem key={property.id} value={property.id}>
+                                    {property.name}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
+                      {/* Unit Selection - only show if property is selected and has units */}
+                      {selectedPropertyId && selectedPropertyUnits.length > 0 && (
+                        <FormField
+                          control={form.control}
+                          name="unitId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{isMultiUnit ? "Area/Unit" : "Apply to"}</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-case-unit">
+                                    <SelectValue placeholder={`Select ${isMultiUnit ? "area or unit" : "application"}`} />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="common">Common Areas/Building</SelectItem>
+                                  {selectedPropertyUnits.map((unit) => (
+                                    <SelectItem key={unit.id} value={unit.id}>
+                                      {unit.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
 
                       <FormField
                         control={form.control}
