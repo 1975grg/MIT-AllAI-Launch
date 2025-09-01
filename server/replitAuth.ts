@@ -57,6 +57,12 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  console.log("👤 Creating/updating user with claims:", {
+    id: claims["sub"],
+    email: claims["email"], 
+    firstName: claims["first_name"],
+    lastName: claims["last_name"]
+  });
   const user = await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -64,6 +70,7 @@ async function upsertUser(
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
+  console.log("✅ User created/updated:", user.id);
 
   // Check if user has an organization, create one if they don't
   const existingOrg = await storage.getUserOrganization(user.id);
