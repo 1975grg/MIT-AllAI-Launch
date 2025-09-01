@@ -532,7 +532,10 @@ export const insertUnitSchema = createInsertSchema(units).omit({ id: true, creat
 });
 export const insertTenantGroupSchema = createInsertSchema(tenantGroups).omit({ id: true, createdAt: true });
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true });
-export const insertLeaseSchema = createInsertSchema(leases).omit({ id: true, createdAt: true });
+export const insertLeaseSchema = createInsertSchema(leases).omit({ id: true, createdAt: true }).extend({
+  startDate: z.string().datetime("Start date must be a valid datetime"),
+  endDate: z.string().datetime("End date must be a valid datetime"),
+});
 export const insertAssetSchema = createInsertSchema(assets).omit({ id: true, createdAt: true });
 export const insertSmartCaseSchema = createInsertSchema(smartCases).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
