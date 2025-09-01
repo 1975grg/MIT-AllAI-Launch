@@ -728,12 +728,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const defaultLease = {
           unitId: unitId,
           tenantGroupId: group.id,
-          startDate: today,
-          endDate: oneYearFromToday,
+          startDate: today.toISOString(),
+          endDate: oneYearFromToday.toISOString(),
           rent: "0", // Default rent - user can update later
           deposit: "0", // Default deposit - user can update later
           dueDay: 1,
           status: "Active" as const,
+          // New renewal and reminder options with sensible defaults
+          autoRenewEnabled: false, // Default: no automatic renewal
+          expirationReminderMonths: 3, // Default: 3 months before expiration
+          renewalReminderEnabled: false, // Default: no renewal notifications
         };
         
         try {

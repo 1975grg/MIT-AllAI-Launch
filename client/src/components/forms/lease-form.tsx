@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CalendarIcon, DollarSign, Home, AlertTriangle } from "lucide-react";
+import { CalendarIcon, DollarSign, Home, AlertTriangle, Clock, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,6 +27,10 @@ const leaseFormSchema = z.object({
   dueDay: z.number().min(1).max(31).default(1),
   lateFeeRuleJson: z.any().optional(),
   status: z.enum(["Active", "Pending", "Expired", "Terminated"]).default("Active"),
+  // Renewal and reminder options
+  autoRenewEnabled: z.boolean().default(false),
+  expirationReminderMonths: z.number().min(1).max(12).default(3),
+  renewalReminderEnabled: z.boolean().default(false),
 }).refine((data) => {
   return data.endDate > data.startDate;
 }, {
@@ -70,6 +75,10 @@ export default function LeaseForm({
       deposit: existingLease?.deposit || "",
       dueDay: existingLease?.dueDay || 1,
       status: existingLease?.status || "Active",
+      // New renewal and reminder options
+      autoRenewEnabled: existingLease?.autoRenewEnabled || false,
+      expirationReminderMonths: existingLease?.expirationReminderMonths || 3,
+      renewalReminderEnabled: existingLease?.renewalReminderEnabled || false,
     },
   });
 
@@ -334,6 +343,111 @@ export default function LeaseForm({
                     </SelectContent>
                   </Select>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Renewal & Reminder Options */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <RefreshCw className="h-5 w-5" />
+              <span>Renewal & Reminder Options</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Configure automatic renewal settings and lease expiration reminders.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Auto-Renewal Option */}
+            <FormField
+              control={form.control}
+              name="autoRenewEnabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-auto-renew"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Enable automatic lease renewals (Optional)
+                    </FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      When enabled, system will automatically create renewal leases when current lease expires. 
+                      Useful for month-to-month or automatic renewals with rent increases.
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Lease Expiration Reminder */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Lease Expiration Reminder</span>
+              </div>
+              <FormField
+                control={form.control}
+                name="expirationReminderMonths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Remind me this many months before lease expires</FormLabel>
+                    <FormControl>
+                      <Select 
+                        onValueChange={(value) => field.onChange(parseInt(value))} 
+                        value={field.value?.toString()}
+                      >
+                        <SelectTrigger data-testid="select-expiration-reminder">
+                          <SelectValue placeholder="Select reminder timing" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 month before</SelectItem>
+                          <SelectItem value="2">2 months before</SelectItem>
+                          <SelectItem value="3">3 months before</SelectItem>
+                          <SelectItem value="4">4 months before</SelectItem>
+                          <SelectItem value="6">6 months before</SelectItem>
+                          <SelectItem value="12">12 months before</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-sm text-muted-foreground">
+                      You'll get a reminder notification when the lease is approaching expiration.
+                    </p>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Renewal Reminder */}
+            <FormField
+              control={form.control}
+              name="renewalReminderEnabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-renewal-reminder"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Send renewal notification to tenant
+                    </FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      When lease renewal terms change (like rent increases), notify the tenant 1 month before.
+                      Helps ensure transparent communication about lease changes.
+                    </p>
+                  </div>
                 </FormItem>
               )}
             />

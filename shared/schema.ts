@@ -194,6 +194,10 @@ export const leases = pgTable("leases", {
   dueDay: integer("due_day").default(1),
   lateFeeRuleJson: jsonb("late_fee_rule_json"),
   status: leaseStatusEnum("status").default("Active"),
+  // Renewal and reminder options
+  autoRenewEnabled: boolean("auto_renew_enabled").default(false),
+  expirationReminderMonths: integer("expiration_reminder_months").default(3), // Months before lease expires
+  renewalReminderEnabled: boolean("renewal_reminder_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
