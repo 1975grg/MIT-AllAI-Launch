@@ -728,8 +728,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const defaultLease = {
           unitId: unitId,
           tenantGroupId: group.id,
-          startDate: today.toISOString(),
-          endDate: oneYearFromToday.toISOString(),
+          startDate: today, // Use Date object directly
+          endDate: oneYearFromToday, // Use Date object directly
           rent: "0", // Default rent - user can update later
           deposit: "0", // Default deposit - user can update later
           dueDay: 1,
@@ -775,6 +775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/leases', isAuthenticated, async (req: any, res) => {
     try {
+      console.log("🔍 Raw request body:", JSON.stringify(req.body, null, 2));
+      
       // Convert date strings to Date objects before validation
       const requestData = {
         ...req.body,
@@ -782,7 +784,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate: new Date(req.body.endDate),
       };
       
+      console.log("🔍 Processed request data:", JSON.stringify(requestData, null, 2));
+      console.log("🔍 startDate type:", typeof requestData.startDate, requestData.startDate);
+      console.log("🔍 endDate type:", typeof requestData.endDate, requestData.endDate);
+      
       const validatedData = insertLeaseSchema.parse(requestData);
+      console.log("🔍 Validated data before storage:", JSON.stringify(validatedData, null, 2));
+      
       const lease = await storage.createLease(validatedData);
       res.json(lease);
     } catch (error) {
