@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign, Settings, Bell } from "lucide-react";
+import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign, Settings, Bell, Archive } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Property, OwnershipEntity, Unit } from "@shared/schema";
 
@@ -729,6 +729,15 @@ export default function Properties() {
                         data-testid={`button-edit-property-${index}`}
                       >
                         Edit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="px-3" 
+                        onClick={() => console.log('Archive property:', property.id)}
+                        data-testid={`button-archive-property-${index}`}
+                      >
+                        <Archive className="h-3 w-3" />
                       </Button>
                     </div>
                   </CardContent>

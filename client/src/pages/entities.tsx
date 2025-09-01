@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Plus, Calendar, FileText, Globe, Bell } from "lucide-react";
+import { Building2, Plus, Calendar, FileText, Globe, Bell, Archive } from "lucide-react";
 import { useLocation } from "wouter";
 import type { OwnershipEntity } from "@shared/schema";
 import EntityForm from "@/components/forms/entity-form";
@@ -327,6 +327,15 @@ export default function Entities() {
                         data-testid={`button-edit-entity-${index}`}
                       >
                         Edit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="px-3" 
+                        onClick={() => console.log('Archive entity:', entity.id)}
+                        data-testid={`button-archive-entity-${index}`}
+                      >
+                        <Archive className="h-3 w-3" />
                       </Button>
                     </div>
                   </CardContent>
