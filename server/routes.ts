@@ -776,7 +776,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/leases', isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertLeaseSchema.parse(req.body);
-      const lease = await storage.createLease(validatedData);
+      
+      // Convert date strings back to Date objects for Drizzle ORM
+      const leaseData = {
+        ...validatedData,
+        startDate: new Date(validatedData.startDate),
+        endDate: new Date(validatedData.endDate),
+      };
+      
+      const lease = await storage.createLease(leaseData);
       res.json(lease);
     } catch (error) {
       console.error("Error creating lease:", error);
