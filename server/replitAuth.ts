@@ -57,12 +57,6 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  console.log("👤 Creating/updating user with claims:", {
-    id: claims["sub"],
-    email: claims["email"], 
-    firstName: claims["first_name"],
-    lastName: claims["last_name"]
-  });
   const user = await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -70,7 +64,6 @@ async function upsertUser(
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
-  console.log("✅ User created/updated:", user.id);
 
   // Check if user has an organization, create one if they don't
   const existingOrg = await storage.getUserOrganization(user.id);
@@ -100,9 +93,12 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
+    console.log("🔑 OAuth verify callback called");
+    console.log("🔑 Token claims:", tokens.claims());
     const user = {};
     updateUserSession(user, tokens);
     await upsertUser(tokens.claims());
+    console.log("🔑 User session after update:", user);
     verified(null, user);
   };
 
@@ -131,6 +127,7 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log("🔄 OAuth callback called");
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
@@ -190,14 +187,9 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  console.log("🔐 isAuthenticated middleware called");
-  console.log("🔐 req.isAuthenticated():", req.isAuthenticated());
   const user = req.user as any;
-  console.log("🔐 req.user exists:", !!user);
-  console.log("🔐 user.expires_at:", user?.expires_at);
 
   if (!req.isAuthenticated() || !user?.expires_at) {
-    console.log("❌ Authentication failed - returning 401");
     return res.status(401).json({ message: "Unauthorized" });
   }
 
