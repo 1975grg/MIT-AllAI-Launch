@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle } from "lucide-react";
-import type { Transaction, Property } from "@shared/schema";
+import type { Transaction, Property, Unit } from "@shared/schema";
 
 export default function Expenses() {
   const { toast } = useToast();
@@ -45,6 +45,11 @@ export default function Expenses() {
 
   const { data: properties = [] } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const { data: units = [] } = useQuery<Unit[]>({
+    queryKey: ["/api/units"],
     retry: false,
   });
 
@@ -215,6 +220,7 @@ export default function Expenses() {
                   </DialogHeader>
                   <ExpenseForm 
                     properties={properties}
+                    units={units}
                     entities={entities}
                     expense={editingExpense}
                     onSubmit={(data) => createExpenseMutation.mutate(data)}

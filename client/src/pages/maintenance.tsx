@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
-import type { SmartCase, Property, OwnershipEntity } from "@shared/schema";
+import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 
 const createCaseSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -60,6 +60,11 @@ export default function Maintenance() {
 
   const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const { data: units = [] } = useQuery<Unit[]>({
+    queryKey: ["/api/units"],
     retry: false,
   });
 
@@ -413,11 +418,29 @@ export default function Maintenance() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {properties?.map((property) => (
-                                  <SelectItem key={property.id} value={property.id}>
-                                    {property.name}
-                                  </SelectItem>
-                                ))}
+                                {properties?.map((property) => {
+                                  const propertyUnits = units.filter(unit => unit.propertyId === property.id);
+                                  const isMultiUnit = propertyUnits.length > 1;
+                                  
+                                  if (isMultiUnit) {
+                                    return [
+                                      <SelectItem key={`${property.id}-building`} value={property.id}>
+                                        {property.name} (Common Areas)
+                                      </SelectItem>,
+                                      ...propertyUnits.map((unit) => (
+                                        <SelectItem key={`${property.id}-${unit.id}`} value={unit.id}>
+                                          {property.name} - {unit.label}
+                                        </SelectItem>
+                                      ))
+                                    ];
+                                  } else {
+                                    return (
+                                      <SelectItem key={property.id} value={property.id}>
+                                        {property.name}
+                                      </SelectItem>
+                                    );
+                                  }
+                                }).flat()}
                               </SelectContent>
                             </Select>
                             <FormMessage />

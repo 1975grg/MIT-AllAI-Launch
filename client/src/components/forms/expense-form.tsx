@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Switch } from "@/components/ui/switch";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useState } from "react";
-import type { Property } from "@shared/schema";
+import type { Property, Unit } from "@shared/schema";
 
 const lineItemSchema = z.object({
   description: z.string().optional(),
@@ -98,6 +98,7 @@ const expenseSchema = z.object({
 
 interface ExpenseFormProps {
   properties: Property[];
+  units: Unit[];
   entities: Array<{ id: string; name: string; }>;
   expense?: any | null;
   onSubmit: (data: z.infer<typeof expenseSchema>) => void;
@@ -105,7 +106,7 @@ interface ExpenseFormProps {
   isLoading: boolean;
 }
 
-export default function ExpenseForm({ properties, entities, expense, onSubmit, onClose, isLoading }: ExpenseFormProps) {
+export default function ExpenseForm({ properties, units, entities, expense, onSubmit, onClose, isLoading }: ExpenseFormProps) {
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
@@ -551,11 +552,29 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">No specific property</SelectItem>
-                        {properties.map((property) => (
-                          <SelectItem key={property.id} value={property.id}>
-                            {property.name}
-                          </SelectItem>
-                        ))}
+                        {properties.map((property) => {
+                          const propertyUnits = units.filter(unit => unit.propertyId === property.id);
+                          const isMultiUnit = propertyUnits.length > 1;
+                          
+                          if (isMultiUnit) {
+                            return [
+                              <SelectItem key={`${property.id}-building`} value={property.id}>
+                                {property.name} (Common Areas)
+                              </SelectItem>,
+                              ...propertyUnits.map((unit) => (
+                                <SelectItem key={`${property.id}-${unit.id}`} value={unit.id}>
+                                  {property.name} - {unit.label}
+                                </SelectItem>
+                              ))
+                            ];
+                          } else {
+                            return (
+                              <SelectItem key={property.id} value={property.id}>
+                                {property.name}
+                              </SelectItem>
+                            );
+                          }
+                        }).flat()}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -582,11 +601,29 @@ export default function ExpenseForm({ properties, entities, expense, onSubmit, o
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="none">No specific property</SelectItem>
-                    {properties.map((property) => (
-                      <SelectItem key={property.id} value={property.id}>
-                        {property.name}
-                      </SelectItem>
-                    ))}
+                    {properties.map((property) => {
+                      const propertyUnits = units.filter(unit => unit.propertyId === property.id);
+                      const isMultiUnit = propertyUnits.length > 1;
+                      
+                      if (isMultiUnit) {
+                        return [
+                          <SelectItem key={`${property.id}-building`} value={property.id}>
+                            {property.name} (Common Areas)
+                          </SelectItem>,
+                          ...propertyUnits.map((unit) => (
+                            <SelectItem key={`${property.id}-${unit.id}`} value={unit.id}>
+                              {property.name} - {unit.label}
+                            </SelectItem>
+                          ))
+                        ];
+                      } else {
+                        return (
+                          <SelectItem key={property.id} value={property.id}>
+                            {property.name}
+                          </SelectItem>
+                        );
+                      }
+                    }).flat()}
                   </SelectContent>
                 </Select>
                 <FormMessage />
