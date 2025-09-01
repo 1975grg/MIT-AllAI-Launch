@@ -20,6 +20,7 @@ export default function Entities() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showEntityForm, setShowEntityForm] = useState(false);
   const [editingEntity, setEditingEntity] = useState<OwnershipEntity | null>(null);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState<string | null>(null);
   const [, setLocation] = useLocation();
 
   // Redirect to login if not authenticated
@@ -104,6 +105,39 @@ export default function Entities() {
       toast({
         title: "Error",
         description: "Failed to update entity",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const archiveEntityMutation = useMutation({
+    mutationFn: async (entityId: string) => {
+      const response = await apiRequest("PATCH", `/api/entities/${entityId}`, { status: "Archived" });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/entities"] });
+      setShowArchiveConfirm(null);
+      toast({
+        title: "Success",
+        description: "Entity archived successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to archive entity",
         variant: "destructive",
       });
     },
@@ -236,6 +270,51 @@ export default function Entities() {
                 />
               </DialogContent>
             </Dialog>
+
+            {/* Archive Confirmation Dialog */}
+            <Dialog open={!!showArchiveConfirm} onOpenChange={() => setShowArchiveConfirm(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Archive Entity</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Archive this ownership entity? This will:
+                  </p>
+                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                    <li>Mark entity as "Archived" - it won't show in active lists</li>
+                    <li>Preserve all historical data and ownership records</li>
+                    <li>Allow you to view it in archived entity reports</li>
+                  </ul>
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      💡 <strong>Tip:</strong> Use this when you dissolve an entity or stop using it for property ownership while keeping compliance records.
+                    </p>
+                  </div>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowArchiveConfirm(null)}
+                      disabled={archiveEntityMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => {
+                        if (showArchiveConfirm) {
+                          archiveEntityMutation.mutate(showArchiveConfirm);
+                        }
+                      }}
+                      disabled={archiveEntityMutation.isPending}
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      {archiveEntityMutation.isPending ? "Archiving..." : "Archive Entity"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             </div>
           </div>
 
@@ -332,7 +411,7 @@ export default function Entities() {
                         variant="outline" 
                         size="sm" 
                         className="px-3" 
-                        onClick={() => console.log('Archive entity:', entity.id)}
+                        onClick={() => setShowArchiveConfirm(entity.id)}
                         data-testid={`button-archive-entity-${index}`}
                       >
                         <Archive className="h-3 w-3" />

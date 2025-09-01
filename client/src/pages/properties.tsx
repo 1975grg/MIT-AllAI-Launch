@@ -32,6 +32,7 @@ export default function Properties() {
   const [selectedEntity, setSelectedEntity] = useState<string>("all");
   const [editingProperty, setEditingProperty] = useState<PropertyWithOwnerships | null>(null);
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState<string | null>(null);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -134,6 +135,39 @@ export default function Properties() {
       toast({
         title: "Error",
         description: "Failed to update property",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const archivePropertyMutation = useMutation({
+    mutationFn: async (propertyId: string) => {
+      const response = await apiRequest("PATCH", `/api/properties/${propertyId}`, { status: "Archived" });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      setShowArchiveConfirm(null);
+      toast({
+        title: "Success",
+        description: "Property archived successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to archive property",
         variant: "destructive",
       });
     },
@@ -327,6 +361,51 @@ export default function Properties() {
                     }
                   } : undefined}
                 />
+              </DialogContent>
+            </Dialog>
+
+            {/* Archive Confirmation Dialog */}
+            <Dialog open={!!showArchiveConfirm} onOpenChange={() => setShowArchiveConfirm(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Archive Property</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Archive this property? This will:
+                  </p>
+                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                    <li>Mark property as "Archived" - it won't show in active lists</li>
+                    <li>Preserve all historical data, units, and lease information</li>
+                    <li>Allow you to view it in archived property reports</li>
+                  </ul>
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      💡 <strong>Tip:</strong> Use this when you sell a property or want to remove it from active management while keeping records.
+                    </p>
+                  </div>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowArchiveConfirm(null)}
+                      disabled={archivePropertyMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => {
+                        if (showArchiveConfirm) {
+                          archivePropertyMutation.mutate(showArchiveConfirm);
+                        }
+                      }}
+                      disabled={archivePropertyMutation.isPending}
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      {archivePropertyMutation.isPending ? "Archiving..." : "Archive Property"}
+                    </Button>
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
             </div>
@@ -734,7 +813,7 @@ export default function Properties() {
                         variant="outline" 
                         size="sm" 
                         className="px-3" 
-                        onClick={() => console.log('Archive property:', property.id)}
+                        onClick={() => setShowArchiveConfirm(property.id)}
                         data-testid={`button-archive-property-${index}`}
                       >
                         <Archive className="h-3 w-3" />
