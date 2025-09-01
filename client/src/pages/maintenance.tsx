@@ -76,6 +76,7 @@ export default function Maintenance() {
 
   const selectedProperty = properties?.find(p => p.id === selectedPropertyId);
   const selectedPropertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
+  const isBuilding = selectedProperty?.type === "Commercial Building" || selectedProperty?.type === "Residential Building";
   const isMultiUnit = selectedPropertyUnits.length > 1;
   
   // Update selectedPropertyId when editing a case
@@ -451,8 +452,8 @@ export default function Maintenance() {
                         )}
                       />
 
-                      {/* Unit Selection - only show if property is selected and has units */}
-                      {selectedPropertyId && selectedPropertyUnits.length > 0 && (
+                      {/* Unit Selection - only show if property is selected, is a building type, and has units */}
+                      {selectedPropertyId && isBuilding && selectedPropertyUnits.length > 0 && (
                         <FormField
                           control={form.control}
                           name="unitId"

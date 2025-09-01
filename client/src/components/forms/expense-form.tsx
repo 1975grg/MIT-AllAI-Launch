@@ -113,6 +113,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
   
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
   const selectedPropertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
+  const isBuilding = selectedProperty?.type === "Commercial Building" || selectedProperty?.type === "Residential Building";
   const isMultiUnit = selectedPropertyUnits.length > 1;
   
   // Update selectedPropertyId when editing an expense
@@ -588,8 +589,8 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                   )}
                 />
                 
-                {/* Unit Selection - only show if property is selected and has units */}
-                {selectedPropertyId && selectedPropertyId !== "none" && selectedPropertyUnits.length > 0 && (
+                {/* Unit Selection - only show if property is selected, is a building type, and has units */}
+                {selectedPropertyId && selectedPropertyId !== "none" && isBuilding && selectedPropertyUnits.length > 0 && (
                   <FormField
                     control={form.control}
                     name="unitId"
@@ -658,7 +659,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
             />
             
             {/* Unit Selection for date range mode */}
-            {selectedPropertyId && selectedPropertyId !== "none" && selectedPropertyUnits.length > 0 && (
+            {selectedPropertyId && selectedPropertyId !== "none" && isBuilding && selectedPropertyUnits.length > 0 && (
               <FormField
                 control={form.control}
                 name="unitId"
