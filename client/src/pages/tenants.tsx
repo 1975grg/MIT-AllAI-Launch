@@ -533,13 +533,13 @@ export default function Tenants() {
                       </p>
                     </div>
                     
-                    <div className="flex space-x-2 mt-4">
+                    <div className="flex flex-wrap gap-2 mt-4">
                       {group.status === "Archived" ? (
                         // For archived tenants, only show edit option
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="flex-1" 
+                          className="flex-1 min-w-0" 
                           onClick={() => {
                             setEditingTenant(group);
                             setShowTenantForm(true);
@@ -555,7 +555,7 @@ export default function Tenants() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1" 
+                            className="flex-1 min-w-[110px]" 
                             onClick={() => {
                               setSelectedTenantGroup(group);
                               setShowLeaseForm(true);
@@ -568,7 +568,7 @@ export default function Tenants() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1" 
+                            className="flex-1 min-w-[80px]" 
                             onClick={() => {
                               setSelectedTenantGroup(group);
                               setSelectedLease(activeLease);
@@ -583,7 +583,7 @@ export default function Tenants() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1" 
+                            className="flex-1 min-w-[70px]" 
                             onClick={async () => {
                               try {
                                 // Fetch the tenants for this group
@@ -628,7 +628,7 @@ export default function Tenants() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1" 
+                            className="flex-1 min-w-[80px]" 
                             onClick={() => setShowDeleteConfirm(group.id)}
                             data-testid={`button-archive-tenant-${index}`}
                           >
@@ -642,7 +642,7 @@ export default function Tenants() {
                           <Button 
                             variant="default" 
                             size="sm" 
-                            className="flex-1" 
+                            className="flex-1 min-w-[100px]" 
                             onClick={() => {
                               setSelectedTenantGroup(group);
                               setShowLeaseForm(true);
@@ -655,7 +655,7 @@ export default function Tenants() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1" 
+                            className="flex-1 min-w-[70px]" 
                             onClick={async () => {
                               try {
                                 // Fetch the tenants for this group
@@ -700,7 +700,7 @@ export default function Tenants() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1" 
+                            className="flex-1 min-w-[80px]" 
                             onClick={() => setShowDeleteConfirm(group.id)}
                             data-testid={`button-archive-tenant-${index}`}
                           >
