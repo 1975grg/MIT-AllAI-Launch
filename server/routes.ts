@@ -805,6 +805,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper function to create lease reminders
   async function createLeaseReminders(orgId: string, lease: any) {
+    console.log("📝 Creating lease reminders for lease:", lease.id);
+    console.log("📝 Reminder settings:", {
+      expirationReminderMonths: lease.expirationReminderMonths,
+      renewalReminderEnabled: lease.renewalReminderEnabled
+    });
+    
     const reminders = [];
     
     // Create expiration reminder if configured
@@ -812,7 +818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reminderDate = new Date(lease.endDate);
       reminderDate.setMonth(reminderDate.getMonth() - lease.expirationReminderMonths);
       
-      reminders.push({
+      const expirationReminder = {
         orgId,
         scope: "lease" as const,
         scopeId: lease.id,
@@ -829,7 +835,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reminderType: "expiration",
           monthsBeforeExpiry: lease.expirationReminderMonths
         }
-      });
+      };
+      reminders.push(expirationReminder);
+      console.log("📝 Added expiration reminder:", expirationReminder.title);
     }
     
     // Create renewal reminder if enabled
@@ -837,7 +845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const renewalReminderDate = new Date(lease.endDate);
       renewalReminderDate.setMonth(renewalReminderDate.getMonth() - 1); // 1 month before
       
-      reminders.push({
+      const renewalReminder = {
         orgId,
         scope: "lease" as const,
         scopeId: lease.id,
@@ -854,15 +862,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reminderType: "renewal",
           action: "notify_tenant"
         }
-      });
+      };
+      reminders.push(renewalReminder);
+      console.log("📝 Added renewal reminder:", renewalReminder.title);
     }
+    
+    console.log(`📝 Total reminders to create: ${reminders.length}`);
     
     // Create all reminders
     for (const reminder of reminders) {
       try {
-        await storage.createReminder(reminder);
+        console.log("📝 Creating reminder:", reminder.title);
+        const createdReminder = await storage.createReminder(reminder);
+        console.log("✅ Successfully created reminder:", createdReminder.id);
       } catch (error) {
-        console.error("Error creating lease reminder:", error);
+        console.error("❌ Error creating lease reminder:", error);
         // Don't fail the entire lease creation if reminder creation fails
       }
     }
