@@ -689,6 +689,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get tenants for a specific group
+  app.get('/api/tenants/:groupId/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { groupId } = req.params;
+      const tenants = await storage.getTenantsInGroup(groupId);
+      res.json(tenants);
+    } catch (error) {
+      console.error("Error fetching tenants for group:", error);
+      res.status(500).json({ message: "Failed to fetch tenants for group" });
+    }
+  });
+
   app.post('/api/tenants', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

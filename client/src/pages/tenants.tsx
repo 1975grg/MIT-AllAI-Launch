@@ -25,6 +25,7 @@ export default function Tenants() {
   const [selectedLease, setSelectedLease] = useState<Lease | null>(null);
   const [isRenewalMode, setIsRenewalMode] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantGroup | null>(null);
+  const [editingTenantData, setEditingTenantData] = useState<any>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
@@ -127,6 +128,7 @@ export default function Tenants() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
       setEditingTenant(null);
+      setEditingTenantData(null);
       setShowTenantForm(false);
       toast({
         title: "Success",
@@ -298,6 +300,7 @@ export default function Tenants() {
                 setShowTenantForm(open);
                 if (!open) {
                   setEditingTenant(null);
+                  setEditingTenantData(null);
                 }
               }}>
                 <DialogTrigger asChild>
@@ -311,7 +314,7 @@ export default function Tenants() {
                     <DialogTitle>{editingTenant ? "Edit Tenant" : "Add New Tenant"}</DialogTitle>
                   </DialogHeader>
                   <TenantForm 
-                    initialData={editingTenant || undefined}
+                    initialData={editingTenantData || undefined}
                     onSubmit={(data) => {
                       if (editingTenant) {
                         updateTenantMutation.mutate({ groupId: editingTenant.id, data });
@@ -322,6 +325,7 @@ export default function Tenants() {
                     onCancel={() => {
                       setShowTenantForm(false);
                       setEditingTenant(null);
+                      setEditingTenantData(null);
                     }}
                     isLoading={createTenantMutation.isPending || updateTenantMutation.isPending}
                   />
@@ -580,9 +584,41 @@ export default function Tenants() {
                             variant="outline" 
                             size="sm" 
                             className="flex-1" 
-                            onClick={() => {
-                              setEditingTenant(group);
-                              setShowTenantForm(true);
+                            onClick={async () => {
+                              try {
+                                // Fetch the tenants for this group
+                                const response = await apiRequest("GET", `/api/tenants/${group.id}/members`);
+                                const groupTenants = await response.json();
+                                
+                                // Structure the data for the form
+                                const formData = {
+                                  tenantGroup: {
+                                    name: group.name,
+                                    propertyId: group.propertyId || "",
+                                    unitId: ""
+                                  },
+                                  tenants: groupTenants.length > 0 ? groupTenants : [{
+                                    firstName: "",
+                                    lastName: "",
+                                    email: "",
+                                    phone: "",
+                                    emergencyContact: "",
+                                    emergencyPhone: "",
+                                    notes: ""
+                                  }]
+                                };
+                                
+                                setEditingTenant(group);
+                                setEditingTenantData(formData);
+                                setShowTenantForm(true);
+                              } catch (error) {
+                                console.error("Error fetching tenant data:", error);
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to load tenant data",
+                                  variant: "destructive",
+                                });
+                              }
                             }}
                             data-testid={`button-edit-tenant-${index}`}
                           >
@@ -590,7 +626,7 @@ export default function Tenants() {
                             Edit
                           </Button>
                           <Button 
-                            variant="secondary" 
+                            variant="outline" 
                             size="sm" 
                             className="flex-1" 
                             onClick={() => setShowDeleteConfirm(group.id)}
@@ -620,9 +656,41 @@ export default function Tenants() {
                             variant="outline" 
                             size="sm" 
                             className="flex-1" 
-                            onClick={() => {
-                              setEditingTenant(group);
-                              setShowTenantForm(true);
+                            onClick={async () => {
+                              try {
+                                // Fetch the tenants for this group
+                                const response = await apiRequest("GET", `/api/tenants/${group.id}/members`);
+                                const groupTenants = await response.json();
+                                
+                                // Structure the data for the form
+                                const formData = {
+                                  tenantGroup: {
+                                    name: group.name,
+                                    propertyId: group.propertyId || "",
+                                    unitId: ""
+                                  },
+                                  tenants: groupTenants.length > 0 ? groupTenants : [{
+                                    firstName: "",
+                                    lastName: "",
+                                    email: "",
+                                    phone: "",
+                                    emergencyContact: "",
+                                    emergencyPhone: "",
+                                    notes: ""
+                                  }]
+                                };
+                                
+                                setEditingTenant(group);
+                                setEditingTenantData(formData);
+                                setShowTenantForm(true);
+                              } catch (error) {
+                                console.error("Error fetching tenant data:", error);
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to load tenant data",
+                                  variant: "destructive",
+                                });
+                              }
                             }}
                             data-testid={`button-edit-tenant-${index}`}
                           >
@@ -630,7 +698,7 @@ export default function Tenants() {
                             Edit
                           </Button>
                           <Button 
-                            variant="secondary" 
+                            variant="outline" 
                             size="sm" 
                             className="flex-1" 
                             onClick={() => setShowDeleteConfirm(group.id)}
