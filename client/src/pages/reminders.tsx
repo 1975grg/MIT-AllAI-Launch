@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Plus, Clock, CheckCircle, Calendar, AlertTriangle, DollarSign, FileText, Wrench, Shield } from "lucide-react";
-import type { Reminder, Property, OwnershipEntity } from "@shared/schema";
+import type { Reminder, Property, OwnershipEntity, Lease, Unit, TenantGroup } from "@shared/schema";
 
 export default function Reminders() {
   const { toast } = useToast();
@@ -50,6 +50,21 @@ export default function Reminders() {
 
   const { data: entities = [] } = useQuery<OwnershipEntity[]>({
     queryKey: ["/api/entities"],
+    retry: false,
+  });
+
+  const { data: leases = [] } = useQuery<Lease[]>({
+    queryKey: ["/api/leases"],
+    retry: false,
+  });
+
+  const { data: units = [] } = useQuery<Unit[]>({
+    queryKey: ["/api/units"],
+    retry: false,
+  });
+
+  const { data: tenants = [] } = useQuery<TenantGroup[]>({
+    queryKey: ["/api/tenants"],
     retry: false,
   });
 
@@ -387,6 +402,30 @@ export default function Reminders() {
                                 <span className="text-purple-600 font-medium">Entity:</span>
                                 <span className="ml-1" data-testid={`text-reminder-entity-${index}`}>
                                   {entities?.find(e => e.id === reminder.scopeId)?.name || 'Entity'}
+                                </span>
+                              </div>
+                            )}
+                            {reminder.scope === 'lease' && reminder.scopeId && (
+                              <div>
+                                <span className="text-green-600 font-medium">Lease:</span>
+                                <span className="ml-1" data-testid={`text-reminder-lease-${index}`}>
+                                  {(() => {
+                                    const lease = leases?.find(l => l.id === reminder.scopeId);
+                                    if (!lease) return 'Lease';
+                                    
+                                    const unit = units?.find(u => u.id === lease.unitId);
+                                    const tenant = tenants?.find(t => t.id === lease.tenantGroupId);
+                                    const property = properties?.find(p => p.id === unit?.propertyId);
+                                    
+                                    if (unit && tenant && property) {
+                                      return `${property.street} Unit ${unit.label} - ${tenant.name}`;
+                                    } else if (unit && property) {
+                                      return `${property.street} Unit ${unit.label}`;
+                                    } else if (tenant) {
+                                      return `${tenant.name}`;
+                                    }
+                                    return 'Lease';
+                                  })()} 
                                 </span>
                               </div>
                             )}
