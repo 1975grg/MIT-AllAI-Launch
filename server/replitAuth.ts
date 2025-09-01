@@ -140,6 +140,61 @@ export async function setupAuth(app: Express) {
       );
     });
   });
+
+  // Get current user
+  app.get("/api/auth/user", isAuthenticated, async (req, res) => {
+    try {
+      const userClaims = req.user as any;
+      const user = await storage.getUser(userClaims.sub);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Update user profile
+  const updateProfileSchema = {
+    firstName: (val: any) => typeof val === "string" && val.length > 0 ? null : "First name is required",
+    lastName: (val: any) => typeof val === "string" && val.length > 0 ? null : "Last name is required", 
+    email: (val: any) => typeof val === "string" && val.includes("@") ? null : "Please enter a valid email address",
+    phone: (val: any) => val === undefined || typeof val === "string" ? null : "Phone must be a string",
+    bio: (val: any) => val === undefined || typeof val === "string" ? null : "Bio must be a string",
+  };
+
+  app.patch("/api/auth/user/profile", isAuthenticated, async (req, res) => {
+    try {
+      const { firstName, lastName, email, phone, bio } = req.body;
+      
+      // Simple validation
+      const errors: string[] = [];
+      if (!firstName || firstName.length === 0) errors.push("First name is required");
+      if (!lastName || lastName.length === 0) errors.push("Last name is required");  
+      if (!email || !email.includes("@")) errors.push("Please enter a valid email address");
+      
+      if (errors.length > 0) {
+        return res.status(400).json({ message: "Validation failed", errors });
+      }
+
+      const userClaims = req.user as any;
+      const updatedUser = await storage.upsertUser({
+        id: userClaims.sub,
+        firstName,
+        lastName,
+        email,
+        phone: phone || null,
+        bio: bio || null,
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

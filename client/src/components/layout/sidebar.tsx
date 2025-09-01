@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Building, Home, Users, Wrench, Receipt, Bell, Settings, Building2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import UserProfileForm from "@/components/forms/user-profile-form";
+import { Building, Home, Users, Wrench, Receipt, Bell, Settings, Building2, User, LogOut, ChevronDown } from "lucide-react";
 
 export default function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
@@ -27,12 +32,32 @@ export default function Sidebar() {
     <div className="w-64 bg-card border-r border-border flex flex-col" data-testid="sidebar">
       {/* Logo/Header */}
       <div className="p-6 border-b border-border">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Building className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold text-foreground">AllAI Property</span>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="w-full p-0 h-auto justify-start hover:bg-muted/50" data-testid="button-brand-menu">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <Building className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <span className="text-xl font-bold text-foreground">AllAI Property</span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground ml-1" />
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onClick={() => setShowProfileModal(true)} data-testid="menu-edit-profile">
+              <User className="h-4 w-4 mr-2" />
+              Edit Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild data-testid="menu-sign-out">
+              <a href="/api/logout" className="flex items-center">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       {/* Navigation Menu */}
@@ -88,13 +113,24 @@ export default function Sidebar() {
               {user?.email || ""}
             </p>
           </div>
-          <Button variant="ghost" size="sm" asChild data-testid="button-logout">
-            <a href="/api/logout">
-              <Settings className="h-4 w-4" />
-            </a>
-          </Button>
         </div>
       </div>
+
+      {/* Profile Edit Modal */}
+      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          {user && (
+            <UserProfileForm
+              user={user}
+              onSuccess={() => setShowProfileModal(false)}
+              onCancel={() => setShowProfileModal(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
