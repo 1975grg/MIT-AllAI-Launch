@@ -459,9 +459,6 @@ export default function Reminders() {
                     
                     <div className="mt-3 text-sm text-muted-foreground">
                       <div className="flex items-center justify-between">
-                        <span data-testid={`text-reminder-scope-${index}`}>
-                          {reminder.scope}: {reminder.scopeId}
-                        </span>
                         {(reminder.leadDays || 0) > 0 && (
                           <span data-testid={`text-reminder-lead-${index}`}>
                             {reminder.leadDays} day(s) notice
