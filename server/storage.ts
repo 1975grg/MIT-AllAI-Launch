@@ -122,6 +122,7 @@ export interface IStorage {
   getTransactionsByProperty(propertyId: string): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction>;
+  deleteTransaction(id: string): Promise<void>;
   createExpense(expense: InsertExpense): Promise<Transaction>;
   getTransactionLineItems(transactionId: string): Promise<TransactionLineItem[]>;
   
@@ -870,6 +871,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(transactions.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteTransaction(id: string): Promise<void> {
+    // First delete any line items associated with this transaction
+    await db.delete(transactionLineItems).where(eq(transactionLineItems.transactionId, id));
+    
+    // Then delete the transaction itself
+    await db.delete(transactions).where(eq(transactions.id, id));
   }
 
   async createExpense(expense: InsertExpense): Promise<Transaction> {

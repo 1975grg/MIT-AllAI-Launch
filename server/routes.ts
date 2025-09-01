@@ -1145,6 +1145,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete an expense
+  app.delete("/api/expenses/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      // Check if the expense exists and belongs to the user's organization
+      const expense = await storage.getTransactionById(req.params.id);
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+
+      if (expense.orgId !== org.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteTransaction(req.params.id);
+      res.json({ message: "Expense deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      res.status(500).json({ message: "Failed to delete expense" });
+    }
+  });
+
   // Object Storage routes
   app.post('/api/objects/upload', isAuthenticated, async (req: any, res) => {
     try {
