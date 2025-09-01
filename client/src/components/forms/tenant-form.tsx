@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import type { Property, OwnershipEntity } from "@shared/schema";
+import type { Property, OwnershipEntity, Unit } from "@shared/schema";
 
 const tenantSchema = z.object({
   tenantGroup: z.object({
     name: z.string().min(1, "Group name is required"),
     propertyId: z.string().min(1, "Property selection is required"),
+    unitId: z.string().optional(), // For buildings, specify which unit
   }),
   tenants: z.array(z.object({
     firstName: z.string().min(1, "First name is required"),
@@ -23,6 +24,14 @@ const tenantSchema = z.object({
     emergencyPhone: z.string().optional(),
     notes: z.string().optional(),
   })).min(1, "At least one tenant is required"),
+}).refine((data) => {
+  // For buildings, require unit selection
+  const property = data.tenantGroup.propertyId;
+  // We'll validate this in the form component where we have access to properties data
+  return true;
+}, {
+  message: "Unit selection is required for buildings",
+  path: ["tenantGroup", "unitId"],
 });
 
 interface TenantFormProps {
@@ -42,12 +51,18 @@ export default function TenantForm({ onSubmit, onCancel, isLoading }: TenantForm
     retry: false,
   });
 
+  const { data: units = [] } = useQuery<Unit[]>({
+    queryKey: ["/api/units"],
+    retry: false,
+  });
+
   const form = useForm<z.infer<typeof tenantSchema>>({
     resolver: zodResolver(tenantSchema),
     defaultValues: {
       tenantGroup: {
         name: "",
         propertyId: "",
+        unitId: "",
       },
       tenants: [{
         firstName: "",
@@ -95,6 +110,23 @@ export default function TenantForm({ onSubmit, onCancel, isLoading }: TenantForm
     }
   };
 
+  // Check if selected property is a building
+  const isSelectedPropertyBuilding = selectedProperty && 
+    (selectedProperty.type === "Residential Building" || selectedProperty.type === "Commercial Building");
+
+  // Get units for the selected property
+  const getPropertyUnits = (propertyId: string) => {
+    return units.filter(unit => unit.propertyId === propertyId);
+  };
+
+  const availableUnits = selectedPropertyId ? getPropertyUnits(selectedPropertyId) : [];
+
+  // Clear unit selection when property changes
+  const handlePropertyChange = (propertyId: string) => {
+    form.setValue("tenantGroup.propertyId", propertyId);
+    form.setValue("tenantGroup.unitId", ""); // Clear unit selection when property changes
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -106,7 +138,7 @@ export default function TenantForm({ onSubmit, onCancel, isLoading }: TenantForm
               <FormItem>
                 <FormLabel>Property</FormLabel>
                 <FormControl>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={handlePropertyChange} value={field.value}>
                     <SelectTrigger data-testid="select-tenant-property">
                       <SelectValue placeholder="Select a property" />
                     </SelectTrigger>
@@ -123,11 +155,58 @@ export default function TenantForm({ onSubmit, onCancel, isLoading }: TenantForm
                 {selectedProperty && (
                   <p className="text-sm text-muted-foreground">
                     Selected: {selectedProperty.street}, {selectedProperty.city}
+                    {isSelectedPropertyBuilding && (
+                      <span className="text-blue-600 font-medium ml-2">
+                        • Building - Please select a unit below
+                      </span>
+                    )}
                   </p>
                 )}
               </FormItem>
             )}
           />
+
+          {/* Unit Selection - Only show for buildings */}
+          {isSelectedPropertyBuilding && (
+            <FormField
+              control={form.control}
+              name="tenantGroup.unitId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Unit</FormLabel>
+                  <FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger data-testid="select-tenant-unit">
+                        <SelectValue placeholder="Select a unit in this building" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableUnits.length > 0 ? (
+                          availableUnits.map((unit) => (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {unit.label}
+                              {unit.bedrooms && ` • ${unit.bedrooms} bed`}
+                              {unit.bathrooms && `, ${unit.bathrooms} bath`}
+                              {unit.rentAmount && ` • $${Number(unit.rentAmount).toLocaleString()}/mo`}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>
+                            No units available - Create units first
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                  {selectedPropertyId && availableUnits.length === 0 && (
+                    <p className="text-sm text-orange-600">
+                      This building has no units yet. Please add units to this property first before creating tenants.
+                    </p>
+                  )}
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}

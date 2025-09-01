@@ -696,9 +696,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
       const { tenantGroup, tenants } = req.body;
+      const { unitId, ...tenantGroupData } = tenantGroup; // Extract unitId for lease creation
       
       const validatedGroup = insertTenantGroupSchema.parse({
-        ...tenantGroup,
+        ...tenantGroupData,
         orgId: org.id,
       });
       
@@ -711,6 +712,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             groupId: group.id,
           });
           await storage.createTenant(validatedTenant);
+        }
+      }
+
+      // If unitId is provided (for buildings), automatically create a lease
+      if (unitId) {
+        console.log(`🏢 Creating lease for tenant group ${group.id} in unit ${unitId}`);
+        
+        // Create a basic lease with default values
+        // The user can edit lease details later if needed
+        const today = new Date();
+        const oneYearFromToday = new Date(today);
+        oneYearFromToday.setFullYear(today.getFullYear() + 1);
+        
+        const defaultLease = {
+          unitId: unitId,
+          tenantGroupId: group.id,
+          startDate: today,
+          endDate: oneYearFromToday,
+          rent: "0", // Default rent - user can update later
+          deposit: "0", // Default deposit - user can update later
+          dueDay: 1,
+          status: "Active" as const,
+        };
+        
+        try {
+          const validatedLease = insertLeaseSchema.parse(defaultLease);
+          await storage.createLease(validatedLease);
+          console.log(`✅ Successfully created lease for unit ${unitId}`);
+        } catch (leaseError) {
+          console.error("Error creating lease:", leaseError);
+          // Don't fail the entire tenant creation if lease creation fails
+          // The user can create the lease manually later
         }
       }
       
