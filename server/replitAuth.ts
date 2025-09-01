@@ -141,21 +141,6 @@ export async function setupAuth(app: Express) {
     });
   });
 
-  // Get current user
-  app.get("/api/auth/user", isAuthenticated, async (req, res) => {
-    try {
-      const userClaims = req.user as any;
-      const user = await storage.getUser(userClaims.sub);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
   // Update user profile
   const updateProfileSchema = {
     firstName: (val: any) => typeof val === "string" && val.length > 0 ? null : "First name is required",
@@ -181,7 +166,7 @@ export async function setupAuth(app: Express) {
 
       const userClaims = req.user as any;
       const updatedUser = await storage.upsertUser({
-        id: userClaims.sub,
+        id: userClaims.claims.sub,
         firstName,
         lastName,
         email,
