@@ -742,7 +742,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           const validatedLease = insertLeaseSchema.parse(defaultLease);
-          await storage.createLease(validatedLease);
+          const createdLease = await storage.createLease(validatedLease);
+          
+          // Create lease reminders for automatic leases too
+          await createLeaseReminders(org.id, createdLease);
+          
           console.log(`✅ Successfully created lease for unit ${unitId}`);
         } catch (leaseError) {
           console.error("Error creating lease:", leaseError);
@@ -775,6 +779,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/leases', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
       // Convert date strings to Date objects before validation
       const requestData = {
         ...req.body,
@@ -784,12 +792,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertLeaseSchema.parse(requestData);
       const lease = await storage.createLease(validatedData);
+      
+      // Create lease reminder(s) if enabled
+      await createLeaseReminders(org.id, lease);
+      
       res.json(lease);
     } catch (error) {
       console.error("Error creating lease:", error);
       res.status(500).json({ message: "Failed to create lease" });
     }
   });
+
+  // Helper function to create lease reminders
+  async function createLeaseReminders(orgId: string, lease: any) {
+    const reminders = [];
+    
+    // Create expiration reminder if configured
+    if (lease.expirationReminderMonths && lease.expirationReminderMonths > 0) {
+      const reminderDate = new Date(lease.endDate);
+      reminderDate.setMonth(reminderDate.getMonth() - lease.expirationReminderMonths);
+      
+      reminders.push({
+        orgId,
+        scope: "lease" as const,
+        scopeId: lease.id,
+        title: `Lease expires in ${lease.expirationReminderMonths} month${lease.expirationReminderMonths > 1 ? 's' : ''}`,
+        type: "lease" as const,
+        dueAt: reminderDate,
+        leadDays: 0,
+        channel: "inapp" as const,
+        status: "Pending" as const,
+        payloadJson: {
+          leaseId: lease.id,
+          unitId: lease.unitId,
+          tenantGroupId: lease.tenantGroupId,
+          reminderType: "expiration",
+          monthsBeforeExpiry: lease.expirationReminderMonths
+        }
+      });
+    }
+    
+    // Create renewal reminder if enabled
+    if (lease.renewalReminderEnabled) {
+      const renewalReminderDate = new Date(lease.endDate);
+      renewalReminderDate.setMonth(renewalReminderDate.getMonth() - 1); // 1 month before
+      
+      reminders.push({
+        orgId,
+        scope: "lease" as const,
+        scopeId: lease.id,
+        title: "Send lease renewal notification to tenant",
+        type: "lease" as const,
+        dueAt: renewalReminderDate,
+        leadDays: 0,
+        channel: "inapp" as const,
+        status: "Pending" as const,
+        payloadJson: {
+          leaseId: lease.id,
+          unitId: lease.unitId,
+          tenantGroupId: lease.tenantGroupId,
+          reminderType: "renewal",
+          action: "notify_tenant"
+        }
+      });
+    }
+    
+    // Create all reminders
+    for (const reminder of reminders) {
+      try {
+        await storage.createReminder(reminder);
+      } catch (error) {
+        console.error("Error creating lease reminder:", error);
+        // Don't fail the entire lease creation if reminder creation fails
+      }
+    }
+  }
 
   // Smart case routes
   app.get('/api/cases', isAuthenticated, async (req: any, res) => {
