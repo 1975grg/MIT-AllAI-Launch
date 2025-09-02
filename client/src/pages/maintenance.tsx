@@ -38,6 +38,7 @@ export default function Maintenance() {
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [unitFilter, setUnitFilter] = useState<string>("all");
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
 
   useEffect(() => {
@@ -253,8 +254,9 @@ export default function Maintenance() {
     const statusMatch = statusFilter === "all" || smartCase.status === statusFilter;
     const propertyMatch = propertyFilter === "all" || smartCase.propertyId === propertyFilter;
     const categoryMatch = categoryFilter === "all" || smartCase.category === categoryFilter;
+    const unitMatch = unitFilter === "all" || smartCase.unitId === unitFilter;
     // Note: SmartCase doesn't have entityId directly, but we can filter by property's entity relationship if needed
-    return statusMatch && propertyMatch && categoryMatch;
+    return statusMatch && propertyMatch && categoryMatch && unitMatch;
   }) || [];
 
   const categories = Array.from(new Set(smartCases?.map(c => c.category).filter(Boolean))) || [];
@@ -328,7 +330,10 @@ export default function Maintenance() {
               </Select>
 
               {/* Property Filter */}
-              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+              <Select value={propertyFilter} onValueChange={(value) => {
+                setPropertyFilter(value);
+                setUnitFilter("all"); // Reset unit filter when property changes
+              }}>
                 <SelectTrigger className="w-52" data-testid="select-property-filter">
                   <SelectValue placeholder="All Properties" />
                 </SelectTrigger>
@@ -341,6 +346,31 @@ export default function Maintenance() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Unit Filter - only show for buildings with multiple units */}
+              {propertyFilter !== "all" && (() => {
+                const selectedProperty = properties?.find(p => p.id === propertyFilter);
+                const propertyUnits = units.filter(unit => unit.propertyId === propertyFilter);
+                const isBuilding = propertyUnits.length > 1;
+                
+                if (!isBuilding) return null;
+                
+                return (
+                  <Select value={unitFilter} onValueChange={setUnitFilter}>
+                    <SelectTrigger className="w-48" data-testid="select-unit-filter">
+                      <SelectValue placeholder="All Units" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Entire Building</SelectItem>
+                      {propertyUnits.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
 
               {/* Category Filter */}
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
