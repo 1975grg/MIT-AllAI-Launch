@@ -257,6 +257,7 @@ export default function Entities() {
                 </DialogHeader>
                 <EntityForm 
                   onSubmit={handleFormSubmit}
+                  onCancel={handleCloseForm}
                   isLoading={createEntityMutation.isPending || updateEntityMutation.isPending}
                   initialData={editingEntity ? {
                     type: editingEntity.type as "LLC" | "Individual",

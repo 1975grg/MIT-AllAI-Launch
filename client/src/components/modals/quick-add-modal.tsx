@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Building, Users, Receipt, Bell } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface QuickAddModalProps {
   open: boolean;
@@ -8,6 +9,7 @@ interface QuickAddModalProps {
 }
 
 export default function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
+  const [, setLocation] = useLocation();
   const quickActions = [
     {
       title: "Property",
@@ -45,7 +47,7 @@ export default function QuickAddModal({ open, onOpenChange }: QuickAddModalProps
 
   const handleActionClick = (href: string) => {
     onOpenChange(false);
-    window.location.href = href;
+    setLocation(href);
   };
 
   return (

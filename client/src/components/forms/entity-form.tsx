@@ -19,11 +19,12 @@ const entitySchema = z.object({
 
 interface EntityFormProps {
   onSubmit: (data: z.infer<typeof entitySchema>) => void;
+  onCancel?: () => void;
   isLoading: boolean;
   initialData?: Partial<z.infer<typeof entitySchema>>;
 }
 
-export default function EntityForm({ onSubmit, isLoading, initialData }: EntityFormProps) {
+export default function EntityForm({ onSubmit, onCancel, isLoading, initialData }: EntityFormProps) {
   const form = useForm<z.infer<typeof entitySchema>>({
     resolver: zodResolver(entitySchema),
     defaultValues: {
@@ -193,7 +194,12 @@ export default function EntityForm({ onSubmit, isLoading, initialData }: EntityF
         />
 
         <div className="flex justify-end space-x-2">
-          <Button type="button" variant="outline" data-testid="button-cancel-entity">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel}
+            data-testid="button-cancel-entity"
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} data-testid="button-submit-entity">
