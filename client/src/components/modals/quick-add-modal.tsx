@@ -6,9 +6,10 @@ import { useLocation } from "wouter";
 interface QuickAddModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onReminderClick?: () => void;
 }
 
-export default function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
+export default function QuickAddModal({ open, onOpenChange, onReminderClick }: QuickAddModalProps) {
   const [, setLocation] = useLocation();
   const quickActions = [
     {
@@ -45,9 +46,13 @@ export default function QuickAddModal({ open, onOpenChange }: QuickAddModalProps
     },
   ];
 
-  const handleActionClick = (href: string) => {
-    onOpenChange(false);
-    setLocation(href);
+  const handleActionClick = (href: string, action: string) => {
+    if (action === "createReminder" && onReminderClick) {
+      onReminderClick();
+    } else {
+      onOpenChange(false);
+      setLocation(href);
+    }
   };
 
   return (
@@ -65,7 +70,7 @@ export default function QuickAddModal({ open, onOpenChange }: QuickAddModalProps
                 key={action.title}
                 variant="ghost"
                 className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
-                onClick={() => handleActionClick(action.href)}
+                onClick={() => handleActionClick(action.href, action.action)}
                 data-testid={`button-quick-${action.action}`}
               >
                 <div className={`w-8 h-8 ${action.bgColor} rounded-lg flex items-center justify-center`}>

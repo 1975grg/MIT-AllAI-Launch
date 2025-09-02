@@ -12,8 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Building2, Plus, Calendar, FileText, Globe, Bell, Archive } from "lucide-react";
 import { useLocation } from "wouter";
-import type { OwnershipEntity } from "@shared/schema";
+import type { OwnershipEntity, Property } from "@shared/schema";
 import EntityForm from "@/components/forms/entity-form";
+import ReminderForm from "@/components/forms/reminder-form";
 
 export default function Entities() {
   const { toast } = useToast();
@@ -21,6 +22,7 @@ export default function Entities() {
   const [showEntityForm, setShowEntityForm] = useState(false);
   const [editingEntity, setEditingEntity] = useState<OwnershipEntity | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState<string | null>(null);
+  const [showReminderForm, setShowReminderForm] = useState(false);
   const [, setLocation] = useLocation();
 
   // Redirect to login if not authenticated
@@ -40,6 +42,11 @@ export default function Entities() {
 
   const { data: entities, isLoading: entitiesLoading, error } = useQuery<OwnershipEntity[]>({
     queryKey: ["/api/entities"],
+    retry: false,
+  });
+
+  const { data: properties } = useQuery<Property[]>({
+    queryKey: ["/api/properties"],
     retry: false,
   });
 
@@ -143,16 +150,17 @@ export default function Entities() {
     },
   });
 
-  const backfillRemindersMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/entities/backfill-reminders", {});
+  const createReminderMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/reminders", data);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      setShowReminderForm(false);
       toast({
         title: "Success",
-        description: data.message || "Reminders created successfully",
+        description: "Reminder created successfully",
       });
     },
     onError: (error) => {
@@ -169,7 +177,7 @@ export default function Entities() {
       }
       toast({
         title: "Error",
-        description: "Failed to create reminders",
+        description: "Failed to create reminder",
         variant: "destructive",
       });
     },
@@ -236,12 +244,11 @@ export default function Entities() {
             <div className="flex gap-2">
               <Button 
                 variant="outline"
-                onClick={() => backfillRemindersMutation.mutate()}
-                disabled={backfillRemindersMutation.isPending}
-                data-testid="button-backfill-reminders"
+                onClick={() => setShowReminderForm(true)}
+                data-testid="button-add-reminder"
               >
                 <Bell className="h-4 w-4 mr-2" />
-                {backfillRemindersMutation.isPending ? "Creating..." : "Create Missing Reminders"}
+                Add Reminder
               </Button>
               
               <Dialog open={showEntityForm} onOpenChange={handleOpenChange}>
@@ -314,6 +321,21 @@ export default function Entities() {
                     </Button>
                   </div>
                 </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Reminder Dialog */}
+            <Dialog open={showReminderForm} onOpenChange={setShowReminderForm}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Create New Reminder</DialogTitle>
+                </DialogHeader>
+                <ReminderForm 
+                  properties={properties || []}
+                  onSubmit={(data) => createReminderMutation.mutate(data)}
+                  onCancel={() => setShowReminderForm(false)}
+                  isLoading={createReminderMutation.isPending}
+                />
               </DialogContent>
             </Dialog>
             </div>

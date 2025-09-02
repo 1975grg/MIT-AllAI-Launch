@@ -1,25 +1,70 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import QuickAddModal from "@/components/modals/quick-add-modal";
+import ReminderForm from "@/components/forms/reminder-form";
 import { useAuth } from "@/hooks/useAuth";
 import { Search, Bell, Plus } from "lucide-react";
-import type { Notification } from "@shared/schema";
+import type { Notification, Property } from "@shared/schema";
 
 interface HeaderProps {
   title: string;
 }
 
 export default function Header({ title }: HeaderProps) {
+  const { toast } = useToast();
   const { user } = useAuth();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showReminderForm, setShowReminderForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     retry: false,
+  });
+
+  const { data: properties } = useQuery<Property[]>({
+    queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const createReminderMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/reminders", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      setShowReminderForm(false);
+      toast({
+        title: "Success",
+        description: "Reminder created successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create reminder",
+        variant: "destructive",
+      });
+    },
   });
 
   const unreadNotifications = notifications?.filter(n => !n.isRead).length || 0;
@@ -66,7 +111,29 @@ export default function Header({ title }: HeaderProps) {
         </div>
       </header>
 
-      <QuickAddModal open={showQuickAdd} onOpenChange={setShowQuickAdd} />
+      <QuickAddModal 
+        open={showQuickAdd} 
+        onOpenChange={setShowQuickAdd}
+        onReminderClick={() => {
+          setShowQuickAdd(false);
+          setShowReminderForm(true);
+        }}
+      />
+
+      {/* Reminder Dialog */}
+      <Dialog open={showReminderForm} onOpenChange={setShowReminderForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Reminder</DialogTitle>
+          </DialogHeader>
+          <ReminderForm 
+            properties={properties || []}
+            onSubmit={(data) => createReminderMutation.mutate(data)}
+            onCancel={() => setShowReminderForm(false)}
+            isLoading={createReminderMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
