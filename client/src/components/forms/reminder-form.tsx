@@ -184,8 +184,8 @@ export default function ReminderForm({ properties, entities = [], units = [], re
               const selectedProperty = properties.find(p => p.id === selectedPropertyId);
               const propertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
               
-              // Only show unit selection for buildings (properties with multiple units)
-              const isBuilding = selectedProperty && (selectedProperty.type === "apartment" || selectedProperty.type === "condo") && propertyUnits.length > 1;
+              // Only show unit selection for buildings with multiple units (any building type)
+              const isBuilding = propertyUnits.length > 1;
               
               if (!isBuilding) {
                 return null;
