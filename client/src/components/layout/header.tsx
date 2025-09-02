@@ -138,7 +138,7 @@ export default function Header({ title }: HeaderProps) {
 
       {/* Reminder Dialog */}
       <Dialog open={showReminderForm} onOpenChange={setShowReminderForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Reminder</DialogTitle>
           </DialogHeader>

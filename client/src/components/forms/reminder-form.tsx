@@ -92,7 +92,14 @@ export default function ReminderForm({ properties, entities = [], units = [], re
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit((data) => {
+        // Ensure date is properly formatted
+        const formattedData = {
+          ...data,
+          dueAt: data.dueAt instanceof Date ? data.dueAt : new Date(data.dueAt),
+        };
+        onSubmit(formattedData);
+      })} className="space-y-4">
         <FormField
           control={form.control}
           name="title"
@@ -174,12 +181,20 @@ export default function ReminderForm({ properties, entities = [], units = [], re
             name="unitIds"
             render={({ field }) => {
               const selectedPropertyId = form.watch("propertyId");
+              const selectedProperty = properties.find(p => p.id === selectedPropertyId);
               const propertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
+              
+              // Only show unit selection for buildings (properties with multiple units)
+              const isBuilding = selectedProperty && (selectedProperty.type === "apartment" || selectedProperty.type === "condo") && propertyUnits.length > 1;
+              
+              if (!isBuilding) {
+                return null;
+              }
               
               return (
                 <FormItem>
                   <FormLabel>Units (Optional - leave empty to apply to entire building)</FormLabel>
-                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
+                  <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto border rounded p-2">
                     {propertyUnits.map((unit) => (
                       <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
                         <input
@@ -199,9 +214,6 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                       </label>
                     ))}
                   </div>
-                  {propertyUnits.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No units found for this property</p>
-                  )}
                   <FormMessage />
                 </FormItem>
               );
