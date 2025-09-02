@@ -20,7 +20,7 @@ export default function Reminders() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
 
@@ -148,7 +148,17 @@ export default function Reminders() {
   
   const filteredReminders = reminders?.filter(reminder => {
     const typeMatch = typeFilter === "all" || reminder.type === typeFilter;
-    const statusMatch = statusFilter === "all" || reminder.status === statusFilter;
+    
+    // Handle status filtering
+    let statusMatch = false;
+    if (statusFilter === "all") {
+      statusMatch = true;
+    } else if (statusFilter === "active") {
+      // Active means not completed
+      statusMatch = reminder.status !== "Completed";
+    } else {
+      statusMatch = reminder.status === statusFilter;
+    }
     
     let propertyMatch = false;
     if (propertyFilter === "all") {
@@ -192,7 +202,7 @@ export default function Reminders() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Pending": return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-      case "Sent": return <Badge className="bg-blue-100 text-blue-800">Sent</Badge>;
+      case "Overdue": return <Badge className="bg-red-100 text-red-800">Overdue</Badge>;
       case "Completed": return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
       case "Cancelled": return <Badge className="bg-gray-100 text-gray-800">Cancelled</Badge>;
       default: return <Badge variant="secondary">{status}</Badge>;
@@ -214,8 +224,8 @@ export default function Reminders() {
     return new Date(dueAt) < new Date();
   };
 
-  const dueReminders = filteredReminders.filter(r => r.status === "Pending" && !isOverdue(r.dueAt)).length;
-  const overdueReminders = filteredReminders.filter(r => r.status === "Pending" && isOverdue(r.dueAt)).length;
+  const dueReminders = filteredReminders.filter(r => r.status === "Pending").length;
+  const overdueReminders = filteredReminders.filter(r => r.status === "Overdue").length;
   const completedReminders = filteredReminders.filter(r => r.status === "Completed").length;
 
   return (
@@ -282,12 +292,13 @@ export default function Reminders() {
               {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-40" data-testid="select-status-filter">
-                  <SelectValue placeholder="All Status" />
+                  <SelectValue placeholder="Active Reminders" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="active">Active Reminders</SelectItem>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Sent">Sent</SelectItem>
+                  <SelectItem value="Overdue">Overdue</SelectItem>
                   <SelectItem value="Completed">Completed</SelectItem>
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
                 </SelectContent>
@@ -469,7 +480,7 @@ export default function Reminders() {
                       
                       <div className="flex items-center space-x-3">
                         {getStatusBadge(reminder.status || "Pending")}
-                        {reminder.status === "Pending" && (
+                        {(reminder.status === "Pending" || reminder.status === "Overdue") && (
                           <Button 
                             variant="outline" 
                             size="sm"

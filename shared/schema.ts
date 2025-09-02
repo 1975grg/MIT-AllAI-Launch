@@ -397,7 +397,7 @@ export const camEntries = pgTable("cam_entries", {
 export const reminderScopeEnum = pgEnum("reminder_scope", ["entity", "property", "lease", "asset"]);
 export const reminderTypeEnum = pgEnum("reminder_type", ["rent", "lease", "regulatory", "maintenance", "custom"]);
 export const reminderChannelEnum = pgEnum("reminder_channel", ["inapp", "email", "sms", "push"]);
-export const reminderStatusEnum = pgEnum("reminder_status", ["Pending", "Sent", "Completed", "Cancelled"]);
+export const reminderStatusEnum = pgEnum("reminder_status", ["Pending", "Overdue", "Completed", "Cancelled"]);
 
 export const reminders = pgTable("reminders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
