@@ -239,7 +239,7 @@ export default function Reminders() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">Reminders</h1>
-              <p className="text-muted-foreground">Stay on top of important tasks and deadlines</p>
+              <p className="text-muted-foreground">Track key tasks and deadlines</p>
             </div>
             
             <div className="flex items-center space-x-3">
