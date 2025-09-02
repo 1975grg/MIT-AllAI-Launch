@@ -24,6 +24,7 @@ const reminderSchema = z.object({
   dueAt: z.date(),
   leadDays: z.number().min(0, "Lead days must be 0 or greater"),
   channels: z.array(z.enum(["inapp", "email", "sms", "push"])).min(1, "At least one notification channel is required").default(["inapp"]),
+  saveAsDefault: z.boolean().optional(),
   payloadJson: z.record(z.any()).optional(),
 });
 
@@ -51,6 +52,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
       dueAt: reminder.dueAt ? new Date(reminder.dueAt) : new Date(),
       leadDays: reminder.leadDays || 0,
       channels: (reminder as any).channels || ["inapp"],
+      saveAsDefault: false,
     } : {
       title: "",
       type: undefined,
@@ -62,6 +64,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
       dueAt: new Date(),
       leadDays: 0,
       channels: ["inapp"],
+      saveAsDefault: false,
     },
   });
 
@@ -328,10 +331,33 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                   </label>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                💡 Your selection will become the default for future reminders
-              </p>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="saveAsDefault"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <input
+                  type="checkbox"
+                  checked={field.value || false}
+                  onChange={field.onChange}
+                  className="rounded border-gray-300"
+                  data-testid="checkbox-save-as-default"
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel className="text-sm font-medium cursor-pointer">
+                  💾 Make this notification selection my default for future reminders
+                </FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Check this box to save your notification channel preferences for next time
+                </p>
+              </div>
             </FormItem>
           )}
         />
