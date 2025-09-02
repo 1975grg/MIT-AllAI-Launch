@@ -286,6 +286,14 @@ export default function Maintenance() {
     form.reset();
   };
 
+  const handleDialogChange = (open: boolean) => {
+    setShowCaseForm(open);
+    if (!open) {
+      setEditingCase(null);
+      form.reset();
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-maintenance">
       <Sidebar />
@@ -364,7 +372,7 @@ export default function Maintenance() {
                 </SelectContent>
               </Select>
 
-              <Dialog open={showCaseForm} onOpenChange={handleCloseForm}>
+              <Dialog open={showCaseForm} onOpenChange={handleDialogChange}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-case">
                     <Plus className="h-4 w-4 mr-2" />
