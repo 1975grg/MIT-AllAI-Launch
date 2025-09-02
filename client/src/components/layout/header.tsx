@@ -94,7 +94,13 @@ export default function Header({ title }: HeaderProps) {
           </div>
           
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="relative" 
+            onClick={() => setShowReminderForm(true)}
+            data-testid="button-notifications"
+          >
             <Bell className="h-5 w-5" />
             {unreadNotifications > 0 && (
               <Badge className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center p-0" data-testid="badge-notification-count">
