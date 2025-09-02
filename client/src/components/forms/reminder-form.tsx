@@ -92,14 +92,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => {
-        // Convert date to ISO string for backend
-        const submissionData = {
-          ...data,
-          dueAt: data.dueAt.toISOString(),
-        };
-        onSubmit(submissionData);
-      })} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="title"

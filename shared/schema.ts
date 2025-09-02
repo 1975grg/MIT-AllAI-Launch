@@ -541,7 +541,9 @@ export const insertAssetSchema = createInsertSchema(assets).omit({ id: true, cre
 export const insertSmartCaseSchema = createInsertSchema(smartCases).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
-export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true });
+export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true }).extend({
+  dueAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+});
 // Line Item schemas
 export const insertTransactionLineItemSchema = createInsertSchema(transactionLineItems).omit({ id: true, createdAt: true });
 
