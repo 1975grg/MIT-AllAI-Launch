@@ -196,14 +196,14 @@ export default function ReminderForm({ properties, entities = [], reminder, onSu
           render={({ field }) => (
             <FormItem>
               <FormLabel>Ownership Entity (Optional)</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+              <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} defaultValue={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-reminder-entity">
                     <SelectValue placeholder="Select ownership entity" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">No Entity</SelectItem>
+                  <SelectItem value="none">No Entity</SelectItem>
                   {entities.map((entity) => (
                     <SelectItem key={entity.id} value={entity.id}>
                       {entity.name}
