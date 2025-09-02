@@ -23,7 +23,7 @@ const reminderSchema = z.object({
   unitIds: z.array(z.string()).optional(),
   dueAt: z.date(),
   leadDays: z.number().min(0, "Lead days must be 0 or greater"),
-  channel: z.enum(["inapp", "email"]).default("inapp"),
+  channels: z.array(z.enum(["inapp", "email", "sms", "push"])).min(1, "At least one notification channel is required").default(["inapp"]),
   payloadJson: z.record(z.any()).optional(),
 });
 
@@ -50,7 +50,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
       unitIds: [],
       dueAt: reminder.dueAt ? new Date(reminder.dueAt) : new Date(),
       leadDays: reminder.leadDays || 0,
-      channel: reminder.channel || "inapp",
+      channels: (reminder as any).channels || ["inapp"],
     } : {
       title: "",
       type: undefined,
@@ -61,7 +61,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
       unitIds: [],
       dueAt: new Date(),
       leadDays: 0,
-      channel: "inapp",
+      channels: ["inapp"],
     },
   });
 
@@ -81,8 +81,10 @@ export default function ReminderForm({ properties, entities = [], units = [], re
   ];
 
   const channels = [
-    { value: "inapp", label: "In-App Notification" },
-    { value: "email", label: "Email" },
+    { value: "inapp", label: "In-App Notification", icon: "🔔" },
+    { value: "email", label: "Email", icon: "📧" },
+    { value: "sms", label: "SMS Text", icon: "📱" },
+    { value: "push", label: "Push Notification", icon: "🔔" },
   ];
 
   return (
@@ -297,22 +299,38 @@ export default function ReminderForm({ properties, entities = [], units = [], re
 
         <FormField
           control={form.control}
-          name="channel"
+          name="channels"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notification Channel</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-reminder-channel">
-                    <SelectValue placeholder="Select channel" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {channels.map((channel) => (
-                    <SelectItem key={channel.value} value={channel.value}>{channel.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel>Notification Channels (Select all that apply)</FormLabel>
+              <div className="grid grid-cols-2 gap-3">
+                {channels.map((channel) => (
+                  <label key={channel.value} className="flex items-center space-x-3 cursor-pointer p-3 border rounded-lg hover:bg-muted/50">
+                    <input
+                      type="checkbox"
+                      checked={field.value?.includes(channel.value as any) || false}
+                      onChange={(e) => {
+                        const currentChannels = field.value || [];
+                        if (e.target.checked) {
+                          field.onChange([...currentChannels, channel.value]);
+                        } else {
+                          // Don't allow unchecking if it's the last channel
+                          if (currentChannels.length > 1) {
+                            field.onChange(currentChannels.filter(c => c !== channel.value));
+                          }
+                        }
+                      }}
+                      className="rounded border-gray-300"
+                      data-testid={`checkbox-channel-${channel.value}`}
+                    />
+                    <span className="text-lg">{channel.icon}</span>
+                    <span className="text-sm font-medium">{channel.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                💡 Your selection will become the default for future reminders
+              </p>
               <FormMessage />
             </FormItem>
           )}

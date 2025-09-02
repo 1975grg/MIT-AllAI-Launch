@@ -396,7 +396,7 @@ export const camEntries = pgTable("cam_entries", {
 // Reminders
 export const reminderScopeEnum = pgEnum("reminder_scope", ["entity", "property", "lease", "asset"]);
 export const reminderTypeEnum = pgEnum("reminder_type", ["rent", "lease", "regulatory", "maintenance", "custom"]);
-export const reminderChannelEnum = pgEnum("reminder_channel", ["inapp", "email"]);
+export const reminderChannelEnum = pgEnum("reminder_channel", ["inapp", "email", "sms", "push"]);
 export const reminderStatusEnum = pgEnum("reminder_status", ["Pending", "Sent", "Completed", "Cancelled"]);
 
 export const reminders = pgTable("reminders", {
@@ -409,7 +409,7 @@ export const reminders = pgTable("reminders", {
   type: reminderTypeEnum("type").notNull(),
   dueAt: timestamp("due_at").notNull(),
   leadDays: integer("lead_days").default(0),
-  channel: reminderChannelEnum("channel").default("inapp"),
+  channels: reminderChannelEnum("channels").array().default(sql`ARRAY['inapp']::reminder_channel[]`),
   payloadJson: jsonb("payload_json"),
   status: reminderStatusEnum("status").default("Pending"),
   sentAt: timestamp("sent_at"),
