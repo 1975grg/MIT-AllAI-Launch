@@ -404,6 +404,7 @@ export const reminders = pgTable("reminders", {
   orgId: varchar("org_id").notNull().references(() => organizations.id),
   scope: reminderScopeEnum("scope").notNull(),
   scopeId: varchar("scope_id").notNull(),
+  entityId: varchar("entity_id").references(() => ownershipEntities.id),
   title: varchar("title").notNull(),
   type: reminderTypeEnum("type").notNull(),
   dueAt: timestamp("due_at").notNull(),

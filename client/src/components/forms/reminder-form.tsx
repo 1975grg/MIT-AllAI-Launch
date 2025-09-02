@@ -11,13 +11,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Property, Reminder } from "@shared/schema";
+import type { Property, Reminder, OwnershipEntity } from "@shared/schema";
 
 const reminderSchema = z.object({
   title: z.string().min(1, "Title is required"),
   type: z.enum(["rent", "lease", "regulatory", "maintenance", "custom"]),
   scope: z.enum(["entity", "property", "lease", "asset"]),
   scopeId: z.string().min(1, "Scope selection is required"),
+  entityId: z.string().optional(),
   dueAt: z.date(),
   leadDays: z.number().min(0).default(0),
   channel: z.enum(["inapp", "email"]).default("inapp"),
@@ -26,13 +27,14 @@ const reminderSchema = z.object({
 
 interface ReminderFormProps {
   properties: Property[];
+  entities?: OwnershipEntity[];
   reminder?: Reminder;
   onSubmit: (data: z.infer<typeof reminderSchema>) => void;
   onCancel?: () => void;
   isLoading: boolean;
 }
 
-export default function ReminderForm({ properties, reminder, onSubmit, onCancel, isLoading }: ReminderFormProps) {
+export default function ReminderForm({ properties, entities = [], reminder, onSubmit, onCancel, isLoading }: ReminderFormProps) {
   const form = useForm<z.infer<typeof reminderSchema>>({
     resolver: zodResolver(reminderSchema),
     defaultValues: reminder ? {
@@ -40,6 +42,7 @@ export default function ReminderForm({ properties, reminder, onSubmit, onCancel,
       type: reminder.type || "custom",
       scope: reminder.scope || "property",
       scopeId: reminder.scopeId || "",
+      entityId: reminder.entityId || "",
       dueAt: reminder.dueAt ? new Date(reminder.dueAt) : new Date(),
       leadDays: reminder.leadDays || 0,
       channel: reminder.channel || "inapp",
@@ -48,6 +51,7 @@ export default function ReminderForm({ properties, reminder, onSubmit, onCancel,
       type: "custom",
       scope: "property",
       scopeId: "",
+      entityId: "",
       dueAt: new Date(),
       leadDays: 0,
       channel: "inapp",
@@ -181,6 +185,32 @@ export default function ReminderForm({ properties, reminder, onSubmit, onCancel,
                   />
                 </FormControl>
               )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="entityId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Ownership Entity (Optional)</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-reminder-entity">
+                    <SelectValue placeholder="Select ownership entity" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">No Entity</SelectItem>
+                  {entities.map((entity) => (
+                    <SelectItem key={entity.id} value={entity.id}>
+                      {entity.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

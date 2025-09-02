@@ -306,6 +306,7 @@ export default function Reminders() {
                   </DialogHeader>
                   <ReminderForm 
                     properties={properties || []}
+                    entities={entities || []}
                     onSubmit={(data) => createReminderMutation.mutate(data)}
                     onCancel={() => setShowReminderForm(false)}
                     isLoading={createReminderMutation.isPending}
