@@ -329,23 +329,7 @@ export default function Reminders() {
           </div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card data-testid="card-due-reminders">
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Due Soon</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-due-count">
-                      {dueReminders}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <Clock className="text-yellow-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card data-testid="card-overdue-reminders">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -362,17 +346,17 @@ export default function Reminders() {
               </CardContent>
             </Card>
             
-            <Card data-testid="card-completed-reminders">
+            <Card data-testid="card-due-reminders">
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-completed-count">
-                      {completedReminders}
+                    <p className="text-sm font-medium text-muted-foreground">Due Soon</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="text-due-count">
+                      {dueReminders}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="text-green-600" />
+                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <Clock className="text-yellow-600" />
                   </div>
                 </div>
               </CardContent>
