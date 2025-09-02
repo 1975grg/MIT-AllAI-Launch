@@ -93,10 +93,13 @@ export default function ReminderForm({ properties, entities = [], units = [], re
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => {
-        // Ensure date is properly formatted
+        // Ensure date is properly formatted and handle empty strings
         const formattedData = {
           ...data,
           dueAt: data.dueAt instanceof Date ? data.dueAt : new Date(data.dueAt),
+          entityId: data.entityId && data.entityId !== "" ? data.entityId : undefined,
+          propertyId: data.propertyId && data.propertyId !== "" ? data.propertyId : undefined,
+          scopeId: data.scopeId && data.scopeId !== "" ? data.scopeId : undefined,
         };
         onSubmit(formattedData);
       })} className="space-y-4">
