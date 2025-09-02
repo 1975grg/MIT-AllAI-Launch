@@ -38,7 +38,7 @@ export default function Maintenance() {
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [unitFilter, setUnitFilter] = useState<string>("all");
+  const [unitFilter, setUnitFilter] = useState<string[]>(["all"]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
 
   useEffect(() => {
@@ -254,7 +254,7 @@ export default function Maintenance() {
     const statusMatch = statusFilter === "all" || smartCase.status === statusFilter;
     const propertyMatch = propertyFilter === "all" || smartCase.propertyId === propertyFilter;
     const categoryMatch = categoryFilter === "all" || smartCase.category === categoryFilter;
-    const unitMatch = unitFilter === "all" || smartCase.unitId === unitFilter;
+    const unitMatch = unitFilter.includes("all") || (smartCase.unitId && unitFilter.includes(smartCase.unitId));
     // Note: SmartCase doesn't have entityId directly, but we can filter by property's entity relationship if needed
     return statusMatch && propertyMatch && categoryMatch && unitMatch;
   }) || [];
@@ -332,7 +332,7 @@ export default function Maintenance() {
               {/* Property Filter */}
               <Select value={propertyFilter} onValueChange={(value) => {
                 setPropertyFilter(value);
-                setUnitFilter("all"); // Reset unit filter when property changes
+                setUnitFilter(["all"]); // Reset unit filter when property changes
               }}>
                 <SelectTrigger className="w-52" data-testid="select-property-filter">
                   <SelectValue placeholder="All Properties" />
@@ -354,21 +354,48 @@ export default function Maintenance() {
                 const isBuilding = propertyUnits.length > 1;
                 
                 if (!isBuilding) return null;
+
+                const handleUnitToggle = (unitId: string) => {
+                  if (unitId === "all") {
+                    setUnitFilter(["all"]);
+                  } else {
+                    const newFilter = unitFilter.includes("all") ? [] : [...unitFilter];
+                    if (newFilter.includes(unitId)) {
+                      const filtered = newFilter.filter(id => id !== unitId);
+                      setUnitFilter(filtered.length === 0 ? ["all"] : filtered);
+                    } else {
+                      setUnitFilter([...newFilter, unitId]);
+                    }
+                  }
+                };
                 
                 return (
-                  <Select value={unitFilter} onValueChange={setUnitFilter}>
-                    <SelectTrigger className="w-48" data-testid="select-unit-filter">
-                      <SelectValue placeholder="All Units" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Entire Building</SelectItem>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium mb-2">Units:</span>
+                    <div className="flex flex-wrap gap-2 max-w-md">
+                      <Button
+                        variant={unitFilter.includes("all") ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleUnitToggle("all")}
+                        className="h-8 text-xs"
+                        data-testid="button-unit-all"
+                      >
+                        Entire Building
+                      </Button>
                       {propertyUnits.map((unit) => (
-                        <SelectItem key={unit.id} value={unit.id}>
+                        <Button
+                          key={unit.id}
+                          variant={unitFilter.includes(unit.id) ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleUnitToggle(unit.id)}
+                          className="h-8 text-xs"
+                          data-testid={`button-unit-${unit.id}`}
+                        >
                           {unit.label}
-                        </SelectItem>
+                        </Button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  </div>
                 );
               })()}
 
