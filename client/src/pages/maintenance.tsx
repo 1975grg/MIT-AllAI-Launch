@@ -38,7 +38,7 @@ export default function Maintenance() {
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [unitFilter, setUnitFilter] = useState<string[]>(["all"]);
+  const [unitFilter, setUnitFilter] = useState<string[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
 
   useEffect(() => {
@@ -254,7 +254,7 @@ export default function Maintenance() {
     const statusMatch = statusFilter === "all" || smartCase.status === statusFilter;
     const propertyMatch = propertyFilter === "all" || smartCase.propertyId === propertyFilter;
     const categoryMatch = categoryFilter === "all" || smartCase.category === categoryFilter;
-    const unitMatch = unitFilter.includes("all") || (smartCase.unitId && unitFilter.includes(smartCase.unitId));
+    const unitMatch = unitFilter.length === 0 || (smartCase.unitId && unitFilter.includes(smartCase.unitId)) || (unitFilter.includes("common") && !smartCase.unitId);
     // Note: SmartCase doesn't have entityId directly, but we can filter by property's entity relationship if needed
     return statusMatch && propertyMatch && categoryMatch && unitMatch;
   }) || [];
@@ -332,7 +332,7 @@ export default function Maintenance() {
               {/* Property Filter */}
               <Select value={propertyFilter} onValueChange={(value) => {
                 setPropertyFilter(value);
-                setUnitFilter(["all"]); // Reset unit filter when property changes
+                setUnitFilter([]); // Reset unit filter when property changes
               }}>
                 <SelectTrigger className="w-52" data-testid="select-property-filter">
                   <SelectValue placeholder="All Properties" />
@@ -347,7 +347,7 @@ export default function Maintenance() {
                 </SelectContent>
               </Select>
 
-              {/* Unit Filter - only show for buildings with multiple units */}
+              {/* Unit Selection - only show for buildings with multiple units */}
               {propertyFilter !== "all" && (() => {
                 const selectedProperty = properties?.find(p => p.id === propertyFilter);
                 const propertyUnits = units.filter(unit => unit.propertyId === propertyFilter);
@@ -356,43 +356,39 @@ export default function Maintenance() {
                 if (!isBuilding) return null;
 
                 const handleUnitToggle = (unitId: string) => {
-                  if (unitId === "all") {
-                    setUnitFilter(["all"]);
+                  const newFilter = [...unitFilter];
+                  if (newFilter.includes(unitId)) {
+                    setUnitFilter(newFilter.filter(id => id !== unitId));
                   } else {
-                    const newFilter = unitFilter.includes("all") ? [] : [...unitFilter];
-                    if (newFilter.includes(unitId)) {
-                      const filtered = newFilter.filter(id => id !== unitId);
-                      setUnitFilter(filtered.length === 0 ? ["all"] : filtered);
-                    } else {
-                      setUnitFilter([...newFilter, unitId]);
-                    }
+                    setUnitFilter([...newFilter, unitId]);
                   }
                 };
                 
                 return (
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium mb-2">Units:</span>
-                    <div className="flex flex-wrap gap-2 max-w-md">
-                      <Button
-                        variant={unitFilter.includes("all") ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleUnitToggle("all")}
-                        className="h-8 text-xs"
-                        data-testid="button-unit-all"
-                      >
-                        Entire Building
-                      </Button>
+                  <div className="flex flex-col space-y-2 p-3 border rounded-md bg-muted/30">
+                    <span className="text-sm font-medium">Units (Optional - leave empty to apply to entire building)</span>
+                    <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={unitFilter.includes("common")}
+                          onChange={() => handleUnitToggle("common")}
+                          className="rounded border-gray-300"
+                          data-testid="checkbox-common-area"
+                        />
+                        <span className="text-sm">Common Area</span>
+                      </label>
                       {propertyUnits.map((unit) => (
-                        <Button
-                          key={unit.id}
-                          variant={unitFilter.includes(unit.id) ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleUnitToggle(unit.id)}
-                          className="h-8 text-xs"
-                          data-testid={`button-unit-${unit.id}`}
-                        >
-                          {unit.label}
-                        </Button>
+                        <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={unitFilter.includes(unit.id)}
+                            onChange={() => handleUnitToggle(unit.id)}
+                            className="rounded border-gray-300"
+                            data-testid={`checkbox-unit-${unit.id}`}
+                          />
+                          <span className="text-sm">{unit.label}</span>
+                        </label>
                       ))}
                     </div>
                   </div>
