@@ -1216,6 +1216,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/reminders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      // Convert date strings to Date objects if provided
+      if (updateData.completedAt) {
+        updateData.completedAt = new Date(updateData.completedAt);
+      }
+      if (updateData.dueAt) {
+        updateData.dueAt = new Date(updateData.dueAt);
+      }
+      
+      const reminder = await storage.updateReminder(id, updateData);
+      res.json(reminder);
+    } catch (error) {
+      console.error("Error updating reminder:", error);
+      res.status(500).json({ message: "Failed to update reminder" });
+    }
+  });
+
   // Dashboard routes
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
