@@ -11,7 +11,7 @@ import QuickAddModal from "@/components/modals/quick-add-modal";
 import ReminderForm from "@/components/forms/reminder-form";
 import { useAuth } from "@/hooks/useAuth";
 import { Search, Bell, Plus } from "lucide-react";
-import type { Notification, Property, OwnershipEntity } from "@shared/schema";
+import type { Notification, Property, OwnershipEntity, Unit } from "@shared/schema";
 
 interface HeaderProps {
   title: string;
@@ -36,6 +36,11 @@ export default function Header({ title }: HeaderProps) {
 
   const { data: entities } = useQuery<OwnershipEntity[]>({
     queryKey: ["/api/entities"],
+    retry: false,
+  });
+
+  const { data: units } = useQuery<Unit[]>({
+    queryKey: ["/api/units"],
     retry: false,
   });
 
@@ -140,6 +145,7 @@ export default function Header({ title }: HeaderProps) {
           <ReminderForm 
             properties={properties || []}
             entities={entities || []}
+            units={units || []}
             onSubmit={(data) => createReminderMutation.mutate(data)}
             onCancel={() => setShowReminderForm(false)}
             isLoading={createReminderMutation.isPending}

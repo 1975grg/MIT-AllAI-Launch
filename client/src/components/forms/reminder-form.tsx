@@ -11,16 +11,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Property, Reminder, OwnershipEntity } from "@shared/schema";
+import type { Property, Reminder, OwnershipEntity, Unit } from "@shared/schema";
 
 const reminderSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  type: z.enum(["rent", "lease", "regulatory", "maintenance", "custom"]),
-  scope: z.enum(["entity", "property", "lease", "asset"]),
-  scopeId: z.string().min(1, "Scope selection is required"),
+  type: z.enum(["rent", "lease", "regulatory", "maintenance", "custom"]).optional(),
+  scope: z.enum(["entity", "property", "lease", "asset"]).optional(),
+  scopeId: z.string().optional(),
   entityId: z.string().optional(),
+  propertyId: z.string().optional(),
+  unitIds: z.array(z.string()).optional(),
   dueAt: z.date(),
-  leadDays: z.number().min(0).default(0),
+  leadDays: z.number().min(0, "Lead days must be 0 or greater"),
   channel: z.enum(["inapp", "email"]).default("inapp"),
   payloadJson: z.record(z.any()).optional(),
 });
@@ -28,30 +30,35 @@ const reminderSchema = z.object({
 interface ReminderFormProps {
   properties: Property[];
   entities?: OwnershipEntity[];
+  units?: Unit[];
   reminder?: Reminder;
   onSubmit: (data: z.infer<typeof reminderSchema>) => void;
   onCancel?: () => void;
   isLoading: boolean;
 }
 
-export default function ReminderForm({ properties, entities = [], reminder, onSubmit, onCancel, isLoading }: ReminderFormProps) {
+export default function ReminderForm({ properties, entities = [], units = [], reminder, onSubmit, onCancel, isLoading }: ReminderFormProps) {
   const form = useForm<z.infer<typeof reminderSchema>>({
     resolver: zodResolver(reminderSchema),
     defaultValues: reminder ? {
       title: reminder.title || "",
-      type: reminder.type || "custom",
-      scope: reminder.scope || "property",
+      type: reminder.type || undefined,
+      scope: reminder.scope || undefined,
       scopeId: reminder.scopeId || "",
       entityId: reminder.entityId || "",
+      propertyId: "",
+      unitIds: [],
       dueAt: reminder.dueAt ? new Date(reminder.dueAt) : new Date(),
       leadDays: reminder.leadDays || 0,
       channel: reminder.channel || "inapp",
     } : {
       title: "",
-      type: "custom",
-      scope: "property",
+      type: undefined,
+      scope: undefined,
       scopeId: "",
       entityId: "",
+      propertyId: "",
+      unitIds: [],
       dueAt: new Date(),
       leadDays: 0,
       channel: "inapp",
@@ -86,7 +93,7 @@ export default function ReminderForm({ properties, entities = [], reminder, onSu
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Reminder Title</FormLabel>
+              <FormLabel>Reminder Title *</FormLabel>
               <FormControl>
                 <Input 
                   placeholder="e.g., Property insurance renewal" 
@@ -102,93 +109,100 @@ export default function ReminderForm({ properties, entities = [], reminder, onSu
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Type</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-reminder-type">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {reminderTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="scope"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Scope</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-reminder-scope">
-                      <SelectValue placeholder="Select scope" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {scopes.map((scope) => (
-                      <SelectItem key={scope.value} value={scope.value}>{scope.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
         <FormField
           control={form.control}
-          name="scopeId"
+          name="type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                {form.watch("scope") === "property" ? "Property" : "Scope Item"}
-              </FormLabel>
-              {form.watch("scope") === "property" ? (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-reminder-property">
-                      <SelectValue placeholder="Select property" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {properties.map((property) => (
-                      <SelectItem key={property.id} value={property.id}>
-                        {property.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
+              <FormLabel>Type (Optional)</FormLabel>
+              <Select onValueChange={(value) => field.onChange(value === "none" ? undefined : value)} defaultValue={field.value || "none"}>
                 <FormControl>
-                  <Input 
-                    placeholder="Enter scope ID" 
-                    value={field.value || ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    data-testid="input-reminder-scope-id" 
-                  />
+                  <SelectTrigger data-testid="select-reminder-type">
+                    <SelectValue placeholder="Select type (optional)" />
+                  </SelectTrigger>
                 </FormControl>
-              )}
+                <SelectContent>
+                  <SelectItem value="none">No Type</SelectItem>
+                  {reminderTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="propertyId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Property/Building (Optional)</FormLabel>
+              <Select onValueChange={(value) => {
+                field.onChange(value === "none" ? "" : value);
+                // Clear unit selection when property changes
+                form.setValue("unitIds", []);
+              }} defaultValue={field.value || "none"}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-reminder-property">
+                    <SelectValue placeholder="Select property/building" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">No Property</SelectItem>
+                  {properties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {form.watch("propertyId") && form.watch("propertyId") !== "" && (
+          <FormField
+            control={form.control}
+            name="unitIds"
+            render={({ field }) => {
+              const selectedPropertyId = form.watch("propertyId");
+              const propertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
+              
+              return (
+                <FormItem>
+                  <FormLabel>Units (Optional - leave empty to apply to entire building)</FormLabel>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
+                    {propertyUnits.map((unit) => (
+                      <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={field.value?.includes(unit.id) || false}
+                          onChange={(e) => {
+                            const currentIds = field.value || [];
+                            if (e.target.checked) {
+                              field.onChange([...currentIds, unit.id]);
+                            } else {
+                              field.onChange(currentIds.filter(id => id !== unit.id));
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm">{unit.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {propertyUnits.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No units found for this property</p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        )}
 
         <FormField
           control={form.control}
@@ -222,7 +236,7 @@ export default function ReminderForm({ properties, entities = [], reminder, onSu
             name="dueAt"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Due Date</FormLabel>
+                <FormLabel>Due Date *</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -265,7 +279,7 @@ export default function ReminderForm({ properties, entities = [], reminder, onSu
             name="leadDays"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Lead Days</FormLabel>
+                <FormLabel>Lead Days *</FormLabel>
                 <FormControl>
                   <Input 
                     type="number" 

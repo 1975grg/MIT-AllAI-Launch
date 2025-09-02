@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Building2, Plus, Calendar, FileText, Globe, Bell, Archive } from "lucide-react";
 import { useLocation } from "wouter";
-import type { OwnershipEntity, Property } from "@shared/schema";
+import type { OwnershipEntity, Property, Unit } from "@shared/schema";
 import EntityForm from "@/components/forms/entity-form";
 import ReminderForm from "@/components/forms/reminder-form";
 
@@ -47,6 +47,11 @@ export default function Entities() {
 
   const { data: properties } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
+    retry: false,
+  });
+
+  const { data: units } = useQuery<Unit[]>({
+    queryKey: ["/api/units"],
     retry: false,
   });
 
@@ -333,6 +338,7 @@ export default function Entities() {
                 <ReminderForm 
                   properties={properties || []}
                   entities={entities || []}
+                  units={units || []}
                   onSubmit={(data) => createReminderMutation.mutate(data)}
                   onCancel={() => setShowReminderForm(false)}
                   isLoading={createReminderMutation.isPending}
