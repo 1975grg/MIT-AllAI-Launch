@@ -341,7 +341,7 @@ export default function Maintenance() {
                   <SelectItem value="all">All Properties</SelectItem>
                   {filteredProperties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
-                      {property.street}, {property.city}
+                      {property.name || `${property.street}, ${property.city}`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -513,29 +513,40 @@ export default function Maintenance() {
                         )}
                       />
 
-                      {/* Unit Selection - only show if property is selected, is a building type, and has units */}
-                      {selectedPropertyId && isBuilding && selectedPropertyUnits.length > 0 && (
+                      {/* Unit Selection - only show if property is selected and is a building with multiple units */}
+                      {selectedPropertyId && isMultiUnit && (
                         <FormField
                           control={form.control}
                           name="unitId"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>{isMultiUnit ? "Area/Unit" : "Apply to"}</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-case-unit">
-                                    <SelectValue placeholder={`Select ${isMultiUnit ? "area or unit" : "application"}`} />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="common">Common Areas/Building</SelectItem>
-                                  {selectedPropertyUnits.map((unit) => (
-                                    <SelectItem key={unit.id} value={unit.id}>
-                                      {unit.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <FormLabel>Unit (Optional - leave empty to apply to entire building)</FormLabel>
+                              <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto border rounded p-2">
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="caseUnit"
+                                    checked={field.value === "common" || field.value === ""}
+                                    onChange={() => field.onChange("common")}
+                                    className="rounded border-gray-300"
+                                    data-testid="radio-case-common"
+                                  />
+                                  <span className="text-sm">Common Area</span>
+                                </label>
+                                {selectedPropertyUnits.map((unit) => (
+                                  <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name="caseUnit"
+                                      checked={field.value === unit.id}
+                                      onChange={() => field.onChange(unit.id)}
+                                      className="rounded border-gray-300"
+                                      data-testid={`radio-case-unit-${unit.id}`}
+                                    />
+                                    <span className="text-sm">{unit.label}</span>
+                                  </label>
+                                ))}
+                              </div>
                               <FormMessage />
                             </FormItem>
                           )}
