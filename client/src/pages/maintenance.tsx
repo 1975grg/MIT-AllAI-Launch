@@ -514,7 +514,12 @@ export default function Maintenance() {
                       />
 
                       {/* Unit Selection - only show if property is selected and is a building with multiple units */}
-                      {selectedPropertyId && isMultiUnit && (
+                      {(() => {
+                        const selectedPropertyForForm = properties?.find(p => p.id === selectedPropertyId);
+                        const selectedPropertyUnitsForForm = units.filter(unit => unit.propertyId === selectedPropertyId);
+                        const isBuildingForm = selectedPropertyId && selectedPropertyUnitsForForm.length > 1;
+                        
+                        return isBuildingForm && (
                         <FormField
                           control={form.control}
                           name="unitId"
@@ -526,14 +531,14 @@ export default function Maintenance() {
                                   <input
                                     type="radio"
                                     name="caseUnit"
-                                    checked={field.value === "common" || field.value === ""}
+                                    checked={field.value === "common"}
                                     onChange={() => field.onChange("common")}
                                     className="rounded border-gray-300"
                                     data-testid="radio-case-common"
                                   />
                                   <span className="text-sm">Common Area</span>
                                 </label>
-                                {selectedPropertyUnits.map((unit) => (
+                                {selectedPropertyUnitsForForm.map((unit) => (
                                   <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
                                     <input
                                       type="radio"
@@ -551,7 +556,8 @@ export default function Maintenance() {
                             </FormItem>
                           )}
                         />
-                      )}
+                        );
+                      })()}
 
                       <FormField
                         control={form.control}
