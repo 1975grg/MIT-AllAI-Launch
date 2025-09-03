@@ -8,6 +8,38 @@ AllAI Property is a comprehensive property management platform designed for part
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### Property Naming & Unit Selection Consistency Update (September 2025)
+**Checkpoint Name**: "Universal Property & Unit Interface Consistency"
+
+**Summary**: Achieved complete consistency across all platform pages for property naming and building unit selection patterns.
+
+**Changes Made**:
+- **Property Display**: All pages now show property names (e.g., "St Pete") instead of addresses when available, with fallback to "${property.street}, ${property.city}" format
+- **Building Unit Selection**: Standardized unit selection interface across all pages:
+  - Maintenance, Tenants, Reminders pages: Checkbox-based filtering with "Common Area + individual units"
+  - Expense forms: Radio button-based selection with "Common Area + individual units" in bordered boxes
+- **Filtering Logic**: Implemented consistent unit filtering that works across all data types (cases, reminders, expenses, tenants)
+
+**Files Modified**:
+- `client/src/pages/maintenance.tsx` - Enhanced with consistent property naming
+- `client/src/pages/tenants.tsx` - Added unit selection and consistent property display
+- `client/src/pages/reminders.tsx` - Added unit selection and fixed property naming
+- `client/src/pages/expenses.tsx` - Added unit selection and consistent property display
+- `client/src/components/forms/expense-form.tsx` - Replaced dropdowns with radio buttons for unit selection
+- `client/src/components/forms/tenant-form.tsx` - Consistent property naming
+- `client/src/components/forms/reminder-form.tsx` - Consistent property naming
+
+**UX Pattern Established**:
+- Properties with multiple units (buildings) show unit selection interface
+- Single-unit properties skip unit selection
+- Checkboxes for multi-select filtering (page-level)
+- Radio buttons for single-select form inputs (form-level)
+- Consistent bordered box styling with explanatory text
+
+**Significance**: This update ensures users see the same interface patterns and property naming conventions throughout the entire platform, eliminating confusion and improving user experience consistency.
+
 ## System Architecture
 
 ### Frontend Architecture
