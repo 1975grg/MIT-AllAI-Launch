@@ -261,29 +261,29 @@ export default function Maintenance() {
     return null;
   }
 
-  const getStatusIcon = (status: string | null, priority: string | null) => {
-    // Get priority color
-    const getPriorityColor = () => {
-      switch (priority) {
-        case "Urgent": return "text-red-600";
-        case "High": return "text-orange-600";
-        case "Medium": return "text-yellow-600";
-        case "Low": return "text-gray-600";
-        default: return "text-gray-400";
-      }
-    };
-    
-    const colorClass = getPriorityColor();
+  const getStatusIcon = (status: string | null) => {
+    // Keep icon color neutral and visible
+    const iconColor = "text-gray-700";
     
     switch (status) {
-      case "New": return <AlertTriangle className={`h-4 w-4 ${colorClass}`} />;
-      case "In Review": return <Clock className={`h-4 w-4 ${colorClass}`} />;
-      case "Scheduled": return <Clock className={`h-4 w-4 ${colorClass}`} />;
-      case "In Progress": return <Wrench className={`h-4 w-4 ${colorClass}`} />;
-      case "On Hold": return <XCircle className={`h-4 w-4 ${colorClass}`} />;
-      case "Resolved": return <CheckCircle className={`h-4 w-4 ${colorClass}`} />;
-      case "Closed": return <CheckCircle className={`h-4 w-4 ${colorClass}`} />;
-      default: return <Clock className={`h-4 w-4 ${colorClass}`} />;
+      case "New": return <AlertTriangle className={`h-4 w-4 ${iconColor}`} />;
+      case "In Review": return <Clock className={`h-4 w-4 ${iconColor}`} />;
+      case "Scheduled": return <Clock className={`h-4 w-4 ${iconColor}`} />;
+      case "In Progress": return <Wrench className={`h-4 w-4 ${iconColor}`} />;
+      case "On Hold": return <XCircle className={`h-4 w-4 ${iconColor}`} />;
+      case "Resolved": return <CheckCircle className={`h-4 w-4 ${iconColor}`} />;
+      case "Closed": return <CheckCircle className={`h-4 w-4 ${iconColor}`} />;
+      default: return <Clock className={`h-4 w-4 ${iconColor}`} />;
+    }
+  };
+
+  const getPriorityCircleColor = (priority: string | null) => {
+    switch (priority) {
+      case "Urgent": return "bg-red-100";
+      case "High": return "bg-orange-100";
+      case "Medium": return "bg-yellow-100";
+      case "Low": return "bg-gray-100";
+      default: return "bg-gray-50";
     }
   };
 
@@ -703,8 +703,8 @@ export default function Maintenance() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                          {getStatusIcon(smartCase.status, smartCase.priority)}
+                        <div className={`w-12 h-12 ${getPriorityCircleColor(smartCase.priority)} rounded-lg flex items-center justify-center`}>
+                          {getStatusIcon(smartCase.status)}
                         </div>
                         <div>
                           <CardTitle className="text-lg" data-testid={`text-case-title-${index}`}>{smartCase.title}</CardTitle>
