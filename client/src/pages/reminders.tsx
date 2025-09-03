@@ -23,6 +23,7 @@ export default function Reminders() {
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [unitFilter, setUnitFilter] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -184,7 +185,30 @@ export default function Reminders() {
       }
     }
     
-    return typeMatch && statusMatch && propertyMatch;
+    // Unit filtering logic - only apply if unit filter is active
+    let unitMatch = true;
+    if (unitFilter.length > 0) {
+      unitMatch = false;
+      
+      // Check if reminder is for a lease that matches our unit filter
+      if (reminder.scope === 'lease' && reminder.scopeId) {
+        const lease = leases?.find(l => l.id === reminder.scopeId);
+        if (lease) {
+          const unit = units?.find(u => u.id === lease.unitId);
+          if (unit && unitFilter.includes(unit.id)) {
+            unitMatch = true;
+          } else if (!unit && unitFilter.includes("common")) {
+            unitMatch = true;
+          }
+        }
+      }
+      // For property-scoped reminders, they apply to common areas
+      else if (reminder.scope === 'property' && unitFilter.includes("common")) {
+        unitMatch = true;
+      }
+    }
+    
+    return typeMatch && statusMatch && propertyMatch && unitMatch;
   }) || [];
 
   const reminderTypes = Array.from(new Set(reminders?.map(r => r.type).filter(Boolean))) || [];
@@ -262,7 +286,10 @@ export default function Reminders() {
               </Select>
 
               {/* Property Filter */}
-              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+              <Select value={propertyFilter} onValueChange={(value) => {
+                setPropertyFilter(value);
+                setUnitFilter([]); // Reset unit filter when property changes
+              }}>
                 <SelectTrigger className="w-52" data-testid="select-property-filter">
                   <SelectValue placeholder="All Properties" />
                 </SelectTrigger>
@@ -275,6 +302,54 @@ export default function Reminders() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Unit Selection - only show for buildings with multiple units */}
+              {propertyFilter !== "all" && (() => {
+                const selectedProperty = properties?.find(p => p.id === propertyFilter);
+                const propertyUnits = units.filter(unit => unit.propertyId === propertyFilter);
+                const isBuilding = propertyUnits.length > 1;
+                
+                if (!isBuilding) return null;
+
+                const handleUnitToggle = (unitId: string) => {
+                  const newFilter = [...unitFilter];
+                  if (newFilter.includes(unitId)) {
+                    setUnitFilter(newFilter.filter(id => id !== unitId));
+                  } else {
+                    setUnitFilter([...newFilter, unitId]);
+                  }
+                };
+                
+                return (
+                  <div className="flex flex-col space-y-2 p-3 border rounded-md bg-muted/30">
+                    <span className="text-sm font-medium">Units (Optional - leave empty to apply to entire building)</span>
+                    <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={unitFilter.includes("common")}
+                          onChange={() => handleUnitToggle("common")}
+                          className="rounded border-gray-300"
+                          data-testid="checkbox-common-area"
+                        />
+                        <span className="text-sm">Common Area</span>
+                      </label>
+                      {propertyUnits.map((unit) => (
+                        <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={unitFilter.includes(unit.id)}
+                            onChange={() => handleUnitToggle(unit.id)}
+                            className="rounded border-gray-300"
+                            data-testid={`checkbox-unit-${unit.id}`}
+                          />
+                          <span className="text-sm">{unit.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Type Filter */}
               <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -414,7 +489,7 @@ export default function Reminders() {
                                 <span className="ml-1" data-testid={`text-reminder-property-${index}`}>
                                   {(() => {
                                     const property = properties?.find(p => p.id === reminder.scopeId);
-                                    return property ? `${property.street}, ${property.city}` : 'Property';
+                                    return property ? (property.name || `${property.street}, ${property.city}`) : 'Property';
                                   })()}
                                 </span>
                               </div>
@@ -440,9 +515,9 @@ export default function Reminders() {
                                     const property = properties?.find(p => p.id === unit?.propertyId);
                                     
                                     if (unit && tenant && property) {
-                                      return `${property.street} Unit ${unit.label} - ${tenant.name}`;
+                                      return `${property.name || property.street} Unit ${unit.label} - ${tenant.name}`;
                                     } else if (unit && property) {
-                                      return `${property.street} Unit ${unit.label}`;
+                                      return `${property.name || property.street} Unit ${unit.label}`;
                                     } else if (tenant) {
                                       return `${tenant.name}`;
                                     }
