@@ -13,6 +13,7 @@ import PropertyPerformance from "@/pages/property-performance";
 import Tenants from "@/pages/tenants";
 import Maintenance from "@/pages/maintenance";
 import Expenses from "@/pages/expenses";
+import Revenue from "@/pages/revenue";
 import Reminders from "@/pages/reminders";
 import NotFound from "@/pages/not-found";
 
@@ -47,6 +48,7 @@ function Router() {
           <Route path="/tenants" component={Tenants} />
           <Route path="/maintenance" component={Maintenance} />
           <Route path="/expenses" component={Expenses} />
+          <Route path="/revenue" component={Revenue} />
           <Route path="/reminders" component={Reminders} />
           <Route component={NotFound} />
         </>

@@ -18,6 +18,9 @@ import {
   insertExpenseSchema,
   insertReminderSchema,
 } from "@shared/schema";
+
+// Revenue schema for API validation
+const insertRevenueSchema = insertTransactionSchema;
 import { startCronJobs } from "./cronJobs";
 
 // Helper function to create equipment reminders
@@ -1197,6 +1200,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting expense:", error);
       res.status(500).json({ message: "Failed to delete expense" });
+    }
+  });
+
+  // Revenue routes
+  app.post("/api/revenues", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      const { category, customCategory, scope, ...requestBody } = req.body;
+
+      let finalCategory = category;
+      if (category === "custom" && customCategory) {
+        finalCategory = customCategory;
+      }
+
+      const cleanedData = {
+        orgId: org.id,
+        type: "Income" as const,
+        propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
+        entityId: req.body.entityId || undefined,
+        scope: req.body.scope || "property",
+        amount: (req.body.amount !== undefined && req.body.amount !== null && req.body.amount !== "") ? String(req.body.amount) : "0",
+        description: req.body.description || "",
+        category: finalCategory,
+        date: typeof req.body.date === 'string' ? new Date(req.body.date) : req.body.date,
+        isDateRange: req.body.isDateRange || false,
+        endDate: req.body.endDate ? (typeof req.body.endDate === 'string' ? new Date(req.body.endDate) : req.body.endDate) : undefined,
+        notes: req.body.notes,
+        isRecurring: req.body.isRecurring || false,
+        recurringFrequency: req.body.recurringFrequency,
+        recurringInterval: req.body.recurringInterval || 1,
+        recurringEndDate: req.body.recurringEndDate ? (typeof req.body.recurringEndDate === 'string' ? new Date(req.body.recurringEndDate) : req.body.recurringEndDate) : undefined,
+        taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
+      };
+      
+      const validatedData = insertRevenueSchema.parse(cleanedData);
+      
+      const revenue = await storage.createTransaction(validatedData as any);
+      res.json(revenue);
+    } catch (error) {
+      console.error("Error creating revenue:", error);
+      res.status(500).json({ message: "Failed to create revenue" });
+    }
+  });
+
+  app.put("/api/revenues/:id", isAuthenticated, async (req, res) => {
+    try {
+      console.log("Updating revenue ID:", req.params.id);
+      console.log("Update request body:", JSON.stringify(req.body, null, 2));
+
+      const { category, customCategory, scope, ...requestBody } = req.body;
+
+      let finalCategory = category;
+      if (category === "custom" && customCategory) {
+        finalCategory = customCategory;
+      }
+
+      const cleanedData = {
+        id: req.params.id,
+        type: "Income",
+        amount: (req.body.amount !== undefined && req.body.amount !== null && req.body.amount !== "") ? String(req.body.amount) : "0",
+        description: req.body.description || "",
+        category: finalCategory,
+        date: typeof req.body.date === 'string' ? new Date(req.body.date) : req.body.date,
+        isDateRange: req.body.isDateRange || false,
+        endDate: req.body.endDate ? (typeof req.body.endDate === 'string' ? new Date(req.body.endDate) : req.body.endDate) : undefined,
+        notes: req.body.notes,
+        isRecurring: req.body.isRecurring || false,
+        recurringFrequency: req.body.recurringFrequency,
+        recurringInterval: req.body.recurringInterval || 1,
+        recurringEndDate: req.body.recurringEndDate ? (typeof req.body.recurringEndDate === 'string' ? new Date(req.body.recurringEndDate) : req.body.recurringEndDate) : undefined,
+        propertyId: scope === "property" ? req.body.propertyId : undefined,
+        entityId: scope === "operational" ? req.body.entityId : undefined,
+        userId: (req.user as any).claims.sub,
+        scope: req.body.scope || "property",
+        taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
+      };
+
+      const updatedRevenue = await storage.updateTransaction(req.params.id, cleanedData as any);
+      res.json(updatedRevenue);
+    } catch (error) {
+      console.error("Error updating revenue:", error);
+      res.status(500).json({ message: "Failed to update revenue" });
+    }
+  });
+
+  app.delete("/api/revenues/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      // Check if the revenue exists and belongs to the user's organization
+      const revenue = await storage.getTransactionById(req.params.id);
+      if (!revenue) {
+        return res.status(404).json({ message: "Revenue not found" });
+      }
+
+      if (revenue.orgId !== org.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteTransaction(req.params.id);
+      res.json({ message: "Revenue deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting revenue:", error);
+      res.status(500).json({ message: "Failed to delete revenue" });
     }
   });
 
