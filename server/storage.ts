@@ -348,6 +348,11 @@ export class DatabaseStorage implements IStorage {
         hoaContact: properties.hoaContact,
         notes: properties.notes,
         createdAt: properties.createdAt,
+        // Property value fields
+        propertyValue: properties.propertyValue,
+        autoAppreciation: properties.autoAppreciation,
+        appreciationRate: properties.appreciationRate,
+        valueEntryDate: properties.valueEntryDate,
         // Include ownership information
         ownershipEntityId: propertyOwnerships.entityId,
         ownershipPercent: propertyOwnerships.percent,
@@ -381,6 +386,11 @@ export class DatabaseStorage implements IStorage {
           hoaContact: row.hoaContact,
           notes: row.notes,
           createdAt: row.createdAt,
+          // Property value fields
+          propertyValue: row.propertyValue,
+          autoAppreciation: row.autoAppreciation,
+          appreciationRate: row.appreciationRate,
+          valueEntryDate: row.valueEntryDate,
           ownerships: []
         });
       }
