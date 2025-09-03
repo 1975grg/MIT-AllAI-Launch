@@ -983,7 +983,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         type="text"
                         placeholder="500,000"
                         className="pl-9"
-                        key={`property-value-${initialData?.id || 'new'}`}
+                        key={`property-value-${(initialData as any)?.id || 'new'}`}
                         defaultValue={initialData?.propertyValue ? Number(initialData.propertyValue).toLocaleString() : ""}
                         onBlur={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
