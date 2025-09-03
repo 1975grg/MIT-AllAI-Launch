@@ -1011,7 +1011,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`property-value-${(initialData as any)?.id || 'new'}`}
-                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.propertyValue ? Number(initialData.propertyValue).toLocaleString() : "")}
+                        value={(() => {
+                          const formValue = field.value;
+                          const initValue = initialData?.propertyValue;
+                          const displayValue = formValue ? Number(formValue).toLocaleString() : (initValue ? Number(initValue).toLocaleString() : "");
+                          console.log("💰 Rendering property value - formValue:", formValue, "initValue:", initValue, "displayValue:", displayValue);
+                          return displayValue;
+                        })()}
                         onFocus={() => {
                           console.log("💰 Property value field focus - field.value:", field.value);
                           console.log("💰 InitialData propertyValue:", (initialData as any)?.propertyValue);
