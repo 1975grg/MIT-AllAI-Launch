@@ -211,7 +211,7 @@ export default function Properties() {
         const appliancesResponse = await apiRequest("GET", `/api/units/${firstUnit.id}/appliances`);
         const appliances = await appliancesResponse.json();
         
-        (property as any).defaultUnit = {
+        (propertyForEditing as any).defaultUnit = {
           id: firstUnit.id,
           label: firstUnit.label,
           bedrooms: firstUnit.bedrooms,
@@ -235,13 +235,15 @@ export default function Properties() {
         };
         
         // Mark that this property should have the unit checkbox checked
-        (property as any).hasExistingUnit = true;
+        (propertyForEditing as any).hasExistingUnit = true;
       }
     } catch (error) {
       console.error("Error loading unit data:", error);
       // Continue with editing even if unit data fails to load
     }
     
+    // Update the editing property with unit data
+    setEditingProperty(propertyForEditing);
     setShowPropertyForm(true);
   };
 
