@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Building, Users, Receipt, Bell, Wrench } from "lucide-react";
+import { Building, Users, Receipt, DollarSign, Bell, Wrench } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface QuickAddModalProps {
@@ -43,6 +43,14 @@ export default function QuickAddModal({ open, onOpenChange, onReminderClick }: Q
       bgColor: "bg-yellow-100",
       href: "/expenses",
       action: "logExpense",
+    },
+    {
+      title: "Revenue",
+      icon: DollarSign,
+      color: "text-green-600",
+      bgColor: "bg-green-100",
+      href: "/revenue",
+      action: "logRevenue",
     },
     {
       title: "Reminder",
