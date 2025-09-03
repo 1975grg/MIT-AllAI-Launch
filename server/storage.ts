@@ -270,17 +270,18 @@ export class DatabaseStorage implements IStorage {
 
     // Calculate metrics using actual property values with auto-appreciation
     const totalProperties = propertiesResult.length;
-    const defaultPropertyValue = 250000; // Fallback value when not set
     
     let totalValue = 0;
     let totalOwnershipValue = 0;
     
     const propertiesWithValues = propertiesResult.map(property => {
-      let currentPropertyValue = defaultPropertyValue;
+      let currentPropertyValue = 0;
+      let hasCustomValue = false;
       
-      // Use actual property value if set
+      // Only use properties with actual values set (no fallback defaults)
       if (property.propertyValue && Number(property.propertyValue) > 0) {
         currentPropertyValue = Number(property.propertyValue);
+        hasCustomValue = true;
         
         // Apply auto-appreciation if enabled
         if (property.autoAppreciation && property.appreciationRate && property.valueEntryDate) {
@@ -293,18 +294,18 @@ export class DatabaseStorage implements IStorage {
             currentPropertyValue = currentPropertyValue * Math.pow(1 + appreciationRate, yearsElapsed);
           }
         }
+        
+        const ownershipPercent = Number(property.ownershipPercent);
+        const ownershipValue = currentPropertyValue * (ownershipPercent / 100);
+        
+        totalValue += currentPropertyValue;
+        totalOwnershipValue += ownershipValue;
       }
-      
-      const ownershipPercent = Number(property.ownershipPercent);
-      const ownershipValue = currentPropertyValue * (ownershipPercent / 100);
-      
-      totalValue += currentPropertyValue;
-      totalOwnershipValue += ownershipValue;
       
       return {
         ...property,
         currentValue: Math.round(currentPropertyValue),
-        hasCustomValue: property.propertyValue && Number(property.propertyValue) > 0,
+        hasCustomValue,
       };
     });
 
@@ -325,6 +326,95 @@ export class DatabaseStorage implements IStorage {
         monthlyExpenses: Math.round(monthlyExpenses),
         netCashFlow: Math.round(netCashFlow),
         totalOwnershipValue: Math.round(totalOwnershipValue),
+      },
+    };
+  }
+
+  async getPropertyPerformance(propertyId: string, orgId: string): Promise<any> {
+    // Get the property
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.orgId, orgId)));
+    
+    if (!property) {
+      return null;
+    }
+
+    // Get ownership entities for this property
+    const entitiesResult = await db
+      .select({
+        id: ownershipEntities.id,
+        name: ownershipEntities.name,
+        type: ownershipEntities.type,
+        ownershipPercent: propertyOwnerships.percent,
+      })
+      .from(ownershipEntities)
+      .innerJoin(propertyOwnerships, eq(ownershipEntities.id, propertyOwnerships.entityId))
+      .where(and(
+        eq(propertyOwnerships.propertyId, propertyId),
+        eq(ownershipEntities.orgId, orgId)
+      ))
+      .orderBy(asc(ownershipEntities.name));
+
+    // Get units for this property
+    const unitsResult = await db
+      .select({
+        id: units.id,
+        label: units.label,
+        bedrooms: units.bedrooms,
+        bathrooms: units.bathrooms,
+        sqft: units.sqft,
+        rentAmount: units.rentAmount,
+      })
+      .from(units)
+      .where(eq(units.propertyId, propertyId))
+      .orderBy(asc(units.label));
+
+    // Calculate current property value with auto-appreciation
+    let currentValue = 0;
+    const estimatedValue = property.propertyValue ? Number(property.propertyValue) : 0;
+    
+    if (estimatedValue > 0) {
+      currentValue = estimatedValue;
+      
+      // Apply auto-appreciation if enabled
+      if (property.autoAppreciation && property.appreciationRate && property.valueEntryDate) {
+        const entryDate = new Date(property.valueEntryDate);
+        const currentDate = new Date();
+        const yearsElapsed = Math.floor((currentDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24 * 365));
+        
+        if (yearsElapsed > 0) {
+          const appreciationRate = Number(property.appreciationRate) / 100;
+          currentValue = currentValue * Math.pow(1 + appreciationRate, yearsElapsed);
+        }
+      }
+    }
+
+    // Calculate financial metrics
+    const totalUnits = unitsResult.length;
+    const monthlyRevenue = unitsResult.reduce((sum, unit) => {
+      return sum + (unit.rentAmount ? Number(unit.rentAmount) : 0);
+    }, 0);
+    
+    // Simplified expense calculation (could be enhanced with actual expense data)
+    const monthlyExpenses = Math.round(currentValue * 0.02 / 12); // 2% of property value annually
+    const netCashFlow = monthlyRevenue - monthlyExpenses;
+    const appreciationGain = currentValue - estimatedValue;
+
+    return {
+      property,
+      entities: entitiesResult,
+      units: unitsResult,
+      metrics: {
+        totalUnits,
+        estimatedValue: Math.round(estimatedValue),
+        currentValue: Math.round(currentValue),
+        monthlyRevenue: Math.round(monthlyRevenue),
+        monthlyExpenses,
+        netCashFlow: Math.round(netCashFlow),
+        appreciationGain: Math.round(appreciationGain),
+        totalOwners: entitiesResult.length,
       },
     };
   }

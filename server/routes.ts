@@ -347,6 +347,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Property routes
+  app.get('/api/properties/:id/performance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      const performance = await storage.getPropertyPerformance(req.params.id, org.id);
+      if (!performance) return res.status(404).json({ message: "Property not found" });
+
+      res.json(performance);
+    } catch (error) {
+      console.error("Error fetching property performance:", error);
+      res.status(500).json({ message: "Failed to fetch property performance" });
+    }
+  });
   app.get('/api/properties', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ type PropertyWithOwnerships = Property & {
 export default function Properties() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [showPropertyForm, setShowPropertyForm] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<string>("all");
   const [editingProperty, setEditingProperty] = useState<PropertyWithOwnerships | null>(null);
@@ -813,6 +815,15 @@ export default function Properties() {
                           <ChevronRight className="h-4 w-4 mr-2" />
                         )}
                         Units ({Math.max(getPropertyUnits(property.id).length, 1)})
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1" 
+                        onClick={() => setLocation(`/properties/${property.id}/performance`)}
+                        data-testid={`button-view-performance-${index}`}
+                      >
+                        View Performance
                       </Button>
                       <Button 
                         variant="outline" 
