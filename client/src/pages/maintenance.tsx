@@ -17,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 
 // Predefined maintenance categories
@@ -216,6 +216,38 @@ export default function Maintenance() {
       toast({
         title: "Error",
         description: "Failed to update case status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCaseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/cases/${id}`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      toast({
+        title: "Success", 
+        description: "Case deleted successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete case",
         variant: "destructive",
       });
     },
@@ -709,40 +741,25 @@ export default function Maintenance() {
                     </div>
                     
                     <div className="flex space-x-2">
-                      {smartCase.status !== "Resolved" && smartCase.status !== "Closed" && (
-                        <>
-                          {smartCase.status === "New" && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => updateCaseStatusMutation.mutate({ id: smartCase.id, status: "In Review" })}
-                              data-testid={`button-review-case-${index}`}
-                            >
-                              Start Review
-                            </Button>
-                          )}
-                          {(smartCase.status === "In Review" || smartCase.status === "Scheduled") && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => updateCaseStatusMutation.mutate({ id: smartCase.id, status: "In Progress" })}
-                              data-testid={`button-start-case-${index}`}
-                            >
-                              Start Work
-                            </Button>
-                          )}
-                          {smartCase.status === "In Progress" && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => updateCaseStatusMutation.mutate({ id: smartCase.id, status: "Resolved" })}
-                              data-testid={`button-resolve-case-${index}`}
-                            >
-                              Mark Resolved
-                            </Button>
-                          )}
-                        </>
-                      )}
+                      {/* Status Dropdown */}
+                      <Select 
+                        value={smartCase.status || "New"} 
+                        onValueChange={(newStatus) => updateCaseStatusMutation.mutate({ id: smartCase.id, status: newStatus })}
+                      >
+                        <SelectTrigger className="w-32" data-testid={`select-case-status-${index}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="New">New</SelectItem>
+                          <SelectItem value="In Review">In Review</SelectItem>
+                          <SelectItem value="Scheduled">Scheduled</SelectItem>
+                          <SelectItem value="In Progress">In Progress</SelectItem>
+                          <SelectItem value="On Hold">On Hold</SelectItem>
+                          <SelectItem value="Resolved">Resolved</SelectItem>
+                          <SelectItem value="Closed">Closed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -751,8 +768,18 @@ export default function Maintenance() {
                       >
                         Edit
                       </Button>
-                      <Button variant="outline" size="sm" data-testid={`button-view-case-${index}`}>
-                        View Details
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this case? This action cannot be undone.")) {
+                            deleteCaseMutation.mutate(smartCase.id);
+                          }
+                        }}
+                        data-testid={`button-delete-case-${index}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>
