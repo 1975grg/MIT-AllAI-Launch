@@ -984,16 +984,15 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         type="text"
                         placeholder="500,000"
                         className="pl-9"
-                        key={`property-value-${initialData?.id || 'new'}`}
-                        defaultValue={initialData?.propertyValue ? Number(initialData.propertyValue).toLocaleString() : ""}
-                        onBlur={(e) => {
+                        value={field.value ? field.value.toLocaleString() : ""}
+                        onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
-                          if (!isNaN(numericValue || 0)) {
-                            field.onChange(numericValue);
-                            if (numericValue) {
-                              e.target.value = numericValue.toLocaleString();
-                            }
+                          field.onChange(numericValue);
+                        }}
+                        onBlur={(e) => {
+                          if (field.value) {
+                            e.target.value = field.value.toLocaleString();
                           }
                         }}
                         data-testid="input-property-value"

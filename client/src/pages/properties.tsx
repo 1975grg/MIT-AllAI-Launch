@@ -188,7 +188,14 @@ export default function Properties() {
   }) || [];
 
   const handleEditProperty = async (property: PropertyWithOwnerships) => {
-    setEditingProperty(property);
+    // Convert string propertyValue to number for form compatibility
+    const propertyForEditing = {
+      ...property,
+      propertyValue: property.propertyValue ? Number(property.propertyValue) : undefined,
+      appreciationRate: property.appreciationRate ? Number(property.appreciationRate) : undefined,
+    };
+    
+    setEditingProperty(propertyForEditing);
     
     // Fetch the property's units to get appliance data
     try {
