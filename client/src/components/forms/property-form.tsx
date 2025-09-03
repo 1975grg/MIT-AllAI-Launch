@@ -160,12 +160,23 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
-    if (initialData) {
+    if (initialData && initialData.id) {  // Only reset for editing (when there's an ID)
       console.log("🔄 Resetting form with initialData:", initialData);
-      form.reset({
+      console.log("🔄 PropertyValue before reset:", initialData.propertyValue);
+      
+      const resetData = {
         ...initialData,
         propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
-      });
+      };
+      
+      console.log("🔄 Reset data:", resetData);
+      form.reset(resetData);
+      
+      // Force set the property value specifically
+      if (initialData.propertyValue) {
+        console.log("🔄 Force setting propertyValue to:", Number(initialData.propertyValue));
+        form.setValue('propertyValue', Number(initialData.propertyValue));
+      }
     }
   }, [initialData, form]);
 
@@ -1000,7 +1011,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`property-value-${(initialData as any)?.id || 'new'}`}
-                        value={field.value ? Number(field.value).toLocaleString() : ""}
+                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.propertyValue ? Number(initialData.propertyValue).toLocaleString() : "")}
                         onFocus={() => {
                           console.log("💰 Property value field focus - field.value:", field.value);
                           console.log("💰 InitialData propertyValue:", (initialData as any)?.propertyValue);
