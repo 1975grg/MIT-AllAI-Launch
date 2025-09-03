@@ -386,10 +386,10 @@ export class DatabaseStorage implements IStorage {
           hoaContact: row.hoaContact,
           notes: row.notes,
           createdAt: row.createdAt,
-          // Property value fields
-          propertyValue: row.propertyValue,
-          autoAppreciation: row.autoAppreciation,
-          appreciationRate: row.appreciationRate,
+          // Property value fields - ensure proper mapping
+          propertyValue: row.propertyValue ? Number(row.propertyValue) : undefined,
+          autoAppreciation: row.autoAppreciation || false,
+          appreciationRate: row.appreciationRate ? Number(row.appreciationRate) : undefined,
           valueEntryDate: row.valueEntryDate,
           ownerships: []
         });
