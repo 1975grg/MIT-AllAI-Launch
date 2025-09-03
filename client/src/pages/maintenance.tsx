@@ -262,8 +262,6 @@ export default function Maintenance() {
   }
 
   const getStatusIcon = (status: string | null, priority: string | null) => {
-    console.log("Status:", status, "Priority:", priority);
-    
     // Get priority color
     const getPriorityColor = () => {
       switch (priority) {
@@ -276,7 +274,6 @@ export default function Maintenance() {
     };
     
     const colorClass = getPriorityColor();
-    console.log("Color class:", colorClass);
     
     switch (status) {
       case "New": return <AlertTriangle className={`h-4 w-4 ${colorClass}`} />;
@@ -743,7 +740,7 @@ export default function Maintenance() {
                             <span className="ml-1" data-testid={`text-case-property-${index}`}>
                               {(() => {
                                 const property = properties?.find(p => p.id === smartCase.propertyId);
-                                return property ? `${property.street}, ${property.city}` : 'Property';
+                                return property ? (property.name || `${property.street}, ${property.city}`) : 'Property';
                               })()}
                             </span>
                           </div>
