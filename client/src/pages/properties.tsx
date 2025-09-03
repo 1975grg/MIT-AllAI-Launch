@@ -342,6 +342,10 @@ export default function Properties() {
                     hoaName: editingProperty.hoaName || "",
                     hoaContact: editingProperty.hoaContact || "",
                     notes: editingProperty.notes || "",
+                    // Add missing financial data
+                    propertyValue: editingProperty.propertyValue,
+                    autoAppreciation: editingProperty.autoAppreciation || false,
+                    appreciationRate: editingProperty.appreciationRate,
                     ownerships: editingProperty.ownerships?.map(o => ({
                       entityId: o.entityId,
                       percent: o.percent
