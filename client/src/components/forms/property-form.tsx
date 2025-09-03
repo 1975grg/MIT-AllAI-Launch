@@ -981,15 +981,19 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                       <Input
-                        type="number"
-                        min="0"
-                        step="1000"
+                        type="text"
                         placeholder="500,000"
                         className="pl-9"
-                        value={field.value ? formatNumberWithCommas(field.value) : ""}
-                        onChange={(e) => {
-                          const rawValue = removeCommas(e.target.value);
-                          field.onChange(rawValue ? Number(rawValue) : undefined);
+                        defaultValue={field.value ? field.value.toLocaleString() : ""}
+                        onBlur={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          if (!isNaN(numericValue || 0)) {
+                            field.onChange(numericValue);
+                            if (numericValue) {
+                              e.target.value = numericValue.toLocaleString();
+                            }
+                          }
                         }}
                         data-testid="input-property-value"
                       />

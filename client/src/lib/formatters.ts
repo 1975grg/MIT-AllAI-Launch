@@ -34,29 +34,34 @@ export function formatCurrency(value: number | string): string {
 }
 
 /**
- * Custom hook for financial input handling with comma formatting
+ * Handle financial input changes without formatting while typing
+ * @param e - The input change event  
  * @param onChange - The form field onChange handler
- * @returns Object with formatted value and change handler
  */
-export function useFormattedInput(onChange: (value: number | undefined) => void) {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = removeCommas(e.target.value);
-    const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
-    
-    // Update the actual form value (numeric)
-    onChange(numericValue);
-    
-    // Format the display value with commas
-    if (rawValue && !isNaN(parseFloat(rawValue))) {
-      const formatted = formatNumberWithCommas(parseFloat(rawValue));
-      e.target.value = formatted;
-    }
-  };
+export function handleFinancialInput(e: React.ChangeEvent<HTMLInputElement>, onChange: (value: number | undefined) => void) {
+  const rawValue = removeCommas(e.target.value);
+  const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+  onChange(numericValue);
+}
 
-  const formatDisplayValue = (value: number | undefined): string => {
-    if (!value && value !== 0) return '';
-    return formatNumberWithCommas(value);
-  };
+/**
+ * Handle financial input blur - format the display value
+ * @param e - The input blur event
+ * @param value - Current field value
+ * @param onChange - The form field onChange handler  
+ */
+export function handleFinancialBlur(e: React.FocusEvent<HTMLInputElement>, value: number | undefined, onChange: (value: number | undefined) => void) {
+  if (value && !isNaN(value)) {
+    // Format the input value with commas
+    e.target.value = formatNumberWithCommas(value);
+  }
+}
 
-  return { handleChange, formatDisplayValue };
+/**
+ * Get display value for financial inputs (unformatted for controlled inputs)
+ * @param value - The numeric value
+ * @returns String value for input display
+ */
+export function getFinancialDisplayValue(value: number | undefined): string {
+  return value !== undefined ? String(value) : '';
 }
