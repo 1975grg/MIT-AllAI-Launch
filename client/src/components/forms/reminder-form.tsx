@@ -340,9 +340,9 @@ export default function ReminderForm({ properties, entities = [], units = [], re
           render={({ field }) => (
             <FormItem>
               <FormLabel>Notification Channels (Select all that apply)</FormLabel>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 {channels.map((channel) => (
-                  <label key={channel.value} className="flex items-center space-x-3 cursor-pointer p-3 border rounded-lg hover:bg-muted/50">
+                  <label key={channel.value} className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={field.value?.includes(channel.value as any) || false}
@@ -360,8 +360,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                       className="rounded border-gray-300"
                       data-testid={`checkbox-channel-${channel.value}`}
                     />
-                    <span className="text-lg">{channel.icon}</span>
-                    <span className="text-sm font-medium">{channel.label}</span>
+                    <span className="text-sm">{channel.label}</span>
                   </label>
                 ))}
               </div>
@@ -374,7 +373,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
           control={form.control}
           name="saveAsDefault"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem className="flex flex-row items-center space-x-2 space-y-0">
               <FormControl>
                 <input
                   type="checkbox"
@@ -384,14 +383,9 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                   data-testid="checkbox-save-as-default"
                 />
               </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="text-sm font-medium cursor-pointer">
-                  💾 Make this notification selection my default for future reminders
-                </FormLabel>
-                <p className="text-xs text-muted-foreground">
-                  Check this box to save your notification channel preferences for next time
-                </p>
-              </div>
+              <FormLabel className="text-sm cursor-pointer">
+                Make this notification selection my default for future reminders
+              </FormLabel>
             </FormItem>
           )}
         />
