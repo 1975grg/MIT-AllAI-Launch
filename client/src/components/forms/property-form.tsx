@@ -991,7 +991,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`property-value-${(initialData as any)?.id || 'new'}`}
-                        defaultValue={initialData?.propertyValue ? Number(initialData.propertyValue).toLocaleString() : ""}
+                        defaultValue={field.value ? Number(field.value).toLocaleString() : ""}
                         onBlur={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
