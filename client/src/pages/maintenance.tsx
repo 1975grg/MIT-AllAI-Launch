@@ -262,6 +262,8 @@ export default function Maintenance() {
   }
 
   const getStatusIcon = (status: string | null, priority: string | null) => {
+    console.log("Status:", status, "Priority:", priority);
+    
     // Get priority color
     const getPriorityColor = () => {
       switch (priority) {
@@ -274,6 +276,7 @@ export default function Maintenance() {
     };
     
     const colorClass = getPriorityColor();
+    console.log("Color class:", colorClass);
     
     switch (status) {
       case "New": return <AlertTriangle className={`h-4 w-4 ${colorClass}`} />;
