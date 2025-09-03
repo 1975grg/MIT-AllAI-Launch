@@ -161,7 +161,7 @@ export default function TenantForm({ onSubmit, onCancel, isLoading, initialData 
                     <SelectContent>
                       {properties?.map((property) => (
                         <SelectItem key={property.id} value={property.id}>
-                          {property.street}, {property.city}
+                          {property.name || `${property.street}, ${property.city}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -170,7 +170,7 @@ export default function TenantForm({ onSubmit, onCancel, isLoading, initialData 
                 <FormMessage />
                 {selectedProperty && (
                   <p className="text-sm text-muted-foreground">
-                    Selected: {selectedProperty.street}, {selectedProperty.city}
+                    Selected: {selectedProperty.name || `${selectedProperty.street}, ${selectedProperty.city}`}
                     {isSelectedPropertyBuilding && (
                       <span className="text-blue-600 font-medium ml-2">
                         • Building - Please select a unit below
@@ -196,6 +196,7 @@ export default function TenantForm({ onSubmit, onCancel, isLoading, initialData 
                         <SelectValue placeholder="Select a unit in this building" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="common">Common Area</SelectItem>
                         {availableUnits.length > 0 ? (
                           availableUnits.map((unit) => (
                             <SelectItem key={unit.id} value={unit.id}>

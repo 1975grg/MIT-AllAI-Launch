@@ -270,7 +270,7 @@ export default function Reminders() {
                   <SelectItem value="all">All Properties</SelectItem>
                   {filteredProperties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
-                      {property.street}, {property.city}
+                      {property.name || `${property.street}, ${property.city}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

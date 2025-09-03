@@ -290,7 +290,7 @@ export default function Tenants() {
                   <SelectItem value="all">All Properties</SelectItem>
                   {(properties || []).map((property) => (
                     <SelectItem key={property.id} value={property.id}>
-                      {property.street}, {property.city}
+                      {property.name || `${property.street}, ${property.city}`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -479,7 +479,7 @@ export default function Tenants() {
                             <span data-testid={`text-tenant-property-${index}`}>
                               {(() => {
                                 const property = properties?.find(p => p.id === group.propertyId);
-                                return property ? `${property.street}, ${property.city}` : 'Property';
+                                return property ? (property.name || `${property.street}, ${property.city}`) : 'Property';
                               })()}
                             </span>
                           </div>
