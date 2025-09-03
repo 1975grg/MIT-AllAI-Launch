@@ -234,8 +234,9 @@ export default function Properties() {
           appliances: appliances || [],
         };
         
-        // Mark that this property should have the unit checkbox checked
+        // Mark that this property has existing unit data but don't check the creation checkbox
         (propertyForEditing as any).hasExistingUnit = true;
+        (propertyForEditing as any).createDefaultUnit = false;
       }
     } catch (error) {
       console.error("Error loading unit data:", error);

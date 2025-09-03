@@ -1178,8 +1178,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
               />
             )}
             
-            {/* Single Unit Setup - Show for single-unit properties when createDefaultUnit is checked */}
-            {form.watch("createDefaultUnit") && form.watch("type") !== "Residential Building" && form.watch("type") !== "Commercial Building" && (
+            {/* Single Unit Setup - Show for single-unit properties when createDefaultUnit is checked OR when editing existing unit */}
+            {(form.watch("createDefaultUnit") || (initialData as any)?.hasExistingUnit) && form.watch("type") !== "Residential Building" && form.watch("type") !== "Commercial Building" && (
               <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
