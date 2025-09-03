@@ -212,24 +212,18 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   };
 
   const handleSubmit = (data: any) => {
-    console.log("🚀 Form submission started with data:", data);
     // Convert numeric values to strings for decimal database fields
     const processedData = {
       ...data,
       propertyValue: data.propertyValue !== undefined ? String(data.propertyValue) : undefined,
       appreciationRate: data.appreciationRate !== undefined ? String(data.appreciationRate) : undefined,
     };
-    console.log("✅ Processed data for submission:", processedData);
     onSubmit(processedData);
-  };
-
-  const handleFormError = (errors: any) => {
-    console.log("❌ Form validation errors:", errors);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit, handleFormError)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -989,15 +983,16 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         type="text"
                         placeholder="500,000"
                         className="pl-9"
-                        value={field.value ? field.value.toLocaleString() : ""}
-                        onChange={(e) => {
+                        key={`property-value-${initialData?.id || 'new'}`}
+                        defaultValue={initialData?.propertyValue ? Number(initialData.propertyValue).toLocaleString() : ""}
+                        onBlur={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
-                          field.onChange(numericValue);
-                        }}
-                        onBlur={(e) => {
-                          if (field.value) {
-                            e.target.value = field.value.toLocaleString();
+                          if (!isNaN(numericValue || 0)) {
+                            field.onChange(numericValue);
+                            if (numericValue) {
+                              e.target.value = numericValue.toLocaleString();
+                            }
                           }
                         }}
                         data-testid="input-property-value"
@@ -2319,7 +2314,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
           <Button 
             type="submit" 
             disabled={isLoading} 
-            onClick={() => console.log("🔵 Submit button clicked")}
             data-testid="button-submit-property"
           >
             {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update Property" : "Create Property")}
