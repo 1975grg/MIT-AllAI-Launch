@@ -581,9 +581,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         }
-      } else {
-        // Create new unit with equipment data if none exists  
-        console.log("📦 Creating new unit for property:", req.params.id);
+        } else {
+          // Create new unit with equipment data if none exists  
+          console.log("📦 Creating new unit for property:", req.params.id);
           const unitData = {
             propertyId: req.params.id,
             label: defaultUnit.label || "Unit 1", // Default label if not provided
