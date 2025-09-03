@@ -112,6 +112,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"Individual" | "LLC" | "Partnership" | "Corporation">("Individual");
 
+  console.log("🏗️ PropertyForm initializing with initialData:", initialData);
+  console.log("🏗️ InitialData propertyValue specifically:", initialData?.propertyValue);
+
   const form = useForm<z.infer<typeof propertySchema>>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
@@ -987,6 +990,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         className="pl-9"
                         key={`property-value-${(initialData as any)?.id || 'new'}`}
                         value={field.value ? Number(field.value).toLocaleString() : ""}
+                        onFocus={() => {
+                          console.log("💰 Property value field focus - field.value:", field.value);
+                          console.log("💰 InitialData propertyValue:", (initialData as any)?.propertyValue);
+                          console.log("💰 Form values:", form.getValues());
+                        }}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
