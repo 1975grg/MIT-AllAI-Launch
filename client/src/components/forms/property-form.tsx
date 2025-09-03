@@ -115,22 +115,15 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   const form = useForm<z.infer<typeof propertySchema>>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
-      name: initialData?.name || "",
-      type: initialData?.type,
-      street: initialData?.street || "",
-      city: initialData?.city || "",
-      state: initialData?.state || "",
-      zipCode: initialData?.zipCode || "",
-      country: initialData?.country || "US",
-      yearBuilt: initialData?.yearBuilt,
-      sqft: initialData?.sqft,
-      hoaName: initialData?.hoaName || "",
-      hoaContact: initialData?.hoaContact || "",
-      notes: initialData?.notes || "",
-      // Property value defaults - use initialData values
-      propertyValue: initialData?.propertyValue,
-      autoAppreciation: initialData?.autoAppreciation || false,
-      appreciationRate: initialData?.appreciationRate,
+      name: "",
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      // Property value defaults
+      propertyValue: undefined,
+      autoAppreciation: false,
+      appreciationRate: undefined,
       createDefaultUnit: initialData?.createDefaultUnit || false,
       hasMultipleUnits: initialData?.hasMultipleUnits || false,
       numberOfUnits: initialData?.numberOfUnits || 1,
@@ -155,8 +148,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         applianceNotes: initialData?.defaultUnit?.applianceNotes || "",
         appliances: initialData?.defaultUnit?.appliances || [],
       },
-      units: initialData?.units || [],
-      ownerships: initialData?.ownerships || [{ entityId: "", percent: 100 }],
+      units: [],
+      ownerships: [{ entityId: "", percent: 100 }],
+      ...initialData,
     },
   });
 
@@ -991,7 +985,12 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`property-value-${(initialData as any)?.id || 'new'}`}
-                        defaultValue={field.value ? Number(field.value).toLocaleString() : ""}
+                        value={field.value ? Number(field.value).toLocaleString() : ""}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          field.onChange(numericValue);
+                        }}
                         onBlur={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
