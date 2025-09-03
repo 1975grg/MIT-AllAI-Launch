@@ -24,6 +24,7 @@ export default function Expenses() {
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [unitFilter, setUnitFilter] = useState<string[]>([]);
   const [entityFilter, setEntityFilter] = useState<string>("all");
 
   useEffect(() => {
@@ -151,7 +152,22 @@ export default function Expenses() {
     const categoryMatch = categoryFilter === "all" || expense.category === categoryFilter;
     const propertyMatch = propertyFilter === "all" || expense.propertyId === propertyFilter;
     const entityMatch = entityFilter === "all" || expense.entityId === entityFilter;
-    return categoryMatch && propertyMatch && entityMatch;
+    
+    // Unit filtering logic - only apply if unit filter is active
+    let unitMatch = true;
+    if (unitFilter.length > 0 && expense.propertyId === propertyFilter) {
+      unitMatch = false;
+      
+      // Check if expense matches selected units
+      if (expense.unitId && unitFilter.includes(expense.unitId)) {
+        unitMatch = true;
+      } else if (!expense.unitId && unitFilter.includes("common")) {
+        // Expenses without specific unit ID are considered common area
+        unitMatch = true;
+      }
+    }
+    
+    return categoryMatch && propertyMatch && entityMatch && unitMatch;
   });
 
   const categories = Array.from(new Set(expenseTransactions.map(e => e.category).filter(Boolean)));
@@ -215,7 +231,10 @@ export default function Expenses() {
               </Select>
 
               {/* Property Filter - Second, filtered by entity */}
-              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+              <Select value={propertyFilter} onValueChange={(value) => {
+                setPropertyFilter(value);
+                setUnitFilter([]); // Reset unit filter when property changes
+              }}>
                 <SelectTrigger className="w-52" data-testid="select-property-filter">
                   <SelectValue placeholder="All Properties" />
                 </SelectTrigger>
@@ -228,6 +247,54 @@ export default function Expenses() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Unit Selection - only show for buildings with multiple units */}
+              {propertyFilter !== "all" && (() => {
+                const selectedProperty = properties?.find(p => p.id === propertyFilter);
+                const propertyUnits = units.filter(unit => unit.propertyId === propertyFilter);
+                const isBuilding = propertyUnits.length > 1;
+                
+                if (!isBuilding) return null;
+
+                const handleUnitToggle = (unitId: string) => {
+                  const newFilter = [...unitFilter];
+                  if (newFilter.includes(unitId)) {
+                    setUnitFilter(newFilter.filter(id => id !== unitId));
+                  } else {
+                    setUnitFilter([...newFilter, unitId]);
+                  }
+                };
+                
+                return (
+                  <div className="flex flex-col space-y-2 p-3 border rounded-md bg-muted/30">
+                    <span className="text-sm font-medium">Units (Optional - leave empty to show all)</span>
+                    <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={unitFilter.includes("common")}
+                          onChange={() => handleUnitToggle("common")}
+                          className="rounded border-gray-300"
+                          data-testid="checkbox-common-area"
+                        />
+                        <span className="text-sm">Common Area</span>
+                      </label>
+                      {propertyUnits.map((unit) => (
+                        <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={unitFilter.includes(unit.id)}
+                            onChange={() => handleUnitToggle(unit.id)}
+                            className="rounded border-gray-300"
+                            data-testid={`checkbox-unit-${unit.id}`}
+                          />
+                          <span className="text-sm">{unit.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Category Filter - Third */}
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -390,7 +457,7 @@ export default function Expenses() {
                                 <p data-testid={`text-expense-property-${index}`}>
                                   {(() => {
                                     const property = properties.find(p => p.id === expense.propertyId);
-                                    return property ? `${property.street}, ${property.city}` : 'Property';
+                                    return property ? (property.name || `${property.street}, ${property.city}`) : 'Property';
                                   })()}
                                 </p>
                               </>

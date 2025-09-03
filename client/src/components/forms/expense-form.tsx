@@ -579,7 +579,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                           <SelectItem value="none">No specific property</SelectItem>
                           {properties.map((property) => (
                             <SelectItem key={property.id} value={property.id}>
-                              {property.name}
+                              {property.name || `${property.street}, ${property.city}`}
                             </SelectItem>
                           ))}
                         </SelectContent>
