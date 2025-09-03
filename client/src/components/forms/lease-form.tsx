@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { TenantGroup, Unit, Property, Lease } from "@shared/schema";
+import { formatNumberWithCommas, removeCommas } from "@/lib/formatters";
 
 // Lease form schema
 const leaseFormSchema = z.object({
@@ -271,10 +272,16 @@ export default function LeaseForm({
                     <FormLabel>Monthly Rent</FormLabel>
                     <FormControl>
                       <Input
-                        {...field}
                         type="number"
                         step="0.01"
                         placeholder="0.00"
+                        value={field.value ? formatNumberWithCommas(field.value) : ""}
+                        onChange={(e) => {
+                          const rawValue = removeCommas(e.target.value);
+                          field.onChange(rawValue || "");
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
                         data-testid="input-lease-rent"
                       />
                     </FormControl>
@@ -291,10 +298,16 @@ export default function LeaseForm({
                     <FormLabel>Security Deposit</FormLabel>
                     <FormControl>
                       <Input
-                        {...field}
                         type="number"
                         step="0.01"
                         placeholder="0.00"
+                        value={field.value ? formatNumberWithCommas(field.value) : ""}
+                        onChange={(e) => {
+                          const rawValue = removeCommas(e.target.value);
+                          field.onChange(rawValue || "");
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
                         data-testid="input-lease-deposit"
                       />
                     </FormControl>

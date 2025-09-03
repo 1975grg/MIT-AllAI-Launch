@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useState, useEffect } from "react";
 import type { Property, Unit } from "@shared/schema";
+import { formatNumberWithCommas, removeCommas } from "@/lib/formatters";
 
 const lineItemSchema = z.object({
   description: z.string().optional(),
@@ -345,10 +346,10 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                     type="number" 
                     step="0.01"
                     placeholder="0.00" 
-                    value={field.value || ""}
+                    value={field.value ? formatNumberWithCommas(field.value) : ""}
                     onChange={(e) => {
-                      const value = e.target.value;
-                      field.onChange(value === "" ? undefined : parseFloat(value) || undefined);
+                      const rawValue = removeCommas(e.target.value);
+                      field.onChange(rawValue === "" ? undefined : parseFloat(rawValue) || undefined);
                     }}
                     onBlur={field.onBlur}
                     name={field.name}
@@ -866,10 +867,10 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                               type="number" 
                               step="0.01"
                               placeholder="0.00" 
-                              value={field.value || ""}
+                              value={field.value ? formatNumberWithCommas(field.value) : ""}
                               onChange={(e) => {
-                                const value = e.target.value;
-                                field.onChange(value === "" ? 0 : parseFloat(value) || 0);
+                                const rawValue = removeCommas(e.target.value);
+                                field.onChange(rawValue === "" ? 0 : parseFloat(rawValue) || 0);
                               }}
                               onBlur={field.onBlur}
                               name={field.name}

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, Building2, Home, Wrench, DollarSign } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { OwnershipEntity } from "@shared/schema";
+import { formatNumberWithCommas, removeCommas } from "@/lib/formatters";
 
 const ownershipSchema = z.object({
   entityId: z.string().min(1, "Entity is required"),
@@ -985,8 +986,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         step="1000"
                         placeholder="500,000"
                         className="pl-9"
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                        value={field.value ? formatNumberWithCommas(field.value) : ""}
+                        onChange={(e) => {
+                          const rawValue = removeCommas(e.target.value);
+                          field.onChange(rawValue ? Number(rawValue) : undefined);
+                        }}
                         data-testid="input-property-value"
                       />
                     </div>
@@ -1261,7 +1265,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                             min="0"
                             step="0.01"
                             placeholder="2,500" 
-                            {...field}
+                            value={field.value ? formatNumberWithCommas(field.value) : ""}
+                            onChange={(e) => {
+                              const rawValue = removeCommas(e.target.value);
+                              field.onChange(rawValue || "");
+                            }}
                             data-testid="input-unit-rent"
                           />
                         </FormControl>
@@ -1282,7 +1290,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                             min="0"
                             step="0.01"
                             placeholder="2,500" 
-                            {...field}
+                            value={field.value ? formatNumberWithCommas(field.value) : ""}
+                            onChange={(e) => {
+                              const rawValue = removeCommas(e.target.value);
+                              field.onChange(rawValue || "");
+                            }}
                             data-testid="input-unit-deposit"
                           />
                         </FormControl>
@@ -1924,7 +1936,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                                 min="0"
                                 step="0.01"
                                 placeholder="2,500" 
-                                {...field}
+                                value={field.value ? formatNumberWithCommas(field.value) : ""}
+                                onChange={(e) => {
+                                  const rawValue = removeCommas(e.target.value);
+                                  field.onChange(rawValue || "");
+                                }}
                                 data-testid={`input-unit-rent-${index}`}
                               />
                             </FormControl>
@@ -1945,7 +1961,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                                 min="0"
                                 step="0.01"
                                 placeholder="2,500" 
-                                {...field}
+                                value={field.value ? formatNumberWithCommas(field.value) : ""}
+                                onChange={(e) => {
+                                  const rawValue = removeCommas(e.target.value);
+                                  field.onChange(rawValue || "");
+                                }}
                                 data-testid={`input-unit-deposit-${index}`}
                               />
                             </FormControl>
