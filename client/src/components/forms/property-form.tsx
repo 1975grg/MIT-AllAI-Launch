@@ -112,6 +112,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"Individual" | "LLC" | "Partnership" | "Corporation">("Individual");
 
+  console.log("🔍 PropertyForm initial data:", initialData);
+  console.log("🔍 PropertyForm initial value fields:", {
+    propertyValue: initialData?.propertyValue,
+    autoAppreciation: initialData?.autoAppreciation,
+    appreciationRate: initialData?.appreciationRate
+  });
+
   const form = useForm<z.infer<typeof propertySchema>>({
     resolver: zodResolver(propertySchema),
     defaultValues: {

@@ -188,12 +188,26 @@ export default function Properties() {
   }) || [];
 
   const handleEditProperty = async (property: PropertyWithOwnerships) => {
+    console.log("🔍 Editing property raw data:", property);
+    console.log("🔍 Property value fields:", {
+      propertyValue: property.propertyValue,
+      autoAppreciation: property.autoAppreciation,
+      appreciationRate: property.appreciationRate
+    });
+    
     // Convert string propertyValue to number for form compatibility
     const propertyForEditing = {
       ...property,
       propertyValue: property.propertyValue ? Number(property.propertyValue) : undefined,
       appreciationRate: property.appreciationRate ? Number(property.appreciationRate) : undefined,
     };
+    
+    console.log("🔍 Property for editing:", propertyForEditing);
+    console.log("🔍 Converted value fields:", {
+      propertyValue: propertyForEditing.propertyValue,
+      autoAppreciation: propertyForEditing.autoAppreciation,
+      appreciationRate: propertyForEditing.appreciationRate
+    });
     
     setEditingProperty(propertyForEditing);
     
