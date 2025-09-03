@@ -212,18 +212,24 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   };
 
   const handleSubmit = (data: any) => {
+    console.log("🚀 Form submission started with data:", data);
     // Convert numeric values to strings for decimal database fields
     const processedData = {
       ...data,
       propertyValue: data.propertyValue !== undefined ? String(data.propertyValue) : undefined,
       appreciationRate: data.appreciationRate !== undefined ? String(data.appreciationRate) : undefined,
     };
+    console.log("✅ Processed data for submission:", processedData);
     onSubmit(processedData);
+  };
+
+  const handleFormError = (errors: any) => {
+    console.log("❌ Form validation errors:", errors);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit, handleFormError)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -2313,6 +2319,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
           <Button 
             type="submit" 
             disabled={isLoading} 
+            onClick={() => console.log("🔵 Submit button clicked")}
             data-testid="button-submit-property"
           >
             {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update Property" : "Create Property")}
