@@ -261,29 +261,16 @@ export default function Maintenance() {
     return null;
   }
 
-  const getStatusIcon = (status: string | null, priority: string | null) => {
-    // Get priority color
-    const getPriorityColor = () => {
-      switch (priority) {
-        case "Urgent": return "text-red-600";
-        case "High": return "text-orange-600";
-        case "Medium": return "text-yellow-600";
-        case "Low": return "text-gray-600";
-        default: return "text-gray-400";
-      }
-    };
-    
-    const colorClass = getPriorityColor();
-    
+  const getStatusIcon = (status: string | null) => {
     switch (status) {
-      case "New": return <AlertTriangle className={`h-4 w-4 ${colorClass}`} />;
-      case "In Review": return <Clock className={`h-4 w-4 ${colorClass}`} />;
-      case "Scheduled": return <Clock className={`h-4 w-4 ${colorClass}`} />;
-      case "In Progress": return <Wrench className={`h-4 w-4 ${colorClass}`} />;
-      case "On Hold": return <XCircle className={`h-4 w-4 ${colorClass}`} />;
-      case "Resolved": return <CheckCircle className={`h-4 w-4 ${colorClass}`} />;
-      case "Closed": return <CheckCircle className={`h-4 w-4 ${colorClass}`} />;
-      default: return <Clock className={`h-4 w-4 ${colorClass}`} />;
+      case "New": return <AlertTriangle className="h-4 w-4 text-blue-600" />;
+      case "In Review": return <Clock className="h-4 w-4 text-yellow-600" />;
+      case "Scheduled": return <Clock className="h-4 w-4 text-orange-600" />;
+      case "In Progress": return <Wrench className="h-4 w-4 text-yellow-600" />;
+      case "On Hold": return <XCircle className="h-4 w-4 text-gray-600" />;
+      case "Resolved": return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "Closed": return <CheckCircle className="h-4 w-4 text-green-600" />;
+      default: return <Clock className="h-4 w-4 text-gray-400" />;
     }
   };
 
@@ -704,7 +691,7 @@ export default function Maintenance() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                          {getStatusIcon(smartCase.status, smartCase.priority)}
+                          {getStatusIcon(smartCase.status)}
                         </div>
                         <div>
                           <CardTitle className="text-lg" data-testid={`text-case-title-${index}`}>{smartCase.title}</CardTitle>
