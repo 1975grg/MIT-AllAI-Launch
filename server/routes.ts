@@ -442,7 +442,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate the property data (excluding required fields for updates)
       const updatePropertySchema = insertPropertySchema.partial().omit({ orgId: true });
+      
+      console.log("🔍 Raw property data:", JSON.stringify(propertyData, null, 2));
+      console.log("🔍 Property value fields:", {
+        propertyValue: propertyData.propertyValue,
+        autoAppreciation: propertyData.autoAppreciation,
+        appreciationRate: propertyData.appreciationRate
+      });
+      
       const validatedData = updatePropertySchema.parse(propertyData);
+      
+      console.log("✅ Validated data:", JSON.stringify(validatedData, null, 2));
+      console.log("✅ Validated value fields:", {
+        propertyValue: validatedData.propertyValue,
+        autoAppreciation: validatedData.autoAppreciation,
+        appreciationRate: validatedData.appreciationRate
+      });
       
       // Update property and ownerships
       const property = await storage.updatePropertyWithOwnerships(req.params.id, validatedData, ownerships);
