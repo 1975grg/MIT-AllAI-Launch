@@ -29,6 +29,7 @@ export default function Tenants() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [unitFilter, setUnitFilter] = useState<string[]>([]);
 
   // Helper function to determine tenant status
   const getTenantStatus = (group: TenantGroup, groupLeases: Lease[]) => {
@@ -238,6 +239,11 @@ export default function Tenants() {
     // Filter by property
     const propertyMatch = propertyFilter === "all" || group.propertyId === propertyFilter;
     
+    // Filter by unit - only apply unit filter if some units are selected
+    const unitMatch = unitFilter.length === 0 || 
+      (group.unitId && unitFilter.includes(group.unitId)) || 
+      (unitFilter.includes("common") && !group.unitId);
+    
     // Filter by entity (via property)
     if (entityFilter !== "all") {
       const property = properties?.find(p => p.id === group.propertyId);
@@ -245,7 +251,7 @@ export default function Tenants() {
       // This will be enhanced when we have the full property ownership data
     }
     
-    return propertyMatch;
+    return propertyMatch && unitMatch;
   }) || [];
 
   return (
@@ -282,7 +288,10 @@ export default function Tenants() {
               </Select>
 
               {/* Property Filter */}
-              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+              <Select value={propertyFilter} onValueChange={(value) => {
+                setPropertyFilter(value);
+                setUnitFilter([]); // Reset unit filter when property changes
+              }}>
                 <SelectTrigger className="w-52" data-testid="select-property-filter">
                   <SelectValue placeholder="All Properties" />
                 </SelectTrigger>
@@ -295,6 +304,54 @@ export default function Tenants() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Unit Selection - only show for buildings with multiple units */}
+              {propertyFilter !== "all" && (() => {
+                const selectedProperty = properties?.find(p => p.id === propertyFilter);
+                const propertyUnits = units.filter(unit => unit.propertyId === propertyFilter);
+                const isBuilding = propertyUnits.length > 1;
+                
+                if (!isBuilding) return null;
+
+                const handleUnitToggle = (unitId: string) => {
+                  const newFilter = [...unitFilter];
+                  if (newFilter.includes(unitId)) {
+                    setUnitFilter(newFilter.filter(id => id !== unitId));
+                  } else {
+                    setUnitFilter([...newFilter, unitId]);
+                  }
+                };
+                
+                return (
+                  <div className="flex flex-col space-y-2 p-3 border rounded-md bg-muted/30">
+                    <span className="text-sm font-medium">Units (Optional - leave empty to apply to entire building)</span>
+                    <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={unitFilter.includes("common")}
+                          onChange={() => handleUnitToggle("common")}
+                          className="rounded border-gray-300"
+                          data-testid="checkbox-common-area"
+                        />
+                        <span className="text-sm">Common Area</span>
+                      </label>
+                      {propertyUnits.map((unit) => (
+                        <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={unitFilter.includes(unit.id)}
+                            onChange={() => handleUnitToggle(unit.id)}
+                            className="rounded border-gray-300"
+                            data-testid={`checkbox-unit-${unit.id}`}
+                          />
+                          <span className="text-sm">{unit.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <Dialog open={showTenantForm} onOpenChange={(open) => {
                 setShowTenantForm(open);
