@@ -112,8 +112,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"Individual" | "LLC" | "Partnership" | "Corporation">("Individual");
 
-  console.log("🏗️ PropertyForm initializing with initialData:", initialData);
-  console.log("🏗️ InitialData propertyValue specifically:", initialData?.propertyValue);
 
   const form = useForm<z.infer<typeof propertySchema>>({
     resolver: zodResolver(propertySchema),
@@ -161,20 +159,15 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
     if (initialData && initialData.id) {  // Only reset for editing (when there's an ID)
-      console.log("🔄 Resetting form with initialData:", initialData);
-      console.log("🔄 PropertyValue before reset:", initialData.propertyValue);
-      
       const resetData = {
         ...initialData,
         propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
       };
       
-      console.log("🔄 Reset data:", resetData);
       form.reset(resetData);
       
       // Force set the property value specifically
       if (initialData.propertyValue) {
-        console.log("🔄 Force setting propertyValue to:", Number(initialData.propertyValue));
         form.setValue('propertyValue', Number(initialData.propertyValue));
       }
     }
@@ -1011,18 +1004,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`property-value-${(initialData as any)?.id || 'new'}`}
-                        value={(() => {
-                          const formValue = field.value;
-                          const initValue = initialData?.propertyValue;
-                          const displayValue = formValue ? Number(formValue).toLocaleString() : (initValue ? Number(initValue).toLocaleString() : "");
-                          console.log("💰 Rendering property value - formValue:", formValue, "initValue:", initValue, "displayValue:", displayValue);
-                          return displayValue;
-                        })()}
-                        onFocus={() => {
-                          console.log("💰 Property value field focus - field.value:", field.value);
-                          console.log("💰 InitialData propertyValue:", (initialData as any)?.propertyValue);
-                          console.log("💰 Form values:", form.getValues());
-                        }}
+                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.propertyValue ? Number(initialData.propertyValue).toLocaleString() : "")}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
