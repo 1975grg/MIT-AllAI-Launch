@@ -402,7 +402,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                 <FormControl>
                   <Input 
                     type="number" 
-                    placeholder="1200" 
+                    placeholder="1,200" 
                     {...field}
                     onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                     data-testid="input-property-sqft"
@@ -983,7 +983,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         type="number"
                         min="0"
                         step="1000"
-                        placeholder="500000"
+                        placeholder="500,000"
                         className="pl-9"
                         {...field}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
@@ -1238,7 +1238,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                           <Input 
                             type="number" 
                             min="0"
-                            placeholder="1200" 
+                            placeholder="1,200" 
                             {...field}
                             onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                             data-testid="input-unit-sqft"
@@ -1260,7 +1260,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                             type="number" 
                             min="0"
                             step="0.01"
-                            placeholder="2500" 
+                            placeholder="2,500" 
                             {...field}
                             data-testid="input-unit-rent"
                           />
@@ -1281,7 +1281,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                             type="number" 
                             min="0"
                             step="0.01"
-                            placeholder="2500" 
+                            placeholder="2,500" 
                             {...field}
                             data-testid="input-unit-deposit"
                           />
@@ -1901,7 +1901,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                               <Input 
                                 type="number" 
                                 min="0"
-                                placeholder="1200" 
+                                placeholder="1,200" 
                                 {...field}
                                 onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                                 data-testid={`input-unit-sqft-${index}`}
@@ -1923,7 +1923,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                                 type="number" 
                                 min="0"
                                 step="0.01"
-                                placeholder="2500" 
+                                placeholder="2,500" 
                                 {...field}
                                 data-testid={`input-unit-rent-${index}`}
                               />
@@ -1944,7 +1944,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                                 type="number" 
                                 min="0"
                                 step="0.01"
-                                placeholder="2500" 
+                                placeholder="2,500" 
                                 {...field}
                                 data-testid={`input-unit-deposit-${index}`}
                               />

@@ -106,4 +106,18 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  /* Make placeholders more faded/subtle */
+  input::placeholder,
+  textarea::placeholder {
+    opacity: 0.4;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Dark mode placeholder styling */
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    opacity: 0.5;
+    color: hsl(var(--muted-foreground));
+  }
 }
