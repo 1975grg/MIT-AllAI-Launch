@@ -107,6 +107,11 @@ export const properties = pgTable("properties", {
   buildingWaterShutoff: varchar("building_water_shutoff"),
   buildingElectricalPanel: varchar("building_electrical_panel"),
   buildingEquipmentNotes: text("building_equipment_notes"),
+  // Property value tracking
+  propertyValue: decimal("property_value", { precision: 12, scale: 2 }), // Total building/property value
+  autoAppreciation: boolean("auto_appreciation").default(false), // Enable automatic yearly appreciation
+  appreciationRate: decimal("appreciation_rate", { precision: 4, scale: 2 }), // Annual appreciation percentage (e.g., 3.50 for 3.5%)
+  valueEntryDate: timestamp("value_entry_date"), // When the value was entered (to calculate yearly increases)
   createdAt: timestamp("created_at").defaultNow(),
 });
 

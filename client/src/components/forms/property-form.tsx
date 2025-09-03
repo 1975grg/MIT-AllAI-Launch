@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Minus, Building2, Home, Wrench } from "lucide-react";
+import { Plus, Minus, Building2, Home, Wrench, DollarSign } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { OwnershipEntity } from "@shared/schema";
 
@@ -80,6 +80,10 @@ const propertySchema = z.object({
   buildingWaterShutoff: z.string().optional(),
   buildingElectricalPanel: z.string().optional(),
   buildingEquipmentNotes: z.string().optional(),
+  // Property value fields (optional)
+  propertyValue: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
+  autoAppreciation: z.boolean().default(false),
+  appreciationRate: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).max(50).optional()),
   createDefaultUnit: z.boolean().default(true),
   hasMultipleUnits: z.boolean().default(false),
   numberOfUnits: z.number().min(1).max(50).default(1),
@@ -115,6 +119,10 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       city: "",
       state: "",
       zipCode: "",
+      // Property value defaults
+      propertyValue: undefined,
+      autoAppreciation: false,
+      appreciationRate: undefined,
       createDefaultUnit: false,
       hasMultipleUnits: false,
       numberOfUnits: 1,
@@ -841,6 +849,206 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
             </CardContent>
           </Card>
         )}
+
+        {/* Property Ownership Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Building2 className="h-5 w-5" />
+              <span>Property Ownership</span>
+              <Badge variant="outline">
+                Total: {calculateTotalPercent().toFixed(1)}%
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {fields.map((field, index) => (
+              <div key={field.id} className="flex items-end space-x-2 p-3 border rounded-lg">
+                <FormField
+                  control={form.control}
+                  name={`ownerships.${index}.entityId`}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Owner {index + 1}</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid={`select-owner-${index}`}>
+                            <SelectValue placeholder="Select ownership entity" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {entities.map((entity) => (
+                            <SelectItem key={entity.id} value={entity.id}>
+                              <div className="flex items-center space-x-2">
+                                <Badge variant={entity.type === "LLC" ? "default" : "secondary"} className="text-xs">
+                                  {entity.type}
+                                </Badge>
+                                <span>{entity.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`ownerships.${index}.percent`}
+                  render={({ field }) => (
+                    <FormItem className="w-32">
+                      <FormLabel>%</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          placeholder="50"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                          data-testid={`input-ownership-percent-${index}`}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {fields.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => remove(index)}
+                    className="h-10"
+                    data-testid={`button-remove-owner-${index}`}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => append({ entityId: "", percent: 0 })}
+              className="w-full"
+              data-testid="button-add-owner"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Co-Owner
+            </Button>
+            
+            {calculateTotalPercent() !== 100 && (
+              <p className="text-sm text-destructive">
+                Ownership percentages must add up to 100%
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Property Value Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <DollarSign className="h-5 w-5" />
+              <span>Property Value (Optional)</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Set the total value for {form.watch("type")?.includes("Building") ? "the entire building" : "this property"}. This helps calculate portfolio value by ownership percentage.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="propertyValue"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {form.watch("type")?.includes("Building") ? "Total Building Value" : "Property Value"}
+                  </FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        placeholder="500000"
+                        className="pl-9"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                        data-testid="input-property-value"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Auto Appreciation Section */}
+            <FormField
+              control={form.control}
+              name="autoAppreciation"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-auto-appreciation"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Enable Automatic Yearly Appreciation
+                    </FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically increase property value by a set percentage each year starting one year from today.
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Appreciation Rate Input */}
+            {form.watch("autoAppreciation") && (
+              <FormField
+                control={form.control}
+                name="appreciationRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Annual Appreciation Rate</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="50"
+                          step="0.5"
+                          placeholder="3.5"
+                          className="pr-8"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          data-testid="input-appreciation-rate"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                      </div>
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Property value will increase by this percentage annually. Enter in 0.5% increments (e.g., 3.5 for 3.5%).
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </CardContent>
+        </Card>
 
         {/* Unit Setup Section */}
         <Card>
@@ -2060,107 +2268,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   </div>
                 ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Ownership Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Building2 className="h-5 w-5" />
-              <span>Property Ownership</span>
-              <Badge variant="outline">
-                Total: {calculateTotalPercent().toFixed(1)}%
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex items-end space-x-2 p-3 border rounded-lg">
-                <FormField
-                  control={form.control}
-                  name={`ownerships.${index}.entityId`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Owner {index + 1}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid={`select-owner-${index}`}>
-                            <SelectValue placeholder="Select ownership entity" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {entities.map((entity) => (
-                            <SelectItem key={entity.id} value={entity.id}>
-                              <div className="flex items-center space-x-2">
-                                <span>{entity.name}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {entity.type}
-                                </Badge>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name={`ownerships.${index}.percent`}
-                  render={({ field }) => (
-                    <FormItem className="w-24">
-                      <FormLabel>%</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0.01"
-                          max="100"
-                          step="0.01"
-                          placeholder="50"
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                          data-testid={`input-ownership-percent-${index}`}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {fields.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => remove(index)}
-                    className="h-10"
-                    data-testid={`button-remove-owner-${index}`}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
-            
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => append({ entityId: "", percent: 0 })}
-              className="w-full"
-              data-testid="button-add-owner"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Co-Owner
-            </Button>
-            
-            {calculateTotalPercent() !== 100 && (
-              <p className="text-sm text-destructive">
-                Ownership percentages must add up to 100%
-              </p>
             )}
           </CardContent>
         </Card>

@@ -255,6 +255,10 @@ export class DatabaseStorage implements IStorage {
         city: properties.city,
         state: properties.state,
         ownershipPercent: propertyOwnerships.percent,
+        propertyValue: properties.propertyValue,
+        autoAppreciation: properties.autoAppreciation,
+        appreciationRate: properties.appreciationRate,
+        valueEntryDate: properties.valueEntryDate,
       })
       .from(properties)
       .innerJoin(propertyOwnerships, eq(properties.id, propertyOwnerships.propertyId))
@@ -264,24 +268,43 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(asc(properties.name));
 
-    // Calculate metrics (simplified for now - in a real app you'd have actual financial data)
+    // Calculate metrics using actual property values with auto-appreciation
     const totalProperties = propertiesResult.length;
-    const estimatedPropertyValue = 250000; // Default estimated value per property
+    const defaultPropertyValue = 250000; // Fallback value when not set
     
     let totalValue = 0;
     let totalOwnershipValue = 0;
     
     const propertiesWithValues = propertiesResult.map(property => {
-      const propertyValue = estimatedPropertyValue;
-      const ownershipPercent = Number(property.ownershipPercent);
-      const ownershipValue = propertyValue * (ownershipPercent / 100);
+      let currentPropertyValue = defaultPropertyValue;
       
-      totalValue += propertyValue;
+      // Use actual property value if set
+      if (property.propertyValue && Number(property.propertyValue) > 0) {
+        currentPropertyValue = Number(property.propertyValue);
+        
+        // Apply auto-appreciation if enabled
+        if (property.autoAppreciation && property.appreciationRate && property.valueEntryDate) {
+          const entryDate = new Date(property.valueEntryDate);
+          const currentDate = new Date();
+          const yearsElapsed = Math.floor((currentDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24 * 365));
+          
+          if (yearsElapsed > 0) {
+            const appreciationRate = Number(property.appreciationRate) / 100; // Convert percentage to decimal
+            currentPropertyValue = currentPropertyValue * Math.pow(1 + appreciationRate, yearsElapsed);
+          }
+        }
+      }
+      
+      const ownershipPercent = Number(property.ownershipPercent);
+      const ownershipValue = currentPropertyValue * (ownershipPercent / 100);
+      
+      totalValue += currentPropertyValue;
       totalOwnershipValue += ownershipValue;
       
       return {
         ...property,
-        estimatedValue: propertyValue,
+        currentValue: Math.round(currentPropertyValue),
+        hasCustomValue: property.propertyValue && Number(property.propertyValue) > 0,
       };
     });
 
@@ -386,7 +409,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPropertyWithOwnerships(property: InsertProperty, ownerships: Array<{entityId: string, percent: number}>): Promise<Property> {
-    const [newProperty] = await db.insert(properties).values(property).returning();
+    // Set valueEntryDate automatically if property value is provided
+    const propertyData = { ...property };
+    if (propertyData.propertyValue && Number(propertyData.propertyValue) > 0 && !propertyData.valueEntryDate) {
+      propertyData.valueEntryDate = new Date();
+    }
+    
+    const [newProperty] = await db.insert(properties).values(propertyData).returning();
     
     // Create ownership records
     if (ownerships && ownerships.length > 0) {
@@ -545,10 +574,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePropertyWithOwnerships(id: string, property: Partial<InsertProperty>, ownerships: Array<{entityId: string, percent: number}>): Promise<Property> {
+    // Get current property to check if value is being set for the first time
+    const [currentProperty] = await db
+      .select({ propertyValue: properties.propertyValue, valueEntryDate: properties.valueEntryDate })
+      .from(properties)
+      .where(eq(properties.id, id));
+    
+    // Set valueEntryDate automatically if property value is being set for the first time
+    const propertyData = { ...property };
+    if (propertyData.propertyValue && Number(propertyData.propertyValue) > 0) {
+      // Only set valueEntryDate if it's not already set or if the current property doesn't have a value
+      if (!currentProperty?.valueEntryDate || !currentProperty?.propertyValue || Number(currentProperty.propertyValue) <= 0) {
+        propertyData.valueEntryDate = new Date();
+      }
+    }
+    
     // Update the property
     const [updated] = await db
       .update(properties)
-      .set(property)
+      .set(propertyData)
       .where(eq(properties.id, id))
       .returning();
     
