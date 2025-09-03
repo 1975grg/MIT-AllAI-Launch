@@ -212,7 +212,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   };
 
   const handleSubmit = (data: any) => {
-    onSubmit(data);
+    // Convert numeric values to strings for decimal database fields
+    const processedData = {
+      ...data,
+      propertyValue: data.propertyValue !== undefined ? String(data.propertyValue) : undefined,
+      appreciationRate: data.appreciationRate !== undefined ? String(data.appreciationRate) : undefined,
+    };
+    onSubmit(processedData);
   };
 
   return (
