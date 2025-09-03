@@ -1,7 +1,7 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -157,6 +157,17 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       ...initialData,
     },
   });
+
+  // Effect to reset form when initialData changes (for editing)
+  React.useEffect(() => {
+    if (initialData) {
+      console.log("🔄 Resetting form with initialData:", initialData);
+      form.reset({
+        ...initialData,
+        propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
+      });
+    }
+  }, [initialData, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
