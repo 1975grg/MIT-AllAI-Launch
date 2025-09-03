@@ -20,6 +20,20 @@ import { z } from "zod";
 import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 
+// Predefined maintenance categories
+const MAINTENANCE_CATEGORIES = [
+  "HVAC / Heating & Cooling",
+  "Plumbing (Water, Drains, Sewer)",
+  "Electrical & Lighting",
+  "Appliances (Kitchen, Laundry, etc.)",
+  "Roof / Structure / Exterior",
+  "Pest & Odor Issues",
+  "Safety & Security (locks, alarms, smoke detectors, windows/doors)",
+  "General Interior (walls, ceilings, flooring, paint, cabinets)",
+  "Outdoor / Landscaping (yard, snow removal, fencing, gutters)",
+  "Other / Miscellaneous"
+];
+
 const createCaseSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
@@ -259,7 +273,6 @@ export default function Maintenance() {
     return statusMatch && propertyMatch && categoryMatch && unitMatch;
   }) || [];
 
-  const categories = Array.from(new Set(smartCases?.map(c => c.category).filter(Boolean))) || [];
 
   const onSubmit = (data: z.infer<typeof createCaseSchema>) => {
     if (editingCase) {
@@ -402,8 +415,8 @@ export default function Maintenance() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category!}>{category}</SelectItem>
+                  {MAINTENANCE_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -589,16 +602,18 @@ export default function Maintenance() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Category</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="e.g., Plumbing, Electrical, HVAC" 
-                                value={field.value || ""}
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
-                                name={field.name}
-                                data-testid="input-case-category" 
-                              />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-case-category">
+                                  <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {MAINTENANCE_CATEGORIES.map((category) => (
+                                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
