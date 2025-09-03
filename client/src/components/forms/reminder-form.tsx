@@ -199,6 +199,23 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                 <FormItem>
                   <FormLabel>Units (Optional - leave empty to apply to entire building)</FormLabel>
                   <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto border rounded p-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={field.value?.includes("common") || false}
+                        onChange={(e) => {
+                          const currentIds = field.value || [];
+                          if (e.target.checked) {
+                            field.onChange([...currentIds, "common"]);
+                          } else {
+                            field.onChange(currentIds.filter(id => id !== "common"));
+                          }
+                        }}
+                        className="rounded border-gray-300"
+                        data-testid="checkbox-reminder-common"
+                      />
+                      <span className="text-sm">Common Area</span>
+                    </label>
                     {propertyUnits.map((unit) => (
                       <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
                         <input
@@ -213,6 +230,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                             }
                           }}
                           className="rounded border-gray-300"
+                          data-testid={`checkbox-reminder-unit-${unit.id}`}
                         />
                         <span className="text-sm">{unit.label}</span>
                       </label>

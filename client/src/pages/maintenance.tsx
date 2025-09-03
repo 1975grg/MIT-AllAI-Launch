@@ -370,7 +370,7 @@ export default function Maintenance() {
     const { createReminder, ...caseData } = data;
     
     if (editingCase) {
-      updateCaseMutation.mutate({ id: editingCase.id, data: caseData });
+      updateCaseMutation.mutate({ id: editingCase.id, data: { ...caseData, createReminder: false } });
     } else {
       // Create the case first
       const response = await apiRequest("POST", "/api/cases", caseData);
