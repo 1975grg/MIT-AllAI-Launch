@@ -14,10 +14,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, CalendarDays, Bell } from "lucide-react";
+import { format } from "date-fns";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 
 // Predefined maintenance categories
@@ -41,6 +44,7 @@ const createCaseSchema = z.object({
   unitId: z.string().optional(),
   priority: z.enum(["Low", "Medium", "High", "Urgent"]).default("Medium"),
   category: z.string().optional(),
+  reminderDate: z.date().optional(),
 });
 
 export default function Maintenance() {
@@ -103,6 +107,28 @@ export default function Maintenance() {
     }
   }, [editingCase]);
 
+  // Mutation for creating reminders
+  const createReminderMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/reminders", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      toast({
+        title: "Success",
+        description: "Reminder created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create reminder",
+        variant: "destructive",
+      });
+    },
+  });
+
   const form = useForm<z.infer<typeof createCaseSchema>>({
     resolver: zodResolver(createCaseSchema),
     defaultValues: editingCase ? {
@@ -112,10 +138,12 @@ export default function Maintenance() {
       unitId: editingCase.unitId || "",
       priority: editingCase.priority || "Medium",
       category: editingCase.category || "",
+      reminderDate: undefined,
     } : {
       title: "",
       description: "",
       priority: "Medium",
+      reminderDate: undefined,
     },
   });
 
@@ -319,11 +347,44 @@ export default function Maintenance() {
   }) || [];
 
 
-  const onSubmit = (data: z.infer<typeof createCaseSchema>) => {
+  const onSubmit = async (data: z.infer<typeof createCaseSchema>) => {
+    const { reminderDate, ...caseData } = data;
+    
     if (editingCase) {
-      updateCaseMutation.mutate({ id: editingCase.id, data });
+      updateCaseMutation.mutate({ id: editingCase.id, data: caseData });
     } else {
-      createCaseMutation.mutate(data);
+      // Create the case first
+      const response = await apiRequest("POST", "/api/cases", caseData);
+      const newCase = await response.json();
+      
+      // If reminder date is provided, create a reminder
+      if (reminderDate) {
+        const reminderData = {
+          title: `Check on case: ${caseData.title}`,
+          type: "maintenance",
+          scope: "asset",
+          scopeId: newCase.id,
+          dueAt: reminderDate,
+          leadDays: 0,
+          channels: ["inapp"],
+          payloadJson: {
+            caseId: newCase.id,
+            caseTitle: caseData.title
+          }
+        };
+        
+        createReminderMutation.mutate(reminderData);
+      }
+      
+      // Update UI
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      setShowCaseForm(false);
+      setEditingCase(null);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Maintenance case created successfully",
+      });
     }
   };
 
@@ -663,6 +724,51 @@ export default function Maintenance() {
                           </FormItem>
                         )}
                       />
+                      
+                      {/* Reminder Date Field - only show when creating new cases */}
+                      {!editingCase && (
+                        <FormField
+                          control={form.control}
+                          name="reminderDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Reminder Date (Optional)</FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={`w-full pl-3 text-left font-normal ${
+                                        !field.value && "text-muted-foreground"
+                                      }`}
+                                      data-testid="button-reminder-date"
+                                    >
+                                      {field.value ? (
+                                        format(field.value, "PPP")
+                                      ) : (
+                                        <span>Pick a date to be reminded</span>
+                                      )}
+                                      <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) =>
+                                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                                    }
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
 
                       <div className="flex justify-end space-x-2">
                         <Button type="button" variant="outline" onClick={handleCloseForm} data-testid="button-cancel-case">
@@ -780,6 +886,30 @@ export default function Maintenance() {
                         data-testid={`button-edit-case-${index}`}
                       >
                         Edit
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const reminderData = {
+                            title: `Check on case: ${smartCase.title}`,
+                            type: "maintenance",
+                            scope: "asset",
+                            scopeId: smartCase.id,
+                            dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow by default
+                            leadDays: 0,
+                            channels: ["inapp"],
+                            payloadJson: {
+                              caseId: smartCase.id,
+                              caseTitle: smartCase.title
+                            }
+                          };
+                          createReminderMutation.mutate(reminderData);
+                        }}
+                        data-testid={`button-remind-case-${index}`}
+                      >
+                        <Bell className="h-4 w-4" />
                       </Button>
                       
                       <Button 
