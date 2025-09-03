@@ -33,12 +33,13 @@ interface ReminderFormProps {
   entities?: OwnershipEntity[];
   units?: Unit[];
   reminder?: Reminder;
+  defaultType?: string;
   onSubmit: (data: z.infer<typeof reminderSchema>) => void;
   onCancel?: () => void;
   isLoading: boolean;
 }
 
-export default function ReminderForm({ properties, entities = [], units = [], reminder, onSubmit, onCancel, isLoading }: ReminderFormProps) {
+export default function ReminderForm({ properties, entities = [], units = [], reminder, defaultType, onSubmit, onCancel, isLoading }: ReminderFormProps) {
   const form = useForm<z.infer<typeof reminderSchema>>({
     resolver: zodResolver(reminderSchema),
     defaultValues: reminder ? {
@@ -55,7 +56,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
       saveAsDefault: false,
     } : {
       title: "",
-      type: undefined,
+      type: defaultType as any || undefined,
       scope: undefined,
       scopeId: "",
       entityId: "",
