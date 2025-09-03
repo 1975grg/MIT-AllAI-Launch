@@ -596,22 +596,36 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                     name="unitId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{isMultiUnit ? "Area/Unit" : "Apply to"}</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-expense-unit">
-                              <SelectValue placeholder={`Select ${isMultiUnit ? "area or unit" : "application"}`} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="common">Common Areas/Building</SelectItem>
+                        <FormLabel>Area/Unit</FormLabel>
+                        <div className="flex flex-col space-y-2 p-3 border rounded-md bg-muted/30">
+                          <span className="text-sm text-muted-foreground">Select where this expense applies</span>
+                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="expense-unit"
+                                checked={field.value === "common"}
+                                onChange={() => field.onChange("common")}
+                                className="rounded border-gray-300"
+                                data-testid="radio-common-area"
+                              />
+                              <span className="text-sm">Common Area</span>
+                            </label>
                             {selectedPropertyUnits.map((unit) => (
-                              <SelectItem key={unit.id} value={unit.id}>
-                                {unit.label}
-                              </SelectItem>
+                              <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="expense-unit"
+                                  checked={field.value === unit.id}
+                                  onChange={() => field.onChange(unit.id)}
+                                  className="rounded border-gray-300"
+                                  data-testid={`radio-unit-${unit.id}`}
+                                />
+                                <span className="text-sm">{unit.label}</span>
+                              </label>
                             ))}
-                          </SelectContent>
-                        </Select>
+                          </div>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -648,7 +662,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                       <SelectItem value="none">No specific property</SelectItem>
                       {properties.map((property) => (
                         <SelectItem key={property.id} value={property.id}>
-                          {property.name}
+                          {property.name || `${property.street}, ${property.city}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -665,22 +679,36 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                 name="unitId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{isMultiUnit ? "Area/Unit" : "Apply to"}</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-expense-unit">
-                          <SelectValue placeholder={`Select ${isMultiUnit ? "area or unit" : "application"}`} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="common">Common Areas/Building</SelectItem>
+                    <FormLabel>Area/Unit</FormLabel>
+                    <div className="flex flex-col space-y-2 p-3 border rounded-md bg-muted/30">
+                      <span className="text-sm text-muted-foreground">Select where this expense applies</span>
+                      <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="expense-unit-range"
+                            checked={field.value === "common"}
+                            onChange={() => field.onChange("common")}
+                            className="rounded border-gray-300"
+                            data-testid="radio-common-area-range"
+                          />
+                          <span className="text-sm">Common Area</span>
+                        </label>
                         {selectedPropertyUnits.map((unit) => (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {unit.label}
-                          </SelectItem>
+                          <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="expense-unit-range"
+                              checked={field.value === unit.id}
+                              onChange={() => field.onChange(unit.id)}
+                              className="rounded border-gray-300"
+                              data-testid={`radio-unit-range-${unit.id}`}
+                            />
+                            <span className="text-sm">{unit.label}</span>
+                          </label>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
