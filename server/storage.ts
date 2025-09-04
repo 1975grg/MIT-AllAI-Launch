@@ -391,11 +391,41 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Get actual revenue transactions for this property
+    const currentDate = new Date();
+    const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+    // Get current month's revenue transactions
+    const revenueTransactions = await db
+      .select({
+        amount: transactions.amount,
+        date: transactions.date,
+      })
+      .from(transactions)
+      .where(and(
+        eq(transactions.orgId, orgId),
+        eq(transactions.propertyId, propertyId),
+        eq(transactions.type, "Income"),
+        gte(transactions.date, currentMonthStart),
+        lte(transactions.date, currentMonthEnd)
+      ));
+
     // Calculate financial metrics
     const totalUnits = unitsResult.length;
-    const monthlyRevenue = unitsResult.reduce((sum, unit) => {
+    
+    // Calculate actual monthly revenue from transactions
+    const actualMonthlyRevenue = revenueTransactions.reduce((sum, transaction) => {
+      return sum + Number(transaction.amount);
+    }, 0);
+
+    // Also get expected monthly revenue from unit rent amounts as a reference
+    const expectedMonthlyRevenue = unitsResult.reduce((sum, unit) => {
       return sum + (unit.rentAmount ? Number(unit.rentAmount) : 0);
     }, 0);
+
+    // Use actual revenue if available, otherwise fall back to expected
+    const monthlyRevenue = actualMonthlyRevenue > 0 ? actualMonthlyRevenue : expectedMonthlyRevenue;
     
     // Simplified expense calculation (could be enhanced with actual expense data)
     const monthlyExpenses = Math.round(currentValue * 0.02 / 12); // 2% of property value annually
