@@ -13,7 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, Plus, Calendar, Building, Tag, Repeat, CheckCircle, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DollarSign, Plus, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, Grid3x3, List, ChevronDown } from "lucide-react";
 import type { Transaction, Property, Unit } from "@shared/schema";
 
 export default function Revenue() {
@@ -26,6 +28,7 @@ export default function Revenue() {
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [unitFilter, setUnitFilter] = useState<string[]>([]);
   const [entityFilter, setEntityFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"list" | "schedule">("list");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -56,7 +59,7 @@ export default function Revenue() {
     retry: false,
   });
 
-  const { data: entities = [] } = useQuery({
+  const { data: entities = [] } = useQuery<{id: string; name: string}[]>({
     queryKey: ["/api/entities"],
     retry: false,
   });
@@ -128,6 +131,38 @@ export default function Revenue() {
       toast({
         title: "Error",
         description: "Failed to delete revenue",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePaymentStatusMutation = useMutation({
+    mutationFn: async ({ transactionId, paymentStatus }: { transactionId: string; paymentStatus: string }) => {
+      const response = await apiRequest("PATCH", `/api/transactions/${transactionId}/payment-status`, { paymentStatus });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      toast({
+        title: "Success",
+        description: `Payment status updated to ${variables.paymentStatus}`,
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update payment status",
         variant: "destructive",
       });
     },
@@ -385,23 +420,38 @@ export default function Revenue() {
             </Card>
           </div>
 
-          {revenuesLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Card key={i} data-testid={`skeleton-revenue-${i}`}>
-                  <CardContent className="p-6">
-                    <div className="space-y-3">
-                      <div className="h-5 bg-muted animate-pulse rounded" />
-                      <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
-                      <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : filteredRevenues.length > 0 ? (
-            <div className="space-y-4">
-              {filteredRevenues.map((revenue, index) => (
+          {/* View Toggle Tabs */}
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "list" | "schedule")} className="space-y-6">
+            <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+              <TabsTrigger value="list" className="flex items-center gap-2" data-testid="tab-list-view">
+                <List className="h-4 w-4" />
+                List View
+              </TabsTrigger>
+              <TabsTrigger value="schedule" className="flex items-center gap-2" data-testid="tab-schedule-view">
+                <Grid3x3 className="h-4 w-4" />
+                Schedule View
+              </TabsTrigger>
+            </TabsList>
+
+            {/* List View */}
+            <TabsContent value="list" className="space-y-0">
+              {revenuesLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Card key={i} data-testid={`skeleton-revenue-${i}`}>
+                      <CardContent className="p-6">
+                        <div className="space-y-3">
+                          <div className="h-5 bg-muted animate-pulse rounded" />
+                          <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                          <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredRevenues.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredRevenues.map((revenue, index) => (
                 <Card key={revenue.id} className="hover:shadow-md transition-shadow" data-testid={`card-revenue-${index}`}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -437,6 +487,68 @@ export default function Revenue() {
                               <Badge variant="outline" className="text-orange-600 border-orange-600" data-testid={`badge-non-taxable-${index}`}>
                                 Non-taxable
                               </Badge>
+                            )}
+                            {revenue.paymentStatus && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`cursor-pointer hover:opacity-80 ${
+                                      revenue.paymentStatus === 'Paid' ? "text-green-600 border-green-600" :
+                                      revenue.paymentStatus === 'Partial' ? "text-yellow-600 border-yellow-600" :
+                                      revenue.paymentStatus === 'Skipped' ? "text-gray-600 border-gray-600" :
+                                      "text-orange-600 border-orange-600"
+                                    }`}
+                                    data-testid={`badge-payment-status-${index}`}
+                                  >
+                                    {revenue.paymentStatus}
+                                    <ChevronDown className="h-3 w-3 ml-1" />
+                                  </Badge>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => updatePaymentStatusMutation.mutate({
+                                      transactionId: revenue.id,
+                                      paymentStatus: 'Paid'
+                                    })}
+                                    className="text-green-600"
+                                    data-testid={`menu-item-paid-${index}`}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Mark as Paid
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => updatePaymentStatusMutation.mutate({
+                                      transactionId: revenue.id,
+                                      paymentStatus: 'Partial'
+                                    })}
+                                    className="text-yellow-600"
+                                    data-testid={`menu-item-partial-${index}`}
+                                  >
+                                    Partial Payment
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => updatePaymentStatusMutation.mutate({
+                                      transactionId: revenue.id,
+                                      paymentStatus: 'Unpaid'
+                                    })}
+                                    className="text-orange-600"
+                                    data-testid={`menu-item-unpaid-${index}`}
+                                  >
+                                    Mark as Unpaid
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => updatePaymentStatusMutation.mutate({
+                                      transactionId: revenue.id,
+                                      paymentStatus: 'Skipped'
+                                    })}
+                                    className="text-gray-600"
+                                    data-testid={`menu-item-skipped-${index}`}
+                                  >
+                                    Skip Payment
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             )}
                           </div>
                         </div>
@@ -516,6 +628,168 @@ export default function Revenue() {
               </CardContent>
             </Card>
           )}
+            </TabsContent>
+
+            {/* Schedule View */}
+            <TabsContent value="schedule" className="space-y-0">
+              <div className="space-y-6">
+                {/* Calendar-style recurring revenue schedule */}
+                {(() => {
+                  const recurringRevenues = filteredRevenues.filter(r => r.isRecurring);
+                  const currentDate = new Date();
+                  const months = [];
+                  
+                  // Generate 6 months from current date
+                  for (let i = -2; i < 4; i++) {
+                    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+                    months.push({
+                      year: date.getFullYear(),
+                      month: date.getMonth(),
+                      name: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                    });
+                  }
+
+                  if (recurringRevenues.length === 0) {
+                    return (
+                      <Card>
+                        <CardContent className="p-12 text-center">
+                          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-foreground mb-2">No Recurring Revenue</h3>
+                          <p className="text-muted-foreground mb-4">Set up recurring revenue entries to see your monthly payment schedule here.</p>
+                          <Button onClick={() => setShowRevenueForm(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Recurring Revenue
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+
+                  return (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      {months.map((month) => {
+                        // Find actual transactions for this month
+                        const monthTransactions = filteredRevenues.filter(t => {
+                          const transactionDate = new Date(t.date);
+                          return transactionDate.getFullYear() === month.year && 
+                                 transactionDate.getMonth() === month.month &&
+                                 t.isRecurring;
+                        });
+
+                        const monthlyTotal = monthTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+                        const expectedTotal = recurringRevenues.reduce((sum, r) => sum + Number(r.amount), 0);
+
+                        return (
+                          <Card key={`${month.year}-${month.month}`} className="h-fit">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-lg flex items-center justify-between">
+                                {month.name}
+                                <Badge variant="outline" className={monthlyTotal >= expectedTotal ? "text-green-600 border-green-600" : "text-orange-600 border-orange-600"}>
+                                  ${monthlyTotal.toLocaleString()}
+                                </Badge>
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {recurringRevenues.map((recurringRevenue) => {
+                                // Find actual transaction for this recurring revenue in this month
+                                const actualTransaction = monthTransactions.find(t => 
+                                  t.parentRecurringId === recurringRevenue.id || t.id === recurringRevenue.id
+                                );
+                                
+                                const paymentStatus = actualTransaction?.paymentStatus || 'Unpaid';
+                                const isCurrentMonth = month.year === currentDate.getFullYear() && month.month === currentDate.getMonth();
+                                const isPastDue = new Date(month.year, month.month, 15) < currentDate && paymentStatus === 'Unpaid';
+                                
+                                return (
+                                  <div key={`${month.year}-${month.month}-${recurringRevenue.id}`} 
+                                       className="flex items-center justify-between p-3 border rounded-lg">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-sm">{recurringRevenue.description}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        ${Number(recurringRevenue.amount).toLocaleString()}
+                                      </div>
+                                    </div>
+                                    {actualTransaction ? (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Badge 
+                                            variant="outline" 
+                                            className={`cursor-pointer hover:opacity-80 ${
+                                              paymentStatus === 'Paid' ? "text-green-600 border-green-600" :
+                                              paymentStatus === 'Partial' ? "text-yellow-600 border-yellow-600" :
+                                              paymentStatus === 'Skipped' ? "text-gray-600 border-gray-600" :
+                                              isPastDue ? "text-red-600 border-red-600" :
+                                              "text-orange-600 border-orange-600"
+                                            }`}
+                                          >
+                                            {isPastDue && paymentStatus === 'Unpaid' ? 'Overdue' : paymentStatus}
+                                            <ChevronDown className="h-3 w-3 ml-1" />
+                                          </Badge>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem
+                                            onClick={() => updatePaymentStatusMutation.mutate({
+                                              transactionId: actualTransaction.id,
+                                              paymentStatus: 'Paid'
+                                            })}
+                                            className="text-green-600"
+                                          >
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Mark as Paid
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => updatePaymentStatusMutation.mutate({
+                                              transactionId: actualTransaction.id,
+                                              paymentStatus: 'Partial'
+                                            })}
+                                            className="text-yellow-600"
+                                          >
+                                            Partial Payment
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => updatePaymentStatusMutation.mutate({
+                                              transactionId: actualTransaction.id,
+                                              paymentStatus: 'Unpaid'
+                                            })}
+                                            className="text-orange-600"
+                                          >
+                                            Mark as Unpaid
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => updatePaymentStatusMutation.mutate({
+                                              transactionId: actualTransaction.id,
+                                              paymentStatus: 'Skipped'
+                                            })}
+                                            className="text-gray-600"
+                                          >
+                                            Skip Payment
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    ) : (
+                                      <Badge variant="outline" className="text-gray-600 border-gray-600">
+                                        No Transaction
+                                      </Badge>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                              
+                              {monthTransactions.length === 0 && (
+                                <div className="text-center py-4 text-muted-foreground text-sm">
+                                  No transactions recorded
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 

@@ -34,6 +34,9 @@ type PropertyPerformance = {
     estimatedValue: number;
     currentValue: number;
     monthlyRevenue: number;
+    expectedMonthlyRevenue: number;
+    actualMonthlyRevenue: number;
+    collectionRate: number;
     monthlyExpenses: number;
     netCashFlow: number;
     appreciationGain: number;
@@ -218,6 +221,59 @@ export default function PropertyPerformance() {
                     </p>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Revenue Collection Analysis */}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4 flex items-center space-x-2">
+                  <Calendar className="h-5 w-5" />
+                  <span>Revenue Collection Analysis</span>
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Expected Revenue</CardTitle>
+                      <DollarSign className="h-4 w-4 text-orange-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-orange-600" data-testid="text-expected-revenue">
+                        {formatCurrency(performance.metrics.expectedMonthlyRevenue)}
+                      </div>
+                      <p className="text-xs text-muted-foreground">From recurring revenue rules</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Actual Collected</CardTitle>
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-green-600" data-testid="text-actual-revenue">
+                        {formatCurrency(performance.metrics.actualMonthlyRevenue)}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Paid & partial payments</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Collection Rate</CardTitle>
+                      <TrendingUp className={`h-4 w-4 ${performance.metrics.collectionRate >= 95 ? 'text-green-600' : performance.metrics.collectionRate >= 80 ? 'text-yellow-600' : 'text-red-600'}`} />
+                    </CardHeader>
+                    <CardContent>
+                      <div className={`text-2xl font-bold ${performance.metrics.collectionRate >= 95 ? 'text-green-600' : performance.metrics.collectionRate >= 80 ? 'text-yellow-600' : 'text-red-600'}`} data-testid="text-collection-rate">
+                        {performance.metrics.collectionRate}%
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {performance.metrics.expectedMonthlyRevenue > 0 
+                          ? `${formatCurrency(performance.metrics.expectedMonthlyRevenue - performance.metrics.actualMonthlyRevenue)} outstanding`
+                          : 'No recurring revenue set up'
+                        }
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
 
               {/* Property Details Grid */}

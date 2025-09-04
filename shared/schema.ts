@@ -345,6 +345,7 @@ export const camCategories = pgTable("cam_categories", {
 
 // Transactions
 export const transactionTypeEnum = pgEnum("transaction_type", ["Income", "Expense"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["Paid", "Unpaid", "Skipped", "Partial"]);
 
 export const transactions = pgTable("transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -370,6 +371,7 @@ export const transactions = pgTable("transactions", {
   taxDeductible: boolean("tax_deductible").default(true),
   parentRecurringId: varchar("parent_recurring_id"), // Reference to the original transaction for recurring instances
   isBulkEntry: boolean("is_bulk_entry").default(false), // For bulk expense entries
+  paymentStatus: paymentStatusEnum("payment_status").default("Paid"), // Payment tracking status
   createdAt: timestamp("created_at").defaultNow(),
 });
 

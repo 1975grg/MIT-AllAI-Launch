@@ -56,7 +56,7 @@ import {
   type Notification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sql, gte, lte, count } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lte, count } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -123,6 +123,7 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction>;
   deleteTransaction(id: string): Promise<void>;
+  updateTransactionPaymentStatus(id: string, paymentStatus: string): Promise<void>;
   createExpense(expense: InsertExpense): Promise<Transaction>;
   getTransactionLineItems(transactionId: string): Promise<TransactionLineItem[]>;
   
@@ -396,11 +397,13 @@ export class DatabaseStorage implements IStorage {
     const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-    // Get current month's revenue transactions
+    // Get current month's revenue transactions with payment status
     const revenueTransactions = await db
       .select({
         amount: transactions.amount,
         date: transactions.date,
+        paymentStatus: transactions.paymentStatus,
+        isRecurring: transactions.isRecurring,
       })
       .from(transactions)
       .where(and(
@@ -414,17 +417,29 @@ export class DatabaseStorage implements IStorage {
     // Calculate financial metrics
     const totalUnits = unitsResult.length;
     
-    // Calculate actual monthly revenue from transactions
-    const actualMonthlyRevenue = revenueTransactions.reduce((sum, transaction) => {
-      return sum + Number(transaction.amount);
-    }, 0);
+    // Calculate expected monthly revenue from recurring revenue transactions
+    const expectedMonthlyRevenue = revenueTransactions
+      .filter(transaction => transaction.isRecurring)
+      .reduce((sum, transaction) => {
+        return sum + Number(transaction.amount);
+      }, 0);
+    
+    // Calculate actual collected revenue (only Paid and Partial transactions)
+    const actualMonthlyRevenue = revenueTransactions
+      .filter(transaction => 
+        transaction.paymentStatus === 'Paid' || 
+        transaction.paymentStatus === 'Partial'
+      )
+      .reduce((sum, transaction) => {
+        return sum + Number(transaction.amount);
+      }, 0);
+    
+    // Calculate collection rate
+    const collectionRate = expectedMonthlyRevenue > 0 
+      ? Math.round((actualMonthlyRevenue / expectedMonthlyRevenue) * 100)
+      : 0;
 
-    // Also get expected monthly revenue from unit rent amounts as a reference
-    const expectedMonthlyRevenue = unitsResult.reduce((sum, unit) => {
-      return sum + (unit.rentAmount ? Number(unit.rentAmount) : 0);
-    }, 0);
-
-    // Use actual revenue if available, otherwise fall back to expected
+    // For backwards compatibility, use actual if available, otherwise expected
     const monthlyRevenue = actualMonthlyRevenue > 0 ? actualMonthlyRevenue : expectedMonthlyRevenue;
     
     // Simplified expense calculation (could be enhanced with actual expense data)
@@ -441,6 +456,9 @@ export class DatabaseStorage implements IStorage {
         estimatedValue: Math.round(estimatedValue),
         currentValue: Math.round(currentValue),
         monthlyRevenue: Math.round(monthlyRevenue),
+        expectedMonthlyRevenue: Math.round(expectedMonthlyRevenue),
+        actualMonthlyRevenue: Math.round(actualMonthlyRevenue),
+        collectionRate,
         monthlyExpenses,
         netCashFlow: Math.round(netCashFlow),
         appreciationGain: Math.round(appreciationGain),
@@ -1055,6 +1073,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(transactions).where(eq(transactions.id, id));
   }
 
+  async updateTransactionPaymentStatus(id: string, paymentStatus: string): Promise<void> {
+    await db
+      .update(transactions)
+      .set({ paymentStatus })
+      .where(eq(transactions.id, id));
+  }
+
   async createExpense(expense: InsertExpense): Promise<Transaction> {
     const [newExpense] = await db.insert(transactions).values({
       ...expense,
@@ -1487,6 +1512,112 @@ export class DatabaseStorage implements IStorage {
       percentage,
       items,
     };
+  }
+
+  // Generate missing recurring transactions
+  async generateRecurringTransactions(): Promise<void> {
+    console.log("Generating missing recurring transactions...");
+    
+    // Find all recurring revenue transactions
+    const recurringTransactions = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.isRecurring, true),
+          eq(transactions.type, "Income")
+        )
+      );
+
+    for (const recurringTransaction of recurringTransactions) {
+      try {
+        await this.generateMissingTransactionsForRecurring(recurringTransaction);
+      } catch (error) {
+        console.error(`Error generating recurring transactions for ${recurringTransaction.id}:`, error);
+      }
+    }
+  }
+
+  private async generateMissingTransactionsForRecurring(recurringTransaction: any): Promise<void> {
+    const startDate = new Date(recurringTransaction.date);
+    const now = new Date();
+    const frequency = recurringTransaction.recurringFrequency;
+    const interval = recurringTransaction.recurringInterval || 1;
+    
+    // Get end date if specified, otherwise use current date
+    const endDate = recurringTransaction.recurringEndDate 
+      ? new Date(recurringTransaction.recurringEndDate)
+      : now;
+
+    // Generate all expected monthly transactions
+    const expectedDates: Date[] = [];
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate && currentDate <= now) {
+      expectedDates.push(new Date(currentDate));
+      
+      // Calculate next occurrence based on frequency
+      if (frequency === "monthly") {
+        currentDate.setMonth(currentDate.getMonth() + interval);
+      } else if (frequency === "quarterly") {
+        currentDate.setMonth(currentDate.getMonth() + (3 * interval));
+      } else if (frequency === "annually") {
+        currentDate.setFullYear(currentDate.getFullYear() + interval);
+      } else if (frequency === "weeks") {
+        currentDate.setDate(currentDate.getDate() + (7 * interval));
+      } else if (frequency === "days") {
+        currentDate.setDate(currentDate.getDate() + interval);
+      }
+    }
+
+    // Check which transactions already exist
+    const existingTransactions = await db
+      .select({ date: transactions.date })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.orgId, recurringTransaction.orgId),
+          eq(transactions.propertyId, recurringTransaction.propertyId),
+          eq(transactions.type, "Income"),
+          eq(transactions.category, recurringTransaction.category),
+          eq(transactions.amount, recurringTransaction.amount),
+          or(
+            eq(transactions.parentRecurringId, recurringTransaction.id),
+            eq(transactions.id, recurringTransaction.id) // Include the original transaction
+          )
+        )
+      );
+
+    const existingDateStrings = existingTransactions.map(t => 
+      t.date.toISOString().split('T')[0]
+    );
+
+    // Create missing transactions
+    for (const expectedDate of expectedDates) {
+      const expectedDateString = expectedDate.toISOString().split('T')[0];
+      
+      if (!existingDateStrings.includes(expectedDateString)) {
+        // Create missing transaction
+        await db.insert(transactions).values({
+          orgId: recurringTransaction.orgId,
+          propertyId: recurringTransaction.propertyId,
+          unitId: recurringTransaction.unitId,
+          entityId: recurringTransaction.entityId,
+          type: "Income",
+          scope: recurringTransaction.scope,
+          amount: recurringTransaction.amount,
+          description: `${recurringTransaction.description} (Auto-generated)`,
+          category: recurringTransaction.category,
+          date: expectedDate,
+          notes: `Auto-generated from recurring revenue rule`,
+          taxDeductible: recurringTransaction.taxDeductible,
+          parentRecurringId: recurringTransaction.id,
+          paymentStatus: "Paid", // Default to paid for auto-generated
+        });
+
+        console.log(`Generated missing transaction for ${expectedDate.toISOString().split('T')[0]}: ${recurringTransaction.description}`);
+      }
+    }
   }
 }
 

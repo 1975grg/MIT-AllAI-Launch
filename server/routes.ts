@@ -1434,6 +1434,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment status update endpoint
+  app.patch('/api/transactions/:id/payment-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { paymentStatus } = req.body;
+      
+      if (!['Paid', 'Unpaid', 'Partial', 'Skipped'].includes(paymentStatus)) {
+        return res.status(400).json({ message: "Invalid payment status" });
+      }
+
+      await storage.updateTransactionPaymentStatus(id, paymentStatus);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      res.status(500).json({ message: "Failed to update payment status" });
+    }
+  });
+
+  // Manual trigger for recurring transaction generation (temporary for testing)
+  app.post('/api/admin/generate-recurring', isAuthenticated, async (req: any, res) => {
+    try {
+      console.log("Manually triggering recurring transaction generation...");
+      await storage.generateRecurringTransactions();
+      res.json({ 
+        success: true, 
+        message: "Recurring transactions generated successfully" 
+      });
+    } catch (error) {
+      console.error("Error generating recurring transactions:", error);
+      res.status(500).json({ 
+        message: "Failed to generate recurring transactions",
+        error: error.message 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

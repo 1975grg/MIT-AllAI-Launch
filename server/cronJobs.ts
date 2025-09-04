@@ -62,5 +62,17 @@ export function startCronJobs() {
     }
   });
 
+  // Generate missing recurring transactions (run daily at 2 AM)
+  cron.schedule('0 2 * * *', async () => {
+    console.log('Generating missing recurring transactions...');
+    
+    try {
+      await storage.generateRecurringTransactions();
+      console.log('Recurring transaction generation completed');
+    } catch (error) {
+      console.error('Error generating recurring transactions:', error);
+    }
+  });
+
   console.log('Cron jobs started successfully');
 }
