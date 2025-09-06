@@ -898,6 +898,473 @@ export default function Revenue() {
                 })()}
               </div>
             </TabsContent>
+
+            {/* Property Performance View */}
+            <TabsContent value="property" className="space-y-6">
+              {/* Top Properties Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {propertyPerformanceData.slice(0, 3).map((property, index) => (
+                  <Card key={property.id} data-testid={`card-top-property-${index}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">#{index + 1} Property</p>
+                          <p className="text-lg font-bold text-foreground">{property.name}</p>
+                          <p className="text-xs text-muted-foreground">{property.unitCount} units</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-foreground">${property.total.toLocaleString()}</p>
+                          <p className="text-sm text-green-600">{property.collectionRate}% collected</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Property Revenue Comparison Chart */}
+              {propertyPerformanceData.length > 0 && (
+                <Card data-testid="card-property-revenue-chart">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Property Revenue Comparison
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={propertyPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
+                        <Tooltip 
+                          formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Total Revenue']}
+                          labelFormatter={(label) => `Property: ${label}`}
+                        />
+                        <Bar dataKey="total" fill="#22c55e" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Collection Rate Comparison */}
+              {propertyPerformanceData.length > 0 && (
+                <Card data-testid="card-collection-rate-chart">
+                  <CardHeader>
+                    <CardTitle>Collection Rate by Property</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={propertyPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis tickFormatter={(value) => `${value}%`} />
+                        <Tooltip 
+                          formatter={(value) => [`${Number(value)}%`, 'Collection Rate']}
+                          labelFormatter={(label) => `Property: ${label}`}
+                        />
+                        <Bar dataKey="collectionRate" fill="#3b82f6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Property Performance Table */}
+              <Card data-testid="card-property-performance-table">
+                <CardHeader>
+                  <CardTitle>Property Performance Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {propertyPerformanceData.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-3 font-medium">Property</th>
+                            <th className="text-right p-3 font-medium">Total Revenue</th>
+                            <th className="text-right p-3 font-medium">Units</th>
+                            <th className="text-right p-3 font-medium">Per Unit Avg</th>
+                            <th className="text-right p-3 font-medium">Collection Rate</th>
+                            <th className="text-right p-3 font-medium">Paid Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {propertyPerformanceData.map((property, index) => (
+                            <tr key={property.id} className="border-b hover:bg-muted/50" data-testid={`row-property-${index}`}>
+                              <td className="p-3">
+                                <p className="font-medium text-foreground">{property.name}</p>
+                              </td>
+                              <td className="p-3 text-right font-bold text-foreground">${property.total.toLocaleString()}</td>
+                              <td className="p-3 text-right text-muted-foreground">{property.unitCount}</td>
+                              <td className="p-3 text-right font-medium text-foreground">${property.avgPerUnit.toLocaleString()}</td>
+                              <td className="p-3 text-right">
+                                <Badge className={property.collectionRate >= 90 ? "text-green-600 border-green-600" : property.collectionRate >= 70 ? "text-yellow-600 border-yellow-600" : "text-red-600 border-red-600"} variant="outline">
+                                  {property.collectionRate}%
+                                </Badge>
+                              </td>
+                              <td className="p-3 text-right font-medium text-green-600">${property.paidAmount.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No property revenue found. Start logging revenue to see property performance.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Payment Analysis View */}
+            <TabsContent value="payment" className="space-y-6">
+              {/* Payment Status Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {paymentStatusData.map((status, index) => (
+                  <Card key={status.status} data-testid={`card-payment-status-${index}`}>
+                    <CardContent className="p-4">
+                      <div className="text-center">
+                        <div className={`w-12 h-12 rounded-lg mx-auto mb-2 flex items-center justify-center ${
+                          status.status === 'Paid' ? 'bg-green-100' :
+                          status.status === 'Partial' ? 'bg-yellow-100' :
+                          status.status === 'Skipped' ? 'bg-gray-100' :
+                          'bg-red-100'
+                        }`}>
+                          <DollarSign className={`h-6 w-6 ${
+                            status.status === 'Paid' ? 'text-green-600' :
+                            status.status === 'Partial' ? 'text-yellow-600' :
+                            status.status === 'Skipped' ? 'text-gray-600' :
+                            'text-red-600'
+                          }`} />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">{status.status}</p>
+                        <p className="text-xl font-bold text-foreground">${status.total.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">{status.count} transactions</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Payment Status Pie Chart */}
+              {paymentStatusData.length > 0 && (
+                <Card data-testid="card-payment-status-chart">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PieChart className="h-5 w-5" />
+                      Payment Status Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <RechartsPieChart>
+                        <Pie
+                          data={paymentStatusData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ status, percentage }) => `${status}: ${percentage}%`}
+                          outerRadius={120}
+                          fill="#8884d8"
+                          dataKey="total"
+                        >
+                          {paymentStatusData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={
+                              entry.status === 'Paid' ? '#22c55e' :
+                              entry.status === 'Partial' ? '#eab308' :
+                              entry.status === 'Skipped' ? '#6b7280' :
+                              '#ef4444'
+                            } />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Amount']} />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Payment Analysis Details */}
+              <Card data-testid="card-payment-analysis-details">
+                <CardHeader>
+                  <CardTitle>Payment Analysis Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {paymentStatusData.length > 0 ? (
+                    <div className="space-y-4">
+                      {paymentStatusData.map((status, index) => (
+                        <div key={status.status} className="flex items-center justify-between p-4 border rounded-lg" data-testid={`row-payment-status-${index}`}>
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-4 h-4 rounded ${
+                              status.status === 'Paid' ? 'bg-green-500' :
+                              status.status === 'Partial' ? 'bg-yellow-500' :
+                              status.status === 'Skipped' ? 'bg-gray-500' :
+                              'bg-red-500'
+                            }`}></div>
+                            <div>
+                              <p className="font-medium text-foreground">{status.status} Payments</p>
+                              <p className="text-sm text-muted-foreground">{status.count} transactions</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-foreground">${status.total.toLocaleString()}</p>
+                            <p className="text-sm text-muted-foreground">{status.percentage}% of total</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No payment data found. Start logging revenue to see payment analysis.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Timeline & Trends View */}
+            <TabsContent value="trends" className="space-y-6">
+              {/* Monthly Revenue Trends Chart */}
+              <Card data-testid="card-monthly-trends-chart">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    12-Month Revenue Trends
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={monthlyTrendsData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
+                      <Tooltip 
+                        formatter={(value, name) => [`$${Number(value).toLocaleString()}`, name === 'total' ? 'Total Revenue' : name === 'paid' ? 'Paid Amount' : 'Unpaid Amount']}
+                        labelFormatter={(label) => `Month: ${label}`}
+                      />
+                      <Line type="monotone" dataKey="total" stroke="#22c55e" strokeWidth={3} name="total" />
+                      <Line type="monotone" dataKey="paid" stroke="#3b82f6" strokeWidth={2} name="paid" />
+                      <Line type="monotone" dataKey="unpaid" stroke="#ef4444" strokeWidth={2} name="unpaid" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Revenue Growth Analysis */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card data-testid="card-growth-metrics">
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                        <TrendingUp className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">Average Monthly</p>
+                      <p className="text-xl font-bold text-foreground">
+                        ${Math.round(monthlyTrendsData.reduce((sum, m) => sum + m.total, 0) / monthlyTrendsData.length).toLocaleString()}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-highest-month">
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-green-100 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                        <DollarSign className="h-6 w-6 text-green-600" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">Highest Month</p>
+                      <p className="text-xl font-bold text-foreground">
+                        ${Math.max(...monthlyTrendsData.map(m => m.total)).toLocaleString()}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-collection-efficiency">
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-purple-100 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                        <CheckCircle className="h-6 w-6 text-purple-600" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">Collection Rate</p>
+                      <p className="text-xl font-bold text-foreground">
+                        {Math.round((monthlyTrendsData.reduce((sum, m) => sum + m.paid, 0) / monthlyTrendsData.reduce((sum, m) => sum + m.total, 0)) * 100) || 0}%
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Monthly Breakdown Table */}
+              <Card data-testid="card-monthly-breakdown">
+                <CardHeader>
+                  <CardTitle>Monthly Revenue Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-3 font-medium">Month</th>
+                          <th className="text-right p-3 font-medium">Total Revenue</th>
+                          <th className="text-right p-3 font-medium">Paid Amount</th>
+                          <th className="text-right p-3 font-medium">Unpaid Amount</th>
+                          <th className="text-right p-3 font-medium">Collection %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthlyTrendsData.filter(m => m.total > 0).map((month, index) => (
+                          <tr key={month.month} className="border-b hover:bg-muted/50" data-testid={`row-month-${index}`}>
+                            <td className="p-3 font-medium text-foreground">{month.month}</td>
+                            <td className="p-3 text-right font-bold text-foreground">${month.total.toLocaleString()}</td>
+                            <td className="p-3 text-right text-green-600">${month.paid.toLocaleString()}</td>
+                            <td className="p-3 text-right text-red-600">${month.unpaid.toLocaleString()}</td>
+                            <td className="p-3 text-right">
+                              <Badge 
+                                className={Math.round((month.paid / month.total) * 100) >= 90 ? "text-green-600 border-green-600" : Math.round((month.paid / month.total) * 100) >= 70 ? "text-yellow-600 border-yellow-600" : "text-red-600 border-red-600"}
+                                variant="outline"
+                              >
+                                {Math.round((month.paid / month.total) * 100) || 0}%
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tenant Performance View */}
+            <TabsContent value="tenant" className="space-y-6">
+              {/* Top Tenants Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {tenantPerformanceData.slice(0, 3).map((tenant, index) => (
+                  <Card key={tenant.id} data-testid={`card-top-tenant-${index}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">#{index + 1} Property</p>
+                          <p className="text-lg font-bold text-foreground">{tenant.name}</p>
+                          <p className="text-xs text-muted-foreground">Reliability: {tenant.reliabilityScore}%</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-foreground">${tenant.total.toLocaleString()}</p>
+                          <p className="text-sm text-blue-600">{tenant.onTimePayments} on-time</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Tenant Reliability Chart */}
+              {tenantPerformanceData.length > 0 && (
+                <Card data-testid="card-tenant-reliability-chart">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Tenant Reliability Scores
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={tenantPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis tickFormatter={(value) => `${value}%`} />
+                        <Tooltip 
+                          formatter={(value) => [`${Number(value)}%`, 'Reliability Score']}
+                          labelFormatter={(label) => `Tenant: ${label}`}
+                        />
+                        <Bar dataKey="reliabilityScore" fill="#8b5cf6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Tenant Performance Table */}
+              <Card data-testid="card-tenant-performance-table">
+                <CardHeader>
+                  <CardTitle>Tenant Performance Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {tenantPerformanceData.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-3 font-medium">Property/Tenant</th>
+                            <th className="text-right p-3 font-medium">Total Revenue</th>
+                            <th className="text-right p-3 font-medium">On-Time Payments</th>
+                            <th className="text-right p-3 font-medium">Avg Days Late</th>
+                            <th className="text-right p-3 font-medium">Reliability Score</th>
+                            <th className="text-right p-3 font-medium">Risk Level</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tenantPerformanceData.map((tenant, index) => (
+                            <tr key={tenant.id} className="border-b hover:bg-muted/50" data-testid={`row-tenant-${index}`}>
+                              <td className="p-3">
+                                <p className="font-medium text-foreground">{tenant.name}</p>
+                                <p className="text-sm text-muted-foreground">{tenant.unitCount} units</p>
+                              </td>
+                              <td className="p-3 text-right font-bold text-foreground">${tenant.total.toLocaleString()}</td>
+                              <td className="p-3 text-right text-green-600">{tenant.onTimePayments}</td>
+                              <td className="p-3 text-right text-muted-foreground">{tenant.avgDaysLate} days</td>
+                              <td className="p-3 text-right">
+                                <Badge 
+                                  className={tenant.reliabilityScore >= 90 ? "text-green-600 border-green-600" : tenant.reliabilityScore >= 70 ? "text-yellow-600 border-yellow-600" : "text-red-600 border-red-600"}
+                                  variant="outline"
+                                >
+                                  {tenant.reliabilityScore}%
+                                </Badge>
+                              </td>
+                              <td className="p-3 text-right">
+                                <Badge 
+                                  className={tenant.reliabilityScore >= 90 ? "text-green-600 border-green-600" : tenant.reliabilityScore >= 70 ? "text-yellow-600 border-yellow-600" : "text-red-600 border-red-600"}
+                                  variant="outline"
+                                >
+                                  {tenant.reliabilityScore >= 90 ? 'Low' : tenant.reliabilityScore >= 70 ? 'Medium' : 'High'}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No tenant performance data found. Start logging revenue to analyze tenant reliability.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </main>
       </div>
