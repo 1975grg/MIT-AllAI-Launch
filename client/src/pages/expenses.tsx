@@ -312,6 +312,25 @@ export default function Expenses() {
     };
   });
 
+  // Timeline data - sort expenses chronologically and group by date
+  const timelineData = filteredExpenses
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .reduce((acc, expense) => {
+      const dateKey = new Date(expense.date).toDateString();
+      if (!acc[dateKey]) {
+        acc[dateKey] = {
+          date: new Date(expense.date),
+          expenses: [],
+          total: 0
+        };
+      }
+      acc[dateKey].expenses.push(expense);
+      acc[dateKey].total += Number(expense.amount);
+      return acc;
+    }, {} as Record<string, { date: Date; expenses: typeof filteredExpenses; total: number }>);
+
+  const timelineEntries = Object.values(timelineData).sort((a, b) => b.date.getTime() - a.date.getTime());
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-expenses">
       <Sidebar />
@@ -1053,14 +1072,151 @@ export default function Expenses() {
             </TabsContent>
 
             {/* Timeline View */}
-            <TabsContent value="timeline" className="space-y-0">
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Timeline View</h3>
-                  <p className="text-muted-foreground">Chronological expense timeline coming soon...</p>
-                </CardContent>
-              </Card>
+            <TabsContent value="timeline" className="space-y-6">
+              {/* Timeline Header */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-foreground">Expense Timeline</h3>
+                <p className="text-sm text-muted-foreground">Chronological order (newest first)</p>
+              </div>
+
+              {/* Timeline Content */}
+              {timelineEntries.length > 0 ? (
+                <div className="space-y-6">
+                  {timelineEntries.map((entry, entryIndex) => (
+                    <div key={entry.date.toDateString()} className="relative" data-testid={`timeline-entry-${entryIndex}`}>
+                      {/* Timeline Date Header */}
+                      <div className="flex items-center space-x-4 mb-4">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <div className="flex-1 border-t border-muted"></div>
+                        <div className="bg-background px-3">
+                          <h4 className="font-semibold text-foreground">
+                            {entry.date.toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {entry.expenses.length} expenses • ${entry.total.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex-1 border-t border-muted"></div>
+                      </div>
+
+                      {/* Timeline Expenses for this date */}
+                      <div className="ml-6 space-y-3">
+                        {entry.expenses.map((expense, expenseIndex) => (
+                          <Card key={expense.id} className="relative" data-testid={`timeline-expense-${entryIndex}-${expenseIndex}`}>
+                            {/* Connecting line from timeline dot */}
+                            <div className="absolute -left-8 top-6 w-6 h-px bg-muted"></div>
+                            
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getCategoryColor(expense.category || 'Other').split(' ')[0]}`}>
+                                    <Receipt className="h-5 w-5 text-white" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h5 className="font-semibold text-foreground">{expense.description}</h5>
+                                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                      <span>{new Date(expense.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                                      {expense.category && (
+                                        <Badge className={getCategoryColor(expense.category)} variant="secondary">
+                                          {expense.category}
+                                        </Badge>
+                                      )}
+                                      {expense.scope === 'property' && expense.propertyId && (
+                                        <span className="text-blue-600">
+                                          {(() => {
+                                            const property = properties.find(p => p.id === expense.propertyId);
+                                            return property ? (property.name || `${property.street}, ${property.city}`) : 'Property';
+                                          })()}
+                                        </span>
+                                      )}
+                                      {expense.isRecurring && (
+                                        <Badge variant="outline" className="text-blue-600 border-blue-600">
+                                          <Repeat className="h-3 w-3 mr-1" />
+                                          Recurring
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="text-right">
+                                  <p className="text-xl font-bold text-foreground">${Number(expense.amount).toLocaleString()}</p>
+                                  {expense.taxDeductible === false && (
+                                    <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
+                                      Non-deductible
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {expense.notes && (
+                                <div className="mt-3 pt-3 border-t">
+                                  <p className="text-sm text-muted-foreground">{expense.notes}</p>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No Expenses Found</h3>
+                    <p className="text-muted-foreground mb-4">Start logging expenses to see them in chronological order.</p>
+                    <Button onClick={() => setShowExpenseForm(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Log Your First Expense
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Timeline Summary Stats */}
+              {timelineEntries.length > 0 && (
+                <Card data-testid="card-timeline-summary">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      Timeline Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-foreground">{timelineEntries.length}</p>
+                        <p className="text-sm text-muted-foreground">Days with Expenses</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-foreground">
+                          {timelineEntries.reduce((sum, entry) => sum + entry.expenses.length, 0)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Total Transactions</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-foreground">
+                          ${Math.round(timelineEntries.reduce((sum, entry) => sum + entry.total, 0) / timelineEntries.length).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Average Daily Spending</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-foreground">
+                          ${Math.max(...timelineEntries.map(entry => entry.total)).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Highest Daily Total</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </main>
