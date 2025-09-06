@@ -242,9 +242,9 @@ export default function RevenueForm({ properties, units, entities, revenue, onSu
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
                     <Input 
-                      type="number" 
-                      step="0.01"
+                      type="text" 
                       placeholder="0.00" 
+                      inputMode="decimal"
                       value={field.value ? formatNumberWithCommas(field.value) : ""}
                       onChange={(e) => {
                         const rawValue = removeCommas(e.target.value);
