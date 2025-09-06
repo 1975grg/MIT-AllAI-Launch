@@ -132,6 +132,7 @@ export interface IStorage {
   getDueReminders(): Promise<Reminder[]>;
   createReminder(reminder: InsertReminder): Promise<Reminder>;
   updateReminder(id: string, reminder: Partial<InsertReminder>): Promise<Reminder>;
+  deleteReminder(id: string): Promise<void>;
   
   // Notification operations
   getUserNotifications(userId: string): Promise<Notification[]>;
@@ -1244,6 +1245,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(reminders.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteReminder(id: string): Promise<void> {
+    await db.delete(reminders).where(eq(reminders.id, id));
   }
 
   // Create lease end reminders (similar to entity renewal reminders)

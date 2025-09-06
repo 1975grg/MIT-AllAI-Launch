@@ -1383,6 +1383,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/reminders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { id } = req.params;
+      await storage.deleteReminder(id);
+      res.json({ message: "Reminder deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting reminder:", error);
+      res.status(500).json({ message: "Failed to delete reminder" });
+    }
+  });
+
   // Dashboard routes
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
