@@ -12,18 +12,22 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Plus, Clock, CheckCircle, Calendar, AlertTriangle, DollarSign, FileText, Wrench, Shield } from "lucide-react";
+import { Bell, Plus, Clock, CheckCircle, Calendar, AlertTriangle, DollarSign, FileText, Wrench, Shield, Edit, Trash2, CalendarDays } from "lucide-react";
 import type { Reminder, Property, OwnershipEntity, Lease, Unit, TenantGroup } from "@shared/schema";
 
 export default function Reminders() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showReminderForm, setShowReminderForm] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [statusFilter, setStatusFilter] = useState<string>("due");
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [unitFilter, setUnitFilter] = useState<string[]>([]);
+  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>();
+  const [customDateTo, setCustomDateTo] = useState<Date | undefined>();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -137,6 +141,72 @@ export default function Reminders() {
     },
   });
 
+  const updateReminderMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const response = await apiRequest("PATCH", `/api/reminders/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      setEditingReminder(null);
+      setShowReminderForm(false);
+      toast({
+        title: "Success",
+        description: "Reminder updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update reminder",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteReminderMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/reminders/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      toast({
+        title: "Success",
+        description: "Reminder deleted successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete reminder",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -147,6 +217,15 @@ export default function Reminders() {
 
   const filteredProperties = properties || [];
   
+  // Helper function to check if reminder is due within specified days
+  const isDueWithinDays = (dueAt: Date | string, days: number) => {
+    const now = new Date();
+    const due = new Date(dueAt);
+    const timeDiff = due.getTime() - now.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    return daysDiff >= 0 && daysDiff <= days;
+  };
+
   const filteredReminders = reminders?.filter(reminder => {
     const typeMatch = typeFilter === "all" || reminder.type === typeFilter;
     
@@ -154,11 +233,37 @@ export default function Reminders() {
     let statusMatch = false;
     if (statusFilter === "all") {
       statusMatch = true;
-    } else if (statusFilter === "active") {
-      // Active means not completed
-      statusMatch = reminder.status !== "Completed";
+    } else if (statusFilter === "due") {
+      // Due means pending or overdue (active reminders that need attention)
+      statusMatch = reminder.status === "Pending" || reminder.status === "Overdue";
+    } else if (statusFilter === "due-soon") {
+      // Due soon means pending/overdue AND due within 30 days
+      statusMatch = (reminder.status === "Pending" || reminder.status === "Overdue") && isDueWithinDays(reminder.dueAt, 30);
     } else {
       statusMatch = reminder.status === statusFilter;
+    }
+    
+    // Handle date filtering
+    let dateMatch = true;
+    const reminderDue = new Date(reminder.dueAt);
+    const now = new Date();
+    
+    if (dateFilter === "this-month") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      dateMatch = reminderDue >= startOfMonth && reminderDue <= endOfMonth;
+    } else if (dateFilter === "next-month") {
+      const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+      dateMatch = reminderDue >= startOfNextMonth && reminderDue <= endOfNextMonth;
+    } else if (dateFilter === "next-30-days") {
+      const next30Days = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+      dateMatch = reminderDue >= now && reminderDue <= next30Days;
+    } else if (dateFilter === "year-end") {
+      const endOfYear = new Date(now.getFullYear(), 11, 31);
+      dateMatch = reminderDue >= now && reminderDue <= endOfYear;
+    } else if (dateFilter === "custom" && customDateFrom && customDateTo) {
+      dateMatch = reminderDue >= customDateFrom && reminderDue <= customDateTo;
     }
     
     let propertyMatch = false;
@@ -208,7 +313,7 @@ export default function Reminders() {
       }
     }
     
-    return typeMatch && statusMatch && propertyMatch && unitMatch;
+    return typeMatch && statusMatch && propertyMatch && unitMatch && dateMatch;
   }) || [];
 
   const reminderTypes = Array.from(new Set(reminders?.map(r => r.type).filter(Boolean))) || [];
@@ -225,7 +330,7 @@ export default function Reminders() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Pending": return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+      case "Pending": return <Badge className="bg-yellow-100 text-yellow-800">Due</Badge>;
       case "Overdue": return <Badge className="bg-red-100 text-red-800">Overdue</Badge>;
       case "Completed": return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
       case "Cancelled": return <Badge className="bg-gray-100 text-gray-800">Cancelled</Badge>;
@@ -248,9 +353,20 @@ export default function Reminders() {
     return new Date(dueAt) < new Date();
   };
 
-  const dueReminders = filteredReminders.filter(r => r.status === "Pending").length;
-  const overdueReminders = filteredReminders.filter(r => r.status === "Overdue").length;
-  const completedReminders = filteredReminders.filter(r => r.status === "Completed").length;
+  // Calculate summary card counts based on all reminders (not filtered)
+  const allReminders = reminders || [];
+  const overdueReminders = allReminders.filter(r => r.status === "Overdue").length;
+  const dueSoonReminders = allReminders.filter(r => 
+    (r.status === "Pending" || r.status === "Overdue") && isDueWithinDays(r.dueAt, 30)
+  ).length;
+  const thisMonthReminders = allReminders.filter(r => {
+    const reminderDue = new Date(r.dueAt);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return reminderDue >= startOfMonth && reminderDue <= endOfMonth && 
+           (r.status === "Pending" || r.status === "Overdue");
+  }).length;
 
   return (
     <div className="flex h-screen bg-background" data-testid="page-reminders">
@@ -364,15 +480,29 @@ export default function Reminders() {
                 </SelectContent>
               </Select>
 
+              {/* Date Filter */}
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-48" data-testid="select-date-filter">
+                  <SelectValue placeholder="All Dates" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Dates</SelectItem>
+                  <SelectItem value="next-30-days">Next 30 Days</SelectItem>
+                  <SelectItem value="this-month">This Month</SelectItem>
+                  <SelectItem value="next-month">Next Month</SelectItem>
+                  <SelectItem value="year-end">Before Year End</SelectItem>
+                </SelectContent>
+              </Select>
+
               {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-40" data-testid="select-status-filter">
-                  <SelectValue placeholder="Active Reminders" />
+                  <SelectValue placeholder="Due Reminders" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active Reminders</SelectItem>
+                  <SelectItem value="due">Due</SelectItem>
+                  <SelectItem value="due-soon">Due Soon (30 days)</SelectItem>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Overdue">Overdue</SelectItem>
                   <SelectItem value="Completed">Completed</SelectItem>
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
@@ -388,15 +518,25 @@ export default function Reminders() {
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Create New Reminder</DialogTitle>
+                    <DialogTitle>{editingReminder ? "Edit Reminder" : "Create New Reminder"}</DialogTitle>
                   </DialogHeader>
                   <ReminderForm 
                     properties={properties || []}
                     entities={entities || []}
                     units={units || []}
-                    onSubmit={(data) => createReminderMutation.mutate(data)}
-                    onCancel={() => setShowReminderForm(false)}
-                    isLoading={createReminderMutation.isPending}
+                    initialData={editingReminder}
+                    onSubmit={(data) => {
+                      if (editingReminder) {
+                        updateReminderMutation.mutate({ id: editingReminder.id, data });
+                      } else {
+                        createReminderMutation.mutate(data);
+                      }
+                    }}
+                    onCancel={() => {
+                      setShowReminderForm(false);
+                      setEditingReminder(null);
+                    }}
+                    isLoading={createReminderMutation.isPending || updateReminderMutation.isPending}
                   />
                 </DialogContent>
               </Dialog>
@@ -425,9 +565,9 @@ export default function Reminders() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Due Soon</p>
+                    <p className="text-sm font-medium text-muted-foreground">Due Soon (30 days)</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-due-count">
-                      {dueReminders}
+                      {dueSoonReminders}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -441,9 +581,9 @@ export default function Reminders() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Total</p>
+                    <p className="text-sm font-medium text-muted-foreground">This Month</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-total-count">
-                      {filteredReminders.length}
+                      {thisMonthReminders}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -471,7 +611,7 @@ export default function Reminders() {
           ) : filteredReminders.length > 0 ? (
             <div className="space-y-4">
               {filteredReminders.map((reminder, index) => (
-                <Card key={reminder.id} className="hover:shadow-md transition-shadow" data-testid={`card-reminder-${index}`}>
+                <Card key={reminder.id} className="group hover:shadow-md transition-shadow" data-testid={`card-reminder-${index}`}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
@@ -539,6 +679,36 @@ export default function Reminders() {
                       
                       <div className="flex items-center space-x-3">
                         {getStatusBadge(reminder.status || "Pending")}
+                        
+                        {/* Edit/Delete Icons - subtle and only visible on hover */}
+                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-blue-600"
+                            onClick={() => {
+                              setEditingReminder(reminder);
+                              setShowReminderForm(true);
+                            }}
+                            data-testid={`button-edit-reminder-${index}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to delete this reminder?")) {
+                                deleteReminderMutation.mutate(reminder.id);
+                              }
+                            }}
+                            data-testid={`button-delete-reminder-${index}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
                         {(reminder.status === "Pending" || reminder.status === "Overdue") && (
                           <Button 
                             variant="outline" 
