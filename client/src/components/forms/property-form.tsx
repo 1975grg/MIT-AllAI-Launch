@@ -1290,9 +1290,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         <FormLabel>Expected Rent (Optional)</FormLabel>
                         <FormControl>
                           <Input 
-                            type="number" 
-                            min="0"
-                            step="0.01"
+                            type="text" 
+                            inputMode="decimal"
                             placeholder="2,500" 
                             value={field.value ? formatNumberWithCommas(field.value) : ""}
                             onChange={(e) => {
@@ -1315,9 +1314,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         <FormLabel>Expected Deposit (Optional)</FormLabel>
                         <FormControl>
                           <Input 
-                            type="number" 
-                            min="0"
-                            step="0.01"
+                            type="text" 
+                            inputMode="decimal"
                             placeholder="2,500" 
                             value={field.value ? formatNumberWithCommas(field.value) : ""}
                             onChange={(e) => {
@@ -1961,9 +1959,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                             <FormLabel>Expected Rent</FormLabel>
                             <FormControl>
                               <Input 
-                                type="number" 
-                                min="0"
-                                step="0.01"
+                                type="text" 
+                                inputMode="decimal"
                                 placeholder="2,500" 
                                 value={field.value ? formatNumberWithCommas(field.value) : ""}
                                 onChange={(e) => {
@@ -1986,9 +1983,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                             <FormLabel>Expected Deposit</FormLabel>
                             <FormControl>
                               <Input 
-                                type="number" 
-                                min="0"
-                                step="0.01"
+                                type="text" 
+                                inputMode="decimal"
                                 placeholder="2,500" 
                                 value={field.value ? formatNumberWithCommas(field.value) : ""}
                                 onChange={(e) => {
