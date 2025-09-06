@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Building, DollarSign, AlertTriangle, Bell, Check, Clock, X } from "lucide-react";
+import { Building, DollarSign, AlertTriangle, Bell, Check, Clock, X, Receipt } from "lucide-react";
 import type { SmartCase, Reminder } from "@shared/schema";
 
 type DashboardStats = {
@@ -36,6 +37,7 @@ type RentCollectionStatus = {
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -340,21 +342,28 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <Button variant="ghost" className="w-full justify-start" data-testid="button-add-property">
+                    <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation('/properties')} data-testid="button-add-property">
                       <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center mr-3">
                         <Building className="h-4 w-4 text-primary" />
                       </div>
                       Add Property
                     </Button>
                     
-                    <Button variant="ghost" className="w-full justify-start" data-testid="button-log-expense">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                        <DollarSign className="h-4 w-4 text-green-600" />
+                    <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation('/expenses')} data-testid="button-log-expense">
+                      <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                        <Receipt className="h-4 w-4 text-yellow-600" />
                       </div>
                       Log Expense
                     </Button>
                     
-                    <Button variant="ghost" className="w-full justify-start" data-testid="button-set-reminder">
+                    <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation('/revenue')} data-testid="button-log-revenue">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                      </div>
+                      Log Revenue
+                    </Button>
+                    
+                    <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation('/reminders')} data-testid="button-set-reminder">
                       <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
                         <Bell className="h-4 w-4 text-yellow-600" />
                       </div>
