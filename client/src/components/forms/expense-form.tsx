@@ -343,8 +343,8 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                 <FormLabel>Amount</FormLabel>
                 <FormControl>
                   <Input 
-                    type="number" 
-                    step="0.01"
+                    type="text" 
+                    inputMode="decimal"
                     placeholder="0.00" 
                     value={field.value ? formatNumberWithCommas(field.value) : ""}
                     onChange={(e) => {
@@ -864,8 +864,8 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                         <FormItem>
                           <FormControl>
                             <Input 
-                              type="number" 
-                              step="0.01"
+                              type="text" 
+                              inputMode="decimal"
                               placeholder="0.00" 
                               value={field.value ? formatNumberWithCommas(field.value) : ""}
                               onChange={(e) => {
