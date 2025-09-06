@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, List, BarChart3, GitCompare, Grid3x3, Clock } from "lucide-react";
 import type { Transaction, Property, Unit } from "@shared/schema";
 
 export default function Expenses() {
@@ -26,6 +27,7 @@ export default function Expenses() {
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [unitFilter, setUnitFilter] = useState<string[]>([]);
   const [entityFilter, setEntityFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"list" | "category" | "property" | "calendar" | "timeline">("list");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -56,7 +58,7 @@ export default function Expenses() {
     retry: false,
   });
 
-  const { data: entities = [] } = useQuery({
+  const { data: entities = [] } = useQuery<{id: string; name: string}[]>({
     queryKey: ["/api/entities"],
     retry: false,
   });
@@ -388,21 +390,48 @@ export default function Expenses() {
             </Card>
           </div>
 
-          {expensesLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Card key={i} data-testid={`skeleton-expense-${i}`}>
-                  <CardContent className="p-6">
-                    <div className="space-y-3">
-                      <div className="h-5 bg-muted animate-pulse rounded" />
-                      <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
-                      <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : filteredExpenses.length > 0 ? (
+          {/* View Toggle Tabs */}
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "list" | "category" | "property" | "calendar" | "timeline")} className="space-y-6">
+            <TabsList className="grid w-full max-w-[800px] grid-cols-5">
+              <TabsTrigger value="list" className="flex items-center gap-2" data-testid="tab-list-view">
+                <List className="h-4 w-4" />
+                List View
+              </TabsTrigger>
+              <TabsTrigger value="category" className="flex items-center gap-2" data-testid="tab-category-view">
+                <BarChart3 className="h-4 w-4" />
+                Category
+              </TabsTrigger>
+              <TabsTrigger value="property" className="flex items-center gap-2" data-testid="tab-property-view">
+                <GitCompare className="h-4 w-4" />
+                Properties
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="flex items-center gap-2" data-testid="tab-calendar-view">
+                <Grid3x3 className="h-4 w-4" />
+                Calendar
+              </TabsTrigger>
+              <TabsTrigger value="timeline" className="flex items-center gap-2" data-testid="tab-timeline-view">
+                <Clock className="h-4 w-4" />
+                Timeline
+              </TabsTrigger>
+            </TabsList>
+
+            {/* List View */}
+            <TabsContent value="list" className="space-y-0">
+              {expensesLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Card key={i} data-testid={`skeleton-expense-${i}`}>
+                      <CardContent className="p-6">
+                        <div className="space-y-3">
+                          <div className="h-5 bg-muted animate-pulse rounded" />
+                          <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                          <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredExpenses.length > 0 ? (
             <div className="space-y-4">
               {filteredExpenses.map((expense, index) => (
                 <Card key={expense.id} className="hover:shadow-md transition-shadow" data-testid={`card-expense-${index}`}>
@@ -505,20 +534,66 @@ export default function Expenses() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2" data-testid="text-no-expenses">No Expenses Logged</h3>
-                <p className="text-muted-foreground mb-4">Start tracking your property expenses for better financial management and tax preparation.</p>
-                <Button onClick={() => setShowExpenseForm(true)} data-testid="button-add-first-expense">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log Your First Expense
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2" data-testid="text-no-expenses">No Expenses Logged</h3>
+                    <p className="text-muted-foreground mb-4">Start tracking your property expenses for better financial management and tax preparation.</p>
+                    <Button onClick={() => setShowExpenseForm(true)} data-testid="button-add-first-expense">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Log Your First Expense
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Category Dashboard View */}
+            <TabsContent value="category" className="space-y-0">
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Category Dashboard</h3>
+                  <p className="text-muted-foreground">Visual breakdown of expenses by category coming soon...</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Property Comparison View */}
+            <TabsContent value="property" className="space-y-0">
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <GitCompare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Property Comparison</h3>
+                  <p className="text-muted-foreground">Side-by-side property expense analysis coming soon...</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Calendar/Schedule View */}
+            <TabsContent value="calendar" className="space-y-0">
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Grid3x3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Calendar View</h3>
+                  <p className="text-muted-foreground">Monthly calendar with expense scheduling coming soon...</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Timeline View */}
+            <TabsContent value="timeline" className="space-y-0">
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Timeline View</h3>
+                  <p className="text-muted-foreground">Chronological expense timeline coming soon...</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 
