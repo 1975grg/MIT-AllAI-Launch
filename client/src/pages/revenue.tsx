@@ -488,20 +488,19 @@ export default function Revenue() {
                                 Non-taxable
                               </Badge>
                             )}
-                            {revenue.paymentStatus && (
-                              <DropdownMenu>
+                            <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Badge 
                                     variant="outline" 
                                     className={`cursor-pointer hover:opacity-80 ${
-                                      revenue.paymentStatus === 'Paid' ? "text-green-600 border-green-600" :
-                                      revenue.paymentStatus === 'Partial' ? "text-yellow-600 border-yellow-600" :
-                                      revenue.paymentStatus === 'Skipped' ? "text-gray-600 border-gray-600" :
+                                      (revenue.paymentStatus || 'Unpaid') === 'Paid' ? "text-green-600 border-green-600" :
+                                      (revenue.paymentStatus || 'Unpaid') === 'Partial' ? "text-yellow-600 border-yellow-600" :
+                                      (revenue.paymentStatus || 'Unpaid') === 'Skipped' ? "text-gray-600 border-gray-600" :
                                       "text-orange-600 border-orange-600"
                                     }`}
                                     data-testid={`badge-payment-status-${index}`}
                                   >
-                                    {revenue.paymentStatus}
+                                    {revenue.paymentStatus || 'Unpaid'}
                                     <ChevronDown className="h-3 w-3 ml-1" />
                                   </Badge>
                                 </DropdownMenuTrigger>
@@ -549,7 +548,6 @@ export default function Revenue() {
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                            )}
                           </div>
                         </div>
                       </div>
