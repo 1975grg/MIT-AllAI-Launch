@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Building, DollarSign, AlertTriangle, Bell, Check, Clock, X, Receipt } from "lucide-react";
+import { Building, DollarSign, AlertTriangle, Bell, Check, Clock, X, Receipt, Users, Wrench } from "lucide-react";
 import type { SmartCase, Reminder } from "@shared/schema";
 
 type DashboardStats = {
@@ -341,40 +341,77 @@ export default function Dashboard() {
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation('/properties')} data-testid="button-add-property">
-                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center mr-3">
-                        <Building className="h-4 w-4 text-primary" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="ghost"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      onClick={() => setLocation('/properties')}
+                      data-testid="button-add-property"
+                    >
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Building className="h-5 w-5 text-primary" />
                       </div>
-                      Add Property
+                      <span className="text-sm font-medium">Property</span>
                     </Button>
-                    
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation('/expenses')} data-testid="button-log-expense">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
-                        <Receipt className="h-4 w-4 text-yellow-600" />
+
+                    <Button
+                      variant="ghost"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      onClick={() => setLocation('/tenants')}
+                      data-testid="button-add-tenant"
+                    >
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <Users className="h-5 w-5 text-green-600" />
                       </div>
-                      Log Expense
+                      <span className="text-sm font-medium">Tenant</span>
                     </Button>
-                    
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation('/revenue')} data-testid="button-log-revenue">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                        <DollarSign className="h-4 w-4 text-green-600" />
+
+                    <Button
+                      variant="ghost"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      onClick={() => setLocation('/maintenance')}
+                      data-testid="button-create-maintenance"
+                    >
+                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <Wrench className="h-5 w-5 text-orange-600" />
                       </div>
-                      Log Revenue
+                      <span className="text-sm font-medium">Maintenance</span>
                     </Button>
-                    
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation('/reminders')} data-testid="button-set-reminder">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
-                        <Bell className="h-4 w-4 text-yellow-600" />
+
+                    <Button
+                      variant="ghost"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      onClick={() => setLocation('/expenses')}
+                      data-testid="button-log-expense"
+                    >
+                      <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <Receipt className="h-5 w-5 text-yellow-600" />
                       </div>
-                      Set Reminder
+                      <span className="text-sm font-medium">Expense</span>
                     </Button>
-                    
-                    <Button variant="ghost" className="w-full justify-start" data-testid="button-report-issue">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                        <AlertTriangle className="h-4 w-4 text-blue-600" />
+
+                    <Button
+                      variant="ghost"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      onClick={() => setLocation('/revenue')}
+                      data-testid="button-log-revenue"
+                    >
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-green-600" />
                       </div>
-                      Report Issue
+                      <span className="text-sm font-medium">Revenue</span>
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      onClick={() => setLocation('/reminders')}
+                      data-testid="button-set-reminder"
+                    >
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Bell className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-medium">Reminder</span>
                     </Button>
                   </div>
                 </CardContent>
