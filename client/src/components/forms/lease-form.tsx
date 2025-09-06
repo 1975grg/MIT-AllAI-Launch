@@ -272,8 +272,8 @@ export default function LeaseForm({
                     <FormLabel>Monthly Rent</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="0.00"
                         value={field.value ? formatNumberWithCommas(field.value) : ""}
                         onChange={(e) => {
@@ -298,8 +298,8 @@ export default function LeaseForm({
                     <FormLabel>Security Deposit</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="0.00"
                         value={field.value ? formatNumberWithCommas(field.value) : ""}
                         onChange={(e) => {
