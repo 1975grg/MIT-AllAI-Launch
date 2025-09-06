@@ -490,9 +490,10 @@ export default function Revenue() {
                             )}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Badge 
+                                  <Button
                                     variant="outline" 
-                                    className={`cursor-pointer hover:opacity-80 ${
+                                    size="sm"
+                                    className={`h-6 px-2 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 ${
                                       (revenue.paymentStatus || 'Unpaid') === 'Paid' ? "text-green-600 border-green-600" :
                                       (revenue.paymentStatus || 'Unpaid') === 'Partial' ? "text-yellow-600 border-yellow-600" :
                                       (revenue.paymentStatus || 'Unpaid') === 'Skipped' ? "text-gray-600 border-gray-600" :
@@ -502,7 +503,7 @@ export default function Revenue() {
                                   >
                                     {revenue.paymentStatus || 'Unpaid'}
                                     <ChevronDown className="h-3 w-3 ml-1" />
-                                  </Badge>
+                                  </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem
@@ -710,9 +711,10 @@ export default function Revenue() {
                                     {actualTransaction ? (
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                          <Badge 
+                                          <Button
                                             variant="outline" 
-                                            className={`cursor-pointer hover:opacity-80 ${
+                                            size="sm"
+                                            className={`h-6 px-2 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 ${
                                               paymentStatus === 'Paid' ? "text-green-600 border-green-600" :
                                               paymentStatus === 'Partial' ? "text-yellow-600 border-yellow-600" :
                                               paymentStatus === 'Skipped' ? "text-gray-600 border-gray-600" :
@@ -722,7 +724,7 @@ export default function Revenue() {
                                           >
                                             {isPastDue && paymentStatus === 'Unpaid' ? 'Overdue' : paymentStatus}
                                             <ChevronDown className="h-3 w-3 ml-1" />
-                                          </Badge>
+                                          </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                           <DropdownMenuItem
