@@ -233,6 +233,53 @@ export default function Expenses() {
     };
   });
 
+  // Property comparison data
+  const propertyComparisonData = properties.map(property => {
+    const propertyExpenses = expenseTransactions.filter(e => e.propertyId === property.id);
+    const total = propertyExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const count = propertyExpenses.length;
+    const propertyUnits = units.filter(u => u.propertyId === property.id);
+    const unitCount = propertyUnits.length || 1; // Avoid division by zero
+    const avgPerUnit = total / unitCount;
+    
+    // Most expensive category for this property
+    const categoriesForProperty = propertyExpenses.reduce((acc, expense) => {
+      if (expense.category) {
+        acc[expense.category] = (acc[expense.category] || 0) + Number(expense.amount);
+      }
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const topCategory = Object.entries(categoriesForProperty)
+      .sort(([,a], [,b]) => b - a)[0];
+    
+    return {
+      id: property.id,
+      name: property.name || `${property.street}, ${property.city}`,
+      total,
+      count,
+      unitCount,
+      avgPerUnit,
+      topCategory: topCategory ? { name: topCategory[0], amount: topCategory[1] } : null,
+      monthlyData: Array.from({ length: 6 }, (_, i) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() - (5 - i));
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        const monthExpenses = propertyExpenses.filter(expense => {
+          const expenseMonth = new Date(expense.date);
+          const expenseKey = `${expenseMonth.getFullYear()}-${String(expenseMonth.getMonth() + 1).padStart(2, '0')}`;
+          return expenseKey === monthKey;
+        });
+        
+        return {
+          month: date.toLocaleDateString('en-US', { month: 'short' }),
+          amount: monthExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
+        };
+      })
+    };
+  }).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-expenses">
       <Sidebar />
@@ -709,12 +756,156 @@ export default function Expenses() {
             </TabsContent>
 
             {/* Property Comparison View */}
-            <TabsContent value="property" className="space-y-0">
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <GitCompare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Property Comparison</h3>
-                  <p className="text-muted-foreground">Side-by-side property expense analysis coming soon...</p>
+            <TabsContent value="property" className="space-y-6">
+              {/* Property Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {propertyComparisonData.slice(0, 6).map((property, index) => (
+                  <Card key={property.id} data-testid={`card-property-${index}`}>
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-foreground truncate">{property.name}</p>
+                            <p className="text-xs text-muted-foreground">{property.unitCount} units</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-foreground">${property.total.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">{property.count} expenses</p>
+                          </div>
+                        </div>
+                        
+                        <div className="border-t pt-2">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs text-muted-foreground">Per Unit Avg:</span>
+                            <span className="text-sm font-medium">${property.avgPerUnit.toLocaleString()}</span>
+                          </div>
+                          {property.topCategory && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-muted-foreground">Top Category:</span>
+                              <span className="text-xs font-medium truncate ml-2">{property.topCategory.name}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Property Expense Comparison Chart */}
+              {propertyComparisonData.length > 0 && (
+                <Card data-testid="card-property-comparison-chart">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <GitCompare className="h-5 w-5" />
+                      Property Expense Comparison
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={propertyComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
+                        <Tooltip 
+                          formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Total Expenses']}
+                          labelFormatter={(label) => `Property: ${label}`}
+                        />
+                        <Bar dataKey="total" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Property Expense Per Unit Chart */}
+              {propertyComparisonData.length > 0 && (
+                <Card data-testid="card-property-per-unit-chart">
+                  <CardHeader>
+                    <CardTitle>Expense Per Unit Comparison</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={propertyComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
+                        <Tooltip 
+                          formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Per Unit Average']}
+                          labelFormatter={(label) => `Property: ${label}`}
+                        />
+                        <Bar dataKey="avgPerUnit" fill="#82ca9d" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Detailed Property Analysis Table */}
+              <Card data-testid="card-property-analysis-table">
+                <CardHeader>
+                  <CardTitle>Detailed Property Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {propertyComparisonData.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-3 font-medium">Property</th>
+                            <th className="text-right p-3 font-medium">Total Expenses</th>
+                            <th className="text-right p-3 font-medium">Units</th>
+                            <th className="text-right p-3 font-medium">Per Unit Avg</th>
+                            <th className="text-right p-3 font-medium">Transactions</th>
+                            <th className="text-left p-3 font-medium">Top Category</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {propertyComparisonData.map((property, index) => (
+                            <tr key={property.id} className="border-b hover:bg-muted/50" data-testid={`row-property-${index}`}>
+                              <td className="p-3">
+                                <div>
+                                  <p className="font-medium text-foreground">{property.name}</p>
+                                </div>
+                              </td>
+                              <td className="p-3 text-right font-bold text-foreground">${property.total.toLocaleString()}</td>
+                              <td className="p-3 text-right text-muted-foreground">{property.unitCount}</td>
+                              <td className="p-3 text-right font-medium text-foreground">${property.avgPerUnit.toLocaleString()}</td>
+                              <td className="p-3 text-right text-muted-foreground">{property.count}</td>
+                              <td className="p-3">
+                                {property.topCategory ? (
+                                  <div>
+                                    <p className="text-sm font-medium">{property.topCategory.name}</p>
+                                    <p className="text-xs text-muted-foreground">${property.topCategory.amount.toLocaleString()}</p>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No property expenses found. Start adding expenses to see property comparison.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
