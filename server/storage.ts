@@ -1073,10 +1073,15 @@ export class DatabaseStorage implements IStorage {
     await db.delete(transactions).where(eq(transactions.id, id));
   }
 
-  async updateTransactionPaymentStatus(id: string, paymentStatus: string): Promise<void> {
+  async updateTransactionPaymentStatus(id: string, paymentStatus: string, paidAmount?: number): Promise<void> {
+    const updateData: any = { paymentStatus };
+    if (paidAmount !== undefined) {
+      updateData.paidAmount = paidAmount;
+    }
+    
     await db
       .update(transactions)
-      .set({ paymentStatus })
+      .set(updateData)
       .where(eq(transactions.id, id));
   }
 

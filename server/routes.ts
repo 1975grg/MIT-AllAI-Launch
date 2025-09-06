@@ -1438,13 +1438,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/transactions/:id/payment-status', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { paymentStatus } = req.body;
+      const { paymentStatus, paidAmount } = req.body;
       
       if (!['Paid', 'Unpaid', 'Partial', 'Skipped'].includes(paymentStatus)) {
         return res.status(400).json({ message: "Invalid payment status" });
       }
 
-      await storage.updateTransactionPaymentStatus(id, paymentStatus);
+      await storage.updateTransactionPaymentStatus(id, paymentStatus, paidAmount);
       res.json({ success: true });
     } catch (error) {
       console.error("Error updating payment status:", error);

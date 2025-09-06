@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { DollarSign, Plus, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, Grid3x3, List, ChevronDown } from "lucide-react";
 import type { Transaction, Property, Unit } from "@shared/schema";
 
@@ -29,6 +31,8 @@ export default function Revenue() {
   const [unitFilter, setUnitFilter] = useState<string[]>([]);
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "schedule">("list");
+  const [partialPaymentDialog, setPartialPaymentDialog] = useState<{open: boolean; transactionId: string; expectedAmount: number} | null>(null);
+  const [partialAmount, setPartialAmount] = useState("");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -137,8 +141,8 @@ export default function Revenue() {
   });
 
   const updatePaymentStatusMutation = useMutation({
-    mutationFn: async ({ transactionId, paymentStatus }: { transactionId: string; paymentStatus: string }) => {
-      const response = await apiRequest("PATCH", `/api/transactions/${transactionId}/payment-status`, { paymentStatus });
+    mutationFn: async ({ transactionId, paymentStatus, paidAmount }: { transactionId: string; paymentStatus: string; paidAmount?: number }) => {
+      const response = await apiRequest("PATCH", `/api/transactions/${transactionId}/payment-status`, { paymentStatus, paidAmount });
       return response.json();
     },
     onSuccess: (_, variables) => {
@@ -206,12 +210,24 @@ export default function Revenue() {
   });
 
   const categories = Array.from(new Set(revenueTransactions.map(r => r.category).filter(Boolean)));
-  const totalRevenues = filteredRevenues.reduce((sum, revenue) => sum + Number(revenue.amount), 0);
+  
+  // Calculate totals considering only Paid and Partial payments
+  const getRevenueAmount = (revenue: Transaction) => {
+    const status = revenue.paymentStatus || 'Paid';
+    if (status === 'Paid') {
+      return Number(revenue.amount);
+    } else if (status === 'Partial' && revenue.paidAmount) {
+      return Number(revenue.paidAmount);
+    }
+    return 0; // Unpaid and Skipped don't count towards revenue
+  };
+  
+  const totalRevenues = filteredRevenues.reduce((sum, revenue) => sum + getRevenueAmount(revenue), 0);
   const thisMonthRevenues = filteredRevenues.filter(revenue => {
     const revenueMonth = new Date(revenue.date).getMonth();
     const currentMonth = new Date().getMonth();
     return revenueMonth === currentMonth;
-  }).reduce((sum, revenue) => sum + Number(revenue.amount), 0);
+  }).reduce((sum, revenue) => sum + getRevenueAmount(revenue), 0);
 
   const getCategoryColor = (category: string) => {
     const colors = {

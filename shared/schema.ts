@@ -372,6 +372,7 @@ export const transactions = pgTable("transactions", {
   parentRecurringId: varchar("parent_recurring_id"), // Reference to the original transaction for recurring instances
   isBulkEntry: boolean("is_bulk_entry").default(false), // For bulk expense entries
   paymentStatus: paymentStatusEnum("payment_status").default("Paid"), // Payment tracking status
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }), // Amount actually paid for partial payments
   createdAt: timestamp("created_at").defaultNow(),
 });
 
