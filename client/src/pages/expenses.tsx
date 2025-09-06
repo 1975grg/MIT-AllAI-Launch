@@ -14,7 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, List, BarChart3, GitCompare, Grid3x3, Clock } from "lucide-react";
+import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, List, BarChart3, GitCompare, Grid3x3, Clock, PieChart } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart as RechartsPieChart, Pie } from "recharts";
 import type { Transaction, Property, Unit } from "@shared/schema";
 
 export default function Expenses() {
@@ -197,6 +198,40 @@ export default function Expenses() {
     };
     return colors[category as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
+
+  // Category analysis data
+  const categoryData = categories.map(category => {
+    const categoryExpenses = filteredExpenses.filter(e => e.category === category);
+    const total = categoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const count = categoryExpenses.length;
+    return {
+      name: category,
+      total,
+      count,
+      percentage: totalExpenses > 0 ? Math.round((total / totalExpenses) * 100) : 0
+    };
+  }).sort((a, b) => b.total - a.total);
+
+  // Chart colors for consistency
+  const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb3ba', '#87ceeb'];
+
+  // Monthly expense data for trends
+  const monthlyData = Array.from({ length: 6 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (5 - i));
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    
+    const monthExpenses = filteredExpenses.filter(expense => {
+      const expenseMonth = new Date(expense.date);
+      const expenseKey = `${expenseMonth.getFullYear()}-${String(expenseMonth.getMonth() + 1).padStart(2, '0')}`;
+      return expenseKey === monthKey;
+    });
+    
+    return {
+      month: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      total: monthExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
+    };
+  });
 
   return (
     <div className="flex h-screen bg-background" data-testid="page-expenses">
@@ -551,12 +586,124 @@ export default function Expenses() {
             </TabsContent>
 
             {/* Category Dashboard View */}
-            <TabsContent value="category" className="space-y-0">
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Category Dashboard</h3>
-                  <p className="text-muted-foreground">Visual breakdown of expenses by category coming soon...</p>
+            <TabsContent value="category" className="space-y-6">
+              {/* Top Categories Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {categoryData.slice(0, 3).map((category, index) => (
+                  <Card key={category.name} data-testid={`card-top-category-${index}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">#{index + 1} Category</p>
+                          <p className="text-lg font-bold text-foreground">{category.name}</p>
+                          <p className="text-xs text-muted-foreground">{category.count} transactions</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-foreground">${category.total.toLocaleString()}</p>
+                          <p className="text-sm text-muted-foreground">{category.percentage}%</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Category Breakdown Pie Chart */}
+                <Card data-testid="card-category-pie-chart">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PieChart className="h-5 w-5" />
+                      Expense Breakdown by Category
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {categoryData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RechartsPieChart>
+                          <Pie
+                            data={categoryData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percentage }) => `${name}: ${percentage}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="total"
+                          >
+                            {categoryData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Amount']} />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                        No expense data available
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Monthly Spending Trends */}
+                <Card data-testid="card-monthly-trend-chart">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Monthly Spending Trend
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {monthlyData.some(d => d.total > 0) ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={monthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
+                          <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Total']} />
+                          <Bar dataKey="total" fill="#8884d8" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                        No expense trends available
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Category Details Table */}
+              <Card data-testid="card-category-details">
+                <CardHeader>
+                  <CardTitle>Category Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {categoryData.length > 0 ? (
+                    <div className="space-y-3">
+                      {categoryData.map((category, index) => (
+                        <div key={category.name} className="flex items-center justify-between p-3 border rounded-lg" data-testid={`row-category-${index}`}>
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-4 h-4 rounded`} style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}></div>
+                            <div>
+                              <p className="font-medium text-foreground">{category.name}</p>
+                              <p className="text-sm text-muted-foreground">{category.count} transactions</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-foreground">${category.total.toLocaleString()}</p>
+                            <p className="text-sm text-muted-foreground">{category.percentage}% of total</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No categories found. Start adding expenses to see category breakdown.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
