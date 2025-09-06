@@ -280,6 +280,38 @@ export default function Expenses() {
     };
   }).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
 
+  // Calendar/Schedule data - group expenses by month and category
+  const calendarData = Array.from({ length: 12 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(i);
+    const monthKey = `${date.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
+    
+    const monthExpenses = filteredExpenses.filter(expense => {
+      const expenseMonth = new Date(expense.date);
+      const expenseKey = `${expenseMonth.getFullYear()}-${String(expenseMonth.getMonth() + 1).padStart(2, '0')}`;
+      return expenseKey === monthKey;
+    });
+    
+    const total = monthExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const expensesByCategory = monthExpenses.reduce((acc, expense) => {
+      const category = expense.category || 'Other';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(expense);
+      return acc;
+    }, {} as Record<string, typeof monthExpenses>);
+    
+    return {
+      month: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      monthShort: date.toLocaleDateString('en-US', { month: 'short' }),
+      total,
+      count: monthExpenses.length,
+      expensesByCategory,
+      expenses: monthExpenses
+    };
+  });
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-expenses">
       <Sidebar />
@@ -911,14 +943,113 @@ export default function Expenses() {
             </TabsContent>
 
             {/* Calendar/Schedule View */}
-            <TabsContent value="calendar" className="space-y-0">
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Grid3x3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Calendar View</h3>
-                  <p className="text-muted-foreground">Monthly calendar with expense scheduling coming soon...</p>
-                </CardContent>
-              </Card>
+            <TabsContent value="calendar" className="space-y-6">
+              {/* Calendar Navigation */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-foreground">Monthly Expense Calendar</h3>
+                <p className="text-sm text-muted-foreground">Organized by category</p>
+              </div>
+
+              {/* Monthly Expense Calendar Grid */}
+              {calendarData.filter(month => month.count > 0).length > 0 ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {calendarData.filter(month => month.count > 0).map((month, index) => (
+                    <Card key={index} className="h-fit" data-testid={`card-calendar-month-${index}`}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center justify-between">
+                          {month.month}
+                          <Badge variant="outline" className="text-red-600 border-red-600">
+                            ${month.total.toLocaleString()}
+                          </Badge>
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">{month.count} expenses</p>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {Object.entries(month.expensesByCategory).map(([category, categoryExpenses]) => {
+                          const categoryTotal = categoryExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+                          return (
+                            <div key={category} className="space-y-2">
+                              <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-3 h-3 rounded ${getCategoryColor(category).split(' ')[0]}`}></div>
+                                  <span className="font-medium text-sm">{category}</span>
+                                </div>
+                                <Badge variant="outline" className="text-xs">
+                                  ${categoryTotal.toLocaleString()}
+                                </Badge>
+                              </div>
+                              
+                              {/* Individual expenses in this category */}
+                              <div className="space-y-1 ml-4">
+                                {categoryExpenses.slice(0, 3).map((expense, expenseIndex) => (
+                                  <div key={expense.id} className="flex items-center justify-between text-sm" data-testid={`expense-item-${index}-${expenseIndex}`}>
+                                    <div className="flex-1 truncate">
+                                      <span className="text-foreground">{expense.description}</span>
+                                      <span className="text-muted-foreground ml-2">
+                                        {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                      </span>
+                                    </div>
+                                    <span className="font-medium text-foreground">${Number(expense.amount).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                                {categoryExpenses.length > 3 && (
+                                  <div className="text-xs text-muted-foreground text-center">
+                                    +{categoryExpenses.length - 3} more expenses
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        
+                        {month.count === 0 && (
+                          <div className="text-center py-4 text-muted-foreground text-sm">
+                            No expenses recorded
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Grid3x3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No Expenses Found</h3>
+                    <p className="text-muted-foreground mb-4">Start logging expenses to see them organized in a monthly calendar view.</p>
+                    <Button onClick={() => setShowExpenseForm(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Log Your First Expense
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Monthly Summary Chart */}
+              {calendarData.some(month => month.total > 0) && (
+                <Card data-testid="card-calendar-summary-chart">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Monthly Expense Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={calendarData.filter(m => m.total > 0)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="monthShort" />
+                        <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
+                        <Tooltip 
+                          formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Total Expenses']}
+                          labelFormatter={(label) => `Month: ${label}`}
+                        />
+                        <Bar dataKey="total" fill="#ef4444" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Timeline View */}
