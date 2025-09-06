@@ -534,9 +534,10 @@ export default function Revenue() {
                                     Mark as Paid
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    onClick={() => updatePaymentStatusMutation.mutate({
+                                    onClick={() => setPartialPaymentDialog({
+                                      open: true,
                                       transactionId: revenue.id,
-                                      paymentStatus: 'Partial'
+                                      expectedAmount: Number(revenue.amount)
                                     })}
                                     className="text-yellow-600"
                                     data-testid={`menu-item-partial-${index}`}
@@ -754,9 +755,10 @@ export default function Revenue() {
                                             Mark as Paid
                                           </DropdownMenuItem>
                                           <DropdownMenuItem
-                                            onClick={() => updatePaymentStatusMutation.mutate({
+                                            onClick={() => setPartialPaymentDialog({
+                                              open: true,
                                               transactionId: actualTransaction.id,
-                                              paymentStatus: 'Partial'
+                                              expectedAmount: Number(recurringRevenue.amount)
                                             })}
                                             className="text-yellow-600"
                                           >
@@ -808,6 +810,68 @@ export default function Revenue() {
           </Tabs>
         </main>
       </div>
+
+      {/* Partial Payment Dialog */}
+      <Dialog open={partialPaymentDialog?.open || false} onOpenChange={(open) => !open && setPartialPaymentDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Partial Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Expected Amount: <span className="font-semibold">${partialPaymentDialog?.expectedAmount.toLocaleString()}</span>
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="partial-amount">Amount Actually Paid</Label>
+              <Input
+                id="partial-amount"
+                type="text"
+                inputMode="decimal"
+                placeholder="Enter amount paid"
+                value={partialAmount}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9.]/g, '');
+                  if (value.split('.').length <= 2) {
+                    setPartialAmount(value);
+                  }
+                }}
+                className="text-right"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPartialPaymentDialog(null);
+                  setPartialAmount("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (partialPaymentDialog && partialAmount) {
+                    const paidAmount = parseFloat(partialAmount);
+                    updatePaymentStatusMutation.mutate({
+                      transactionId: partialPaymentDialog.transactionId,
+                      paymentStatus: 'Partial',
+                      paidAmount: paidAmount
+                    });
+                    setPartialPaymentDialog(null);
+                    setPartialAmount("");
+                  }
+                }}
+                disabled={!partialAmount || parseFloat(partialAmount) <= 0}
+                className="bg-yellow-600 hover:bg-yellow-700"
+              >
+                Save Partial Payment
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteRevenueId} onOpenChange={() => setDeleteRevenueId(null)}>
