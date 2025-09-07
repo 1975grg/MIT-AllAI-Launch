@@ -429,6 +429,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
       const properties = await storage.getProperties(org.id);
+      
+      // Debug: Log mortgage data for the specific property
+      const debugProperty = properties.find(p => p.name === '3535 Suncrest');
+      if (debugProperty) {
+        console.log('🔍 PROPERTIES LIST API sending mortgage data for 3535 Suncrest:', {
+          id: debugProperty.id,
+          monthlyMortgage: debugProperty.monthlyMortgage,
+          interestRate: debugProperty.interestRate,
+          purchasePrice: debugProperty.purchasePrice,
+          downPayment: debugProperty.downPayment,
+          acquisitionDate: debugProperty.acquisitionDate
+        });
+      }
+      
       res.json(properties);
     } catch (error) {
       console.error("Error fetching properties:", error);
