@@ -112,6 +112,11 @@ export const properties = pgTable("properties", {
   autoAppreciation: boolean("auto_appreciation").default(false), // Enable automatic yearly appreciation
   appreciationRate: decimal("appreciation_rate", { precision: 4, scale: 2 }), // Annual appreciation percentage (e.g., 3.50 for 3.5%)
   valueEntryDate: timestamp("value_entry_date"), // When the value was entered (to calculate yearly increases)
+  // Mortgage tracking
+  monthlyMortgage: decimal("monthly_mortgage", { precision: 10, scale: 2 }), // Monthly mortgage payment amount
+  interestRate: decimal("interest_rate", { precision: 5, scale: 3 }), // Annual interest rate percentage (e.g., 5.250 for 5.25%)
+  downPayment: decimal("down_payment", { precision: 12, scale: 2 }), // Cash invested (down payment + closing costs)
+  acquisitionDate: timestamp("acquisition_date"), // Date property was acquired (for partial-year calculations)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
