@@ -220,6 +220,12 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       taxDeductible: false
     },
     {
+      value: "Mortgage Principal Payment",
+      label: "Mortgage Principal Payment",
+      description: "Principal portion of mortgage payment (non-tax deductible)",
+      taxDeductible: false
+    },
+    {
       value: "Other Interest",
       label: "Other Interest",
       description: "Interest on loans used for the rental business besides the mortgage",

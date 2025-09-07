@@ -7,14 +7,15 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import ExpenseForm from "@/components/forms/expense-form";
+import MortgageAdjustmentForm from "@/components/forms/mortgage-adjustment-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, List, BarChart3, GitCompare, Grid3x3, Clock, PieChart } from "lucide-react";
+import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, List, BarChart3, GitCompare, Grid3x3, Clock, PieChart, Calculator } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart as RechartsPieChart, Pie } from "recharts";
 import type { Transaction, Property, Unit } from "@shared/schema";
 
@@ -29,6 +30,7 @@ export default function Expenses() {
   const [unitFilter, setUnitFilter] = useState<string[]>([]);
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "category" | "property" | "calendar" | "timeline">("list");
+  const [showMortgageAdjustment, setShowMortgageAdjustment] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -466,6 +468,27 @@ export default function Expenses() {
                       setEditingExpense(null);
                     }}
                     isLoading={createExpenseMutation.isPending}
+                  />
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={showMortgageAdjustment} onOpenChange={setShowMortgageAdjustment}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-mortgage-adjustments">
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Mortgage Adjustments
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Year-End Mortgage Interest Adjustment</DialogTitle>
+                    <DialogDescription>
+                      Split mortgage payments into deductible interest and non-deductible principal based on actual interest paid.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <MortgageAdjustmentForm
+                    properties={properties}
+                    onClose={() => setShowMortgageAdjustment(false)}
                   />
                 </DialogContent>
               </Dialog>

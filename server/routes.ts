@@ -1294,6 +1294,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mortgage interest adjustment endpoint
+  app.post("/api/expenses/mortgage-adjustment", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      const { propertyId, year, actualInterestPaid } = req.body;
+
+      // Validate input
+      if (!propertyId || !year || actualInterestPaid === undefined) {
+        return res.status(400).json({ message: "Property ID, year, and actual interest paid are required" });
+      }
+
+      // Get property details
+      const property = await storage.getProperty(propertyId);
+      if (!property) return res.status(404).json({ message: "Property not found" });
+      
+      if (!property.monthlyMortgage || !property.acquisitionDate) {
+        return res.status(400).json({ message: "Property must have mortgage details (monthly payment and acquisition date)" });
+      }
+
+      // Find all "Mortgage" category expenses for this property in the specified year
+      const allTransactions = await storage.getTransactions(org.id);
+      const mortgageExpenses = allTransactions.filter((transaction: any) => 
+        transaction.propertyId === propertyId &&
+        transaction.category === "Mortgage" &&
+        new Date(transaction.date).getFullYear() === year
+      );
+
+      if (mortgageExpenses.length === 0) {
+        return res.status(404).json({ message: `No mortgage expenses found for ${year}` });
+      }
+
+      // Calculate ownership days for partial year (if applicable)
+      const acquisitionDate = new Date(property.acquisitionDate);
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year, 11, 31);
+      
+      const ownershipStart = acquisitionDate > yearStart ? acquisitionDate : yearStart;
+      const ownershipEnd = yearEnd;
+      const ownershipDays = Math.ceil((ownershipEnd.getTime() - ownershipStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const yearDays = new Date(year, 11, 31).getDate() === 31 && new Date(year, 1, 29).getDate() === 29 ? 366 : 365;
+
+      // Calculate total mortgage payments for the year
+      const totalMortgagePayments = mortgageExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
+      
+      // Calculate interest vs principal split
+      const totalPrincipal = totalMortgagePayments - actualInterestPaid;
+      
+      if (totalPrincipal < 0) {
+        return res.status(400).json({ 
+          message: `Interest paid ($${actualInterestPaid}) exceeds total mortgage payments ($${totalMortgagePayments}) for ${year}` 
+        });
+      }
+
+      console.log(`🏦 Processing mortgage adjustment for ${property.name || property.street}:`, {
+        year,
+        totalPayments: totalMortgagePayments,
+        actualInterest: actualInterestPaid,
+        calculatedPrincipal: totalPrincipal,
+        ownershipDays,
+        yearDays,
+        expenseCount: mortgageExpenses.length
+      });
+
+      // Process each mortgage expense
+      let adjustedCount = 0;
+      for (const expense of mortgageExpenses) {
+        const paymentAmount = Number(expense.amount);
+        const interestPortion = (paymentAmount / totalMortgagePayments) * actualInterestPaid;
+        const principalPortion = paymentAmount - interestPortion;
+
+        // Delete the original "Mortgage" expense
+        await storage.deleteTransaction(expense.id);
+
+        // Create interest expense (tax deductible)
+        if (interestPortion > 0) {
+          const interestExpenseData = {
+            orgId: org.id,
+            type: "Expense" as const,
+            propertyId: expense.propertyId,
+            scope: expense.scope,
+            amount: interestPortion.toFixed(2),
+            description: `Mortgage interest - ${property.name || `${property.street}, ${property.city}`} (adjusted from full payment)`,
+            category: "Mortgage Interest Paid to Banks",
+            date: expense.date,
+            isRecurring: false,
+            taxDeductible: true,
+            isBulkEntry: false,
+            notes: `Split from original mortgage payment of $${paymentAmount.toFixed(2)} - Interest: $${interestPortion.toFixed(2)}, Principal: $${principalPortion.toFixed(2)}`
+          };
+          await storage.createTransaction(interestExpenseData);
+        }
+
+        // Create principal expense (non-tax deductible)
+        if (principalPortion > 0) {
+          const principalExpenseData = {
+            orgId: org.id,
+            type: "Expense" as const,
+            propertyId: expense.propertyId,
+            scope: expense.scope,
+            amount: principalPortion.toFixed(2),
+            description: `Mortgage principal - ${property.name || `${property.street}, ${property.city}`} (adjusted from full payment)`,
+            category: "Mortgage Principal Payment",
+            date: expense.date,
+            isRecurring: false,
+            taxDeductible: false,
+            isBulkEntry: false,
+            notes: `Split from original mortgage payment of $${paymentAmount.toFixed(2)} - Interest: $${interestPortion.toFixed(2)}, Principal: $${principalPortion.toFixed(2)}`
+          };
+          await storage.createTransaction(principalExpenseData);
+        }
+
+        adjustedCount++;
+      }
+
+      res.json({ 
+        message: "Mortgage adjustment completed successfully",
+        adjustedCount,
+        totalInterest: actualInterestPaid,
+        totalPrincipal: totalPrincipal,
+        ownershipInfo: ownershipDays < yearDays ? 
+          `Partial year: ${ownershipDays} days of ${yearDays}` : 
+          "Full year ownership"
+      });
+
+    } catch (error) {
+      console.error("Error processing mortgage adjustment:", error);
+      res.status(500).json({ message: "Failed to process mortgage adjustment" });
+    }
+  });
+
   // Revenue routes
   app.post("/api/revenues", isAuthenticated, async (req: any, res) => {
     try {
