@@ -216,6 +216,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
     return () => subscription.unsubscribe();
   }, [form]);
 
+  // Auto-fill purchase price on initial load if editing existing property
+  useEffect(() => {
+    if (initialData && initialData.propertyValue && !initialData.purchasePrice) {
+      form.setValue('purchasePrice', Number(initialData.propertyValue));
+    }
+  }, [initialData, form]);
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "ownerships",
@@ -1279,7 +1286,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                     </div>
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
-                    Total property purchase price. Auto-fills with property value above, but you can edit if purchased at a different price.
+                    Total property purchase price. Auto-fills with property value above. <strong>Edit this if you purchased at a different price than current value.</strong>
                   </p>
                   <FormMessage />
                 </FormItem>
