@@ -176,6 +176,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         purchasePrice: initialData.purchasePrice ? Number(initialData.purchasePrice) : undefined,
         downPayment: initialData.downPayment ? Number(initialData.downPayment) : undefined,
         salePrice: initialData.salePrice ? Number(initialData.salePrice) : undefined,
+        acquisitionDate: initialData.acquisitionDate ? new Date(initialData.acquisitionDate) : undefined,
+        saleDate: initialData.saleDate ? new Date(initialData.saleDate) : undefined,
       };
       
       form.reset(resetData);
@@ -198,6 +200,12 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       }
       if (initialData.salePrice) {
         form.setValue('salePrice', Number(initialData.salePrice));
+      }
+      if (initialData.acquisitionDate) {
+        form.setValue('acquisitionDate', new Date(initialData.acquisitionDate));
+      }
+      if (initialData.saleDate) {
+        form.setValue('saleDate', new Date(initialData.saleDate));
       }
     }
   }, [initialData, form]);
