@@ -429,17 +429,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
       // Disable caching for this endpoint
-      res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.set('Expires', '0');
       res.set('Pragma', 'no-cache');
+      res.set('Surrogate-Control', 'no-store');
       
       const properties = await storage.getProperties(org.id);
       
       // Debug: Log all property names and their mortgage data
       console.log('🔍 PROPERTIES LIST API - All properties with mortgage data:');
       properties.forEach(p => {
-        if (p.monthlyMortgage || p.interestRate || p.purchasePrice) {
-          console.log(`   ${p.name}: monthlyMortgage=${p.monthlyMortgage}, interestRate=${p.interestRate}, purchasePrice=${p.purchasePrice}`);
+        if (p.monthlyMortgage || p.interestRate || p.purchasePrice || p.downPayment || p.acquisitionDate) {
+          console.log(`   ${p.name}: ALL MORTGAGE FIELDS:`, {
+            monthlyMortgage: p.monthlyMortgage,
+            interestRate: p.interestRate,
+            purchasePrice: p.purchasePrice,
+            downPayment: p.downPayment,
+            acquisitionDate: p.acquisitionDate
+          });
         } else {
           console.log(`   ${p.name}: NO MORTGAGE DATA`);
         }
