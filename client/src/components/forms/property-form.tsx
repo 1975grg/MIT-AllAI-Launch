@@ -202,6 +202,16 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
     }
   }, [initialData, form]);
 
+  // Auto-fill purchase price with property value when property value changes
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'propertyValue' && value.propertyValue && !value.purchasePrice) {
+        form.setValue('purchasePrice', Number(value.propertyValue));
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "ownerships",
@@ -1195,7 +1205,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="5.25"
                         className="pr-8"
                         key={`interest-rate-${(initialData as any)?.id || 'new'}`}
-                        value={field.value !== undefined ? (field.value % 1 === 0 ? field.value.toString() : field.value.toString()) : (initialData?.interestRate ? (initialData.interestRate % 1 === 0 ? initialData.interestRate.toString() : initialData.interestRate.toString()) : "")}
+                        value={field.value !== undefined ? field.value.toString() : ""}
                         onChange={(e) => {
                           const value = e.target.value;
                           // Allow empty, digits, and single decimal point
@@ -1242,7 +1252,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`purchase-price-${(initialData as any)?.id || 'new'}`}
-                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.purchasePrice ? Number(initialData.purchasePrice).toLocaleString() : "")}
+                        value={field.value ? Number(field.value).toLocaleString() : ""}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
