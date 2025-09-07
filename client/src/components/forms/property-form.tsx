@@ -1211,27 +1211,21 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         value={field.value !== undefined ? String(field.value) : ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          // Allow typing decimals: empty, digits, decimal point, and digits after decimal
+                          // Allow empty, digits, and decimal point
                           if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                            if (value === '') {
-                              field.onChange(undefined);
-                            } else if (value.includes('.') && !isNaN(parseFloat(value))) {
-                              // Valid decimal number
-                              field.onChange(parseFloat(value));
-                            } else if (value.includes('.') && value.split('.')[1] === '') {
-                              // Just decimal point, store as is temporarily
-                              field.onChange(value);
-                            } else if (!value.includes('.')) {
-                              // Whole number
-                              field.onChange(parseInt(value));
-                            }
+                            // Just store the raw value to allow typing decimals
+                            field.onChange(value === '' ? undefined : value);
                           }
                         }}
-                        onBlur={() => {
-                          const currentValue = form.getValues('interestRate');
-                          if (typeof currentValue === 'string' && currentValue.endsWith('.')) {
-                            // Remove trailing decimal if user leaves field
-                            form.setValue('interestRate', parseFloat(currentValue) || undefined);
+                        onBlur={(e) => {
+                          const value = e.target.value;
+                          if (value && value !== '.') {
+                            const numericValue = parseFloat(value);
+                            if (!isNaN(numericValue)) {
+                              field.onChange(numericValue);
+                            }
+                          } else {
+                            field.onChange(undefined);
                           }
                         }}
                         data-testid="input-interest-rate"
