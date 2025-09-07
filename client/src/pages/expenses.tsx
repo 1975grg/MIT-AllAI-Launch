@@ -197,6 +197,10 @@ export default function Expenses() {
       "Taxes": "bg-indigo-100 text-indigo-800",
       "Advertising": "bg-cyan-100 text-cyan-800",
       "Professional Services": "bg-teal-100 text-teal-800",
+      // Mortgage-related categories
+      "Mortgage": "bg-amber-100 text-amber-800 border-amber-300", // Full payments (temporary)
+      "Mortgage Interest Paid to Banks": "bg-emerald-100 text-emerald-800", // Tax deductible
+      "Mortgage Principal Payment": "bg-slate-100 text-slate-800", // Non-deductible
     };
     return colors[category as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
