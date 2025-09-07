@@ -1181,7 +1181,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="2,500"
                         className="pl-9"
                         key={`monthly-mortgage-${(initialData as any)?.id || 'new'}`}
-                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.monthlyMortgage ? Number(initialData.monthlyMortgage).toLocaleString() : "")}
+                        value={field.value ? Number(field.value).toLocaleString() : ""}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
@@ -1317,7 +1317,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="100,000"
                         className="pl-9"
                         key={`down-payment-${(initialData as any)?.id || 'new'}`}
-                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.downPayment ? Number(initialData.downPayment).toLocaleString() : "")}
+                        value={field.value ? Number(field.value).toLocaleString() : ""}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
