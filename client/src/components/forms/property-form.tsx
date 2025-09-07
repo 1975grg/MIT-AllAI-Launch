@@ -205,7 +205,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Auto-fill purchase price with property value when property value changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === 'propertyValue' && value.propertyValue && !value.purchasePrice) {
+      if (name === 'propertyValue' && value.propertyValue && (!value.purchasePrice || value.purchasePrice === 0 || value.purchasePrice === '')) {
         form.setValue('purchasePrice', Number(value.propertyValue));
       }
     });
@@ -1205,22 +1205,12 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="5.25"
                         className="pr-8"
                         key={`interest-rate-${(initialData as any)?.id || 'new'}`}
-                        value={field.value !== undefined ? field.value.toString() : ""}
+                        value={field.value !== undefined ? String(field.value) : ""}
                         onChange={(e) => {
                           const value = e.target.value;
                           // Allow empty, digits, and single decimal point
                           if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                            const numericValue = value === '' ? undefined : parseFloat(value);
-                            field.onChange(isNaN(numericValue!) ? undefined : numericValue);
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const value = e.target.value;
-                          if (value !== '') {
-                            const numericValue = parseFloat(value);
-                            if (!isNaN(numericValue)) {
-                              field.onChange(numericValue);
-                            }
+                            field.onChange(value === '' ? undefined : parseFloat(value));
                           }
                         }}
                         data-testid="input-interest-rate"
