@@ -205,9 +205,10 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Auto-fill purchase price with property value when property value changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === 'propertyValue' && value.propertyValue) {
-        // Auto-fill if purchase price is empty or if user wants to sync them
-        if (!value.purchasePrice || value.purchasePrice === 0) {
+      if (name === 'propertyValue' && value.propertyValue && value.propertyValue !== '') {
+        // Auto-fill if purchase price is empty, zero, or not yet set
+        const currentPurchasePrice = value.purchasePrice;
+        if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === '' || currentPurchasePrice === undefined) {
           form.setValue('purchasePrice', Number(value.propertyValue));
         }
       }
@@ -1278,7 +1279,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                     </div>
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
-                    Total property purchase price. Used for loan-to-value calculations and cost basis.
+                    Total property purchase price. Auto-fills with property value above, but you can edit if purchased at a different price.
                   </p>
                   <FormMessage />
                 </FormItem>
