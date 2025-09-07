@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Minus, Building2, Home, Wrench, DollarSign } from "lucide-react";
+import { Plus, Minus, Building2, Home, Wrench, DollarSign, TrendingDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { OwnershipEntity } from "@shared/schema";
 import { formatNumberWithCommas, removeCommas } from "@/lib/formatters";
@@ -88,8 +88,12 @@ const propertySchema = z.object({
   // Mortgage tracking fields (optional)
   monthlyMortgage: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   interestRate: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).max(20).optional()),
+  purchasePrice: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   downPayment: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   acquisitionDate: z.date().optional(),
+  // Property sale fields (optional)
+  saleDate: z.date().optional(),
+  salePrice: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   createDefaultUnit: z.boolean().default(true),
   hasMultipleUnits: z.boolean().default(false),
   numberOfUnits: z.number().min(1).max(50).default(1),
@@ -169,7 +173,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
         monthlyMortgage: initialData.monthlyMortgage ? Number(initialData.monthlyMortgage) : undefined,
         interestRate: initialData.interestRate ? Number(initialData.interestRate) : undefined,
+        purchasePrice: initialData.purchasePrice ? Number(initialData.purchasePrice) : undefined,
         downPayment: initialData.downPayment ? Number(initialData.downPayment) : undefined,
+        salePrice: initialData.salePrice ? Number(initialData.salePrice) : undefined,
       };
       
       form.reset(resetData);
@@ -184,8 +190,14 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       if (initialData.interestRate) {
         form.setValue('interestRate', Number(initialData.interestRate));
       }
+      if (initialData.purchasePrice) {
+        form.setValue('purchasePrice', Number(initialData.purchasePrice));
+      }
       if (initialData.downPayment) {
         form.setValue('downPayment', Number(initialData.downPayment));
+      }
+      if (initialData.salePrice) {
+        form.setValue('salePrice', Number(initialData.salePrice));
       }
     }
   }, [initialData, form]);
@@ -256,7 +268,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       appreciationRate: data.appreciationRate !== undefined ? String(data.appreciationRate) : undefined,
       monthlyMortgage: data.monthlyMortgage !== undefined ? String(data.monthlyMortgage) : undefined,
       interestRate: data.interestRate !== undefined ? String(data.interestRate) : undefined,
+      purchasePrice: data.purchasePrice !== undefined ? String(data.purchasePrice) : undefined,
       downPayment: data.downPayment !== undefined ? String(data.downPayment) : undefined,
+      salePrice: data.salePrice !== undefined ? String(data.salePrice) : undefined,
     };
     onSubmit(processedData);
   };
@@ -1202,9 +1216,25 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         inputMode="decimal"
                         placeholder="5.25"
                         className="pr-8"
-                        {...field}
-                        value={field.value || ''}
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                        key={`interest-rate-${(initialData as any)?.id || 'new'}`}
+                        value={field.value !== undefined ? String(field.value) : (initialData?.interestRate ? String(initialData.interestRate) : "")}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow empty, digits, and single decimal point
+                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                            const numericValue = value === '' ? undefined : parseFloat(value);
+                            field.onChange(isNaN(numericValue!) ? undefined : numericValue);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const value = e.target.value;
+                          if (value !== '') {
+                            const numericValue = parseFloat(value);
+                            if (!isNaN(numericValue)) {
+                              field.onChange(numericValue);
+                            }
+                          }
+                        }}
                         data-testid="input-interest-rate"
                       />
                       <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">%</span>
@@ -1212,6 +1242,50 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
                     Annual interest rate for calculations and year-end tax adjustments.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Purchase Price */}
+            <FormField
+              control={form.control}
+              name="purchasePrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Total Purchase Price</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="500,000"
+                        className="pl-9"
+                        key={`purchase-price-${(initialData as any)?.id || 'new'}`}
+                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.purchasePrice ? Number(initialData.purchasePrice).toLocaleString() : "")}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          field.onChange(numericValue);
+                        }}
+                        onBlur={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          if (!isNaN(numericValue || 0)) {
+                            field.onChange(numericValue);
+                            if (numericValue) {
+                              e.target.value = numericValue.toLocaleString();
+                            }
+                          }
+                        }}
+                        data-testid="input-purchase-price"
+                      />
+                    </div>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Total property purchase price. Used for loan-to-value calculations and cost basis.
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -1256,6 +1330,113 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
                     Total cash invested (down payment + closing costs). Used for cash-on-cash return calculations.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Acquisition Date */}
+            <FormField
+              control={form.control}
+              name="acquisitionDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Acquisition Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      data-testid="input-acquisition-date"
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Date property was acquired. Used for partial-year calculations and mortgage payment start.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Property Sale Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <TrendingDown className="h-5 w-5" />
+              <span>Property Sale</span>
+              <Badge variant="outline">Optional</Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Record property sale information to end mortgage calculations and track gains/losses
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Sale Date */}
+            <FormField
+              control={form.control}
+              name="saleDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sale Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      data-testid="input-sale-date"
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Date property was sold. Mortgage calculations will end on this date.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Sale Price */}
+            <FormField
+              control={form.control}
+              name="salePrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sale Price</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="750,000"
+                        className="pl-9"
+                        key={`sale-price-${(initialData as any)?.id || 'new'}`}
+                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.salePrice ? Number(initialData.salePrice).toLocaleString() : "")}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          field.onChange(numericValue);
+                        }}
+                        onBlur={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          if (!isNaN(numericValue || 0)) {
+                            field.onChange(numericValue);
+                            if (numericValue) {
+                              e.target.value = numericValue.toLocaleString();
+                            }
+                          }
+                        }}
+                        data-testid="input-sale-price"
+                      />
+                    </div>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Gross sale price. Used for calculating capital gains/losses.
                   </p>
                   <FormMessage />
                 </FormItem>

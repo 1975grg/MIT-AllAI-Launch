@@ -115,8 +115,12 @@ export const properties = pgTable("properties", {
   // Mortgage tracking
   monthlyMortgage: decimal("monthly_mortgage", { precision: 10, scale: 2 }), // Monthly mortgage payment amount
   interestRate: decimal("interest_rate", { precision: 5, scale: 3 }), // Annual interest rate percentage (e.g., 5.250 for 5.25%)
+  purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }), // Total purchase price of the property
   downPayment: decimal("down_payment", { precision: 12, scale: 2 }), // Cash invested (down payment + closing costs)
   acquisitionDate: timestamp("acquisition_date"), // Date property was acquired (for partial-year calculations)
+  // Property sale tracking
+  saleDate: timestamp("sale_date"), // Date property was sold (ends mortgage calculations)
+  salePrice: decimal("sale_price", { precision: 12, scale: 2 }), // Sale price of the property
   createdAt: timestamp("created_at").defaultNow(),
 });
 
