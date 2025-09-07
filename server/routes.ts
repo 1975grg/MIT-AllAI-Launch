@@ -456,10 +456,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { ownerships, createDefaultUnit, defaultUnit, units, ...propertyData } = req.body;
       
-      const validatedData = insertPropertySchema.parse({
+      // Transform date strings to Date objects for validation
+      const dataWithDates = {
         ...propertyData,
         orgId: org.id,
-      });
+        acquisitionDate: propertyData.acquisitionDate ? new Date(propertyData.acquisitionDate) : undefined,
+        saleDate: propertyData.saleDate ? new Date(propertyData.saleDate) : undefined,
+      };
+      
+      const validatedData = insertPropertySchema.parse(dataWithDates);
       
       // Check if we have multiple units (for buildings)
       if (units && Array.isArray(units) && units.length > 0) {

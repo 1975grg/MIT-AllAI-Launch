@@ -1135,28 +1135,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Acquisition Date */}
-            <FormField
-              control={form.control}
-              name="acquisitionDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Property Acquisition Date</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={field.value ? field.value.toISOString().split('T')[0] : ''}
-                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                      data-testid="input-acquisition-date"
-                    />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">
-                    When did you purchase this property? Used for partial-year calculations and ROI analysis.
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             {/* Monthly Mortgage */}
             <FormField
@@ -1217,7 +1195,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="5.25"
                         className="pr-8"
                         key={`interest-rate-${(initialData as any)?.id || 'new'}`}
-                        value={field.value !== undefined ? String(field.value) : (initialData?.interestRate ? String(initialData.interestRate) : "")}
+                        value={field.value !== undefined ? (field.value % 1 === 0 ? field.value.toString() : field.value.toString()) : (initialData?.interestRate ? (initialData.interestRate % 1 === 0 ? initialData.interestRate.toString() : initialData.interestRate.toString()) : "")}
                         onChange={(e) => {
                           const value = e.target.value;
                           // Allow empty, digits, and single decimal point
