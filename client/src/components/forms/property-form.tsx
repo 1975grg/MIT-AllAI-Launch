@@ -85,6 +85,11 @@ const propertySchema = z.object({
   propertyValue: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   autoAppreciation: z.boolean().default(false),
   appreciationRate: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).max(50).optional()),
+  // Mortgage tracking fields (optional)
+  monthlyMortgage: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
+  interestRate: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).max(20).optional()),
+  downPayment: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
+  acquisitionDate: z.date().optional(),
   createDefaultUnit: z.boolean().default(true),
   hasMultipleUnits: z.boolean().default(false),
   numberOfUnits: z.number().min(1).max(50).default(1),
@@ -158,17 +163,29 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
-    if (initialData && initialData.id) {  // Only reset for editing (when there's an ID)
+    if (initialData && (initialData as any).id) {  // Only reset for editing (when there's an ID)
       const resetData = {
         ...initialData,
         propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
+        monthlyMortgage: initialData.monthlyMortgage ? Number(initialData.monthlyMortgage) : undefined,
+        interestRate: initialData.interestRate ? Number(initialData.interestRate) : undefined,
+        downPayment: initialData.downPayment ? Number(initialData.downPayment) : undefined,
       };
       
       form.reset(resetData);
       
-      // Force set the property value specifically
+      // Force set numeric values specifically
       if (initialData.propertyValue) {
         form.setValue('propertyValue', Number(initialData.propertyValue));
+      }
+      if (initialData.monthlyMortgage) {
+        form.setValue('monthlyMortgage', Number(initialData.monthlyMortgage));
+      }
+      if (initialData.interestRate) {
+        form.setValue('interestRate', Number(initialData.interestRate));
+      }
+      if (initialData.downPayment) {
+        form.setValue('downPayment', Number(initialData.downPayment));
       }
     }
   }, [initialData, form]);
@@ -237,6 +254,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       ...data,
       propertyValue: data.propertyValue !== undefined ? String(data.propertyValue) : undefined,
       appreciationRate: data.appreciationRate !== undefined ? String(data.appreciationRate) : undefined,
+      monthlyMortgage: data.monthlyMortgage !== undefined ? String(data.monthlyMortgage) : undefined,
+      interestRate: data.interestRate !== undefined ? String(data.interestRate) : undefined,
+      downPayment: data.downPayment !== undefined ? String(data.downPayment) : undefined,
     };
     onSubmit(processedData);
   };
@@ -1086,6 +1106,161 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                 )}
               />
             )}
+          </CardContent>
+        </Card>
+
+        {/* Mortgage & Financing Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Building2 className="h-5 w-5" />
+              <span>Mortgage & Financing (Optional)</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Track mortgage details for cash-on-cash analysis and automatic recurring expenses. Interest allocation can be adjusted at year-end for tax reporting.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Acquisition Date */}
+            <FormField
+              control={form.control}
+              name="acquisitionDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Property Acquisition Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      data-testid="input-acquisition-date"
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    When did you purchase this property? Used for partial-year calculations and ROI analysis.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Monthly Mortgage */}
+            <FormField
+              control={form.control}
+              name="monthlyMortgage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Monthly Mortgage Payment</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="2,500"
+                        className="pl-9"
+                        key={`monthly-mortgage-${(initialData as any)?.id || 'new'}`}
+                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.monthlyMortgage ? Number(initialData.monthlyMortgage).toLocaleString() : "")}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          field.onChange(numericValue);
+                        }}
+                        onBlur={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          if (!isNaN(numericValue || 0)) {
+                            field.onChange(numericValue);
+                            if (numericValue) {
+                              e.target.value = numericValue.toLocaleString();
+                            }
+                          }
+                        }}
+                        data-testid="input-monthly-mortgage"
+                      />
+                    </div>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Total monthly payment (principal + interest + PMI). Will auto-create recurring expense.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Interest Rate */}
+            <FormField
+              control={form.control}
+              name="interestRate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Interest Rate</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="5.25"
+                        className="pr-8"
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                        data-testid="input-interest-rate"
+                      />
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                    </div>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Annual interest rate for calculations and year-end tax adjustments.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Down Payment */}
+            <FormField
+              control={form.control}
+              name="downPayment"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Down Payment & Cash Invested</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="100,000"
+                        className="pl-9"
+                        key={`down-payment-${(initialData as any)?.id || 'new'}`}
+                        value={field.value ? Number(field.value).toLocaleString() : (initialData?.downPayment ? Number(initialData.downPayment).toLocaleString() : "")}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          field.onChange(numericValue);
+                        }}
+                        onBlur={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          if (!isNaN(numericValue || 0)) {
+                            field.onChange(numericValue);
+                            if (numericValue) {
+                              e.target.value = numericValue.toLocaleString();
+                            }
+                          }
+                        }}
+                        data-testid="input-down-payment"
+                      />
+                    </div>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Total cash invested (down payment + closing costs). Used for cash-on-cash return calculations.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
