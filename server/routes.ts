@@ -428,6 +428,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
+      // Disable caching for this endpoint
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.set('Expires', '0');
+      res.set('Pragma', 'no-cache');
+      
       const properties = await storage.getProperties(org.id);
       
       // Debug: Log all property names and their mortgage data
