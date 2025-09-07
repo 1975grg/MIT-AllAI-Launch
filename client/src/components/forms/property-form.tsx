@@ -191,27 +191,38 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       
       form.reset(resetData);
       
-      // Force set numeric values specifically
+      // Force set numeric values specifically - with debug logging
       if (initialData.propertyValue) {
         form.setValue('propertyValue', Number(initialData.propertyValue));
+        console.log('✅ FORM: Set propertyValue to:', Number(initialData.propertyValue));
       }
       if (initialData.monthlyMortgage) {
-        form.setValue('monthlyMortgage', Number(initialData.monthlyMortgage));
+        const value = Number(initialData.monthlyMortgage);
+        form.setValue('monthlyMortgage', value);
+        console.log('✅ FORM: Set monthlyMortgage to:', value);
       }
       if (initialData.interestRate) {
-        form.setValue('interestRate', Number(initialData.interestRate));
+        const value = Number(initialData.interestRate);
+        form.setValue('interestRate', value);
+        console.log('✅ FORM: Set interestRate to:', value);
       }
       if (initialData.purchasePrice) {
-        form.setValue('purchasePrice', Number(initialData.purchasePrice));
+        const value = Number(initialData.purchasePrice);
+        form.setValue('purchasePrice', value);
+        console.log('✅ FORM: Set purchasePrice to:', value);
       }
       if (initialData.downPayment) {
-        form.setValue('downPayment', Number(initialData.downPayment));
+        const value = Number(initialData.downPayment);
+        form.setValue('downPayment', value);
+        console.log('✅ FORM: Set downPayment to:', value);
       }
       if (initialData.salePrice) {
         form.setValue('salePrice', Number(initialData.salePrice));
       }
       if (initialData.acquisitionDate) {
-        form.setValue('acquisitionDate', new Date(initialData.acquisitionDate));
+        const value = new Date(initialData.acquisitionDate);
+        form.setValue('acquisitionDate', value);
+        console.log('✅ FORM: Set acquisitionDate to:', value);
       }
       if (initialData.saleDate) {
         form.setValue('saleDate', new Date(initialData.saleDate));
