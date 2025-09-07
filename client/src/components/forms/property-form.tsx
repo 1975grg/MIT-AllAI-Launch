@@ -168,14 +168,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
     if (initialData && (initialData as any).id) {  // Only reset for editing (when there's an ID)
-      console.log('🔄 FORM: PropertyForm received initialData for editing property:', initialData.name);
-      console.log('🔄 FORM: Mortgage fields in initialData:', {
-        monthlyMortgage: initialData.monthlyMortgage,
-        interestRate: initialData.interestRate,
-        purchasePrice: initialData.purchasePrice,
-        downPayment: initialData.downPayment,
-        acquisitionDate: initialData.acquisitionDate
-      });
       
       const resetData = {
         ...initialData,
@@ -191,38 +183,27 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       
       form.reset(resetData);
       
-      // Force set numeric values specifically - with debug logging
+      // Force set numeric values specifically
       if (initialData.propertyValue) {
         form.setValue('propertyValue', Number(initialData.propertyValue));
-        console.log('✅ FORM: Set propertyValue to:', Number(initialData.propertyValue));
       }
       if (initialData.monthlyMortgage) {
-        const value = Number(initialData.monthlyMortgage);
-        form.setValue('monthlyMortgage', value);
-        console.log('✅ FORM: Set monthlyMortgage to:', value);
+        form.setValue('monthlyMortgage', Number(initialData.monthlyMortgage));
       }
       if (initialData.interestRate) {
-        const value = Number(initialData.interestRate);
-        form.setValue('interestRate', value);
-        console.log('✅ FORM: Set interestRate to:', value);
+        form.setValue('interestRate', Number(initialData.interestRate));
       }
       if (initialData.purchasePrice) {
-        const value = Number(initialData.purchasePrice);
-        form.setValue('purchasePrice', value);
-        console.log('✅ FORM: Set purchasePrice to:', value);
+        form.setValue('purchasePrice', Number(initialData.purchasePrice));
       }
       if (initialData.downPayment) {
-        const value = Number(initialData.downPayment);
-        form.setValue('downPayment', value);
-        console.log('✅ FORM: Set downPayment to:', value);
+        form.setValue('downPayment', Number(initialData.downPayment));
       }
       if (initialData.salePrice) {
         form.setValue('salePrice', Number(initialData.salePrice));
       }
       if (initialData.acquisitionDate) {
-        const value = new Date(initialData.acquisitionDate);
-        form.setValue('acquisitionDate', value);
-        console.log('✅ FORM: Set acquisitionDate to:', value);
+        form.setValue('acquisitionDate', new Date(initialData.acquisitionDate));
       }
       if (initialData.saleDate) {
         form.setValue('saleDate', new Date(initialData.saleDate));

@@ -190,11 +190,20 @@ export default function Properties() {
   }) || [];
 
   const handleEditProperty = async (property: PropertyWithOwnerships) => {
-    // Convert string propertyValue to number for form compatibility
+    // Convert string values to correct types for form compatibility
     const propertyForEditing = {
       ...property,
       propertyValue: property.propertyValue ? Number(property.propertyValue) : undefined,
       appreciationRate: property.appreciationRate ? Number(property.appreciationRate) : undefined,
+      // Convert mortgage fields to proper types
+      monthlyMortgage: property.monthlyMortgage ? Number(property.monthlyMortgage) : undefined,
+      interestRate: property.interestRate ? Number(property.interestRate) : undefined,
+      purchasePrice: property.purchasePrice ? Number(property.purchasePrice) : undefined,
+      downPayment: property.downPayment ? Number(property.downPayment) : undefined,
+      salePrice: property.salePrice ? Number(property.salePrice) : undefined,
+      // Convert date fields to Date objects
+      acquisitionDate: property.acquisitionDate ? new Date(property.acquisitionDate) : undefined,
+      saleDate: property.saleDate ? new Date(property.saleDate) : undefined,
     };
     
     setEditingProperty(propertyForEditing);
