@@ -131,9 +131,11 @@ async function createMortgageExpense({
     firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
     firstPaymentDate.setDate(1); // Set to first day of the month
     
-    // Set end date to 30 years from acquisition (typical mortgage term)
-    const endDate = new Date(acquisitionDate);
-    endDate.setFullYear(endDate.getFullYear() + 30);
+    // Set end date to sale date if property was sold, otherwise 30 years from acquisition
+    const endDate = property.saleDate ? new Date(property.saleDate) : new Date(acquisitionDate);
+    if (!property.saleDate) {
+      endDate.setFullYear(endDate.getFullYear() + 30); // 30 years if no sale date
+    }
     
     const mortgageExpenseData = {
       orgId: org.id,
@@ -1334,7 +1336,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const yearEnd = new Date(year, 11, 31);
       
       const ownershipStart = acquisitionDate > yearStart ? acquisitionDate : yearStart;
-      const ownershipEnd = yearEnd;
+      // Use sale date as end of ownership if property was sold during the year
+      const saleDate = property.saleDate ? new Date(property.saleDate) : null;
+      const ownershipEnd = (saleDate && saleDate.getFullYear() === year && saleDate < yearEnd) ? saleDate : yearEnd;
       const ownershipDays = Math.ceil((ownershipEnd.getTime() - ownershipStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const yearDays = new Date(year, 11, 31).getDate() === 31 && new Date(year, 1, 29).getDate() === 29 ? 366 : 365;
 
