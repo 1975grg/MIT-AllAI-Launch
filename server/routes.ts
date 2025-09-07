@@ -441,17 +441,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const property = await storage.getProperty(req.params.id);
       if (!property) return res.status(404).json({ message: "Property not found" });
       
-      console.log('🔍 Single property API returning:', {
-        id: property.id,
-        name: property.name,
-        monthlyMortgage: property.monthlyMortgage,
-        interestRate: property.interestRate,
-        purchasePrice: property.purchasePrice,
-        downPayment: property.downPayment,
-        acquisitionDate: property.acquisitionDate,
-        hasAllMortgageFields: !!(property.monthlyMortgage && property.interestRate && property.purchasePrice)
-      });
-      
       res.json(property);
     } catch (error) {
       console.error("Error fetching property:", error);

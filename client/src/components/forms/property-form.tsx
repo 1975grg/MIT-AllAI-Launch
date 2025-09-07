@@ -168,14 +168,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
     if (initialData && (initialData as any).id) {  // Only reset for editing (when there's an ID)
-      console.log('🔄 Form reset with initialData:', {
-        monthlyMortgage: initialData.monthlyMortgage,
-        interestRate: initialData.interestRate,
-        purchasePrice: initialData.purchasePrice,
-        downPayment: initialData.downPayment,
-        acquisitionDate: initialData.acquisitionDate
-      });
-      
       const resetData = {
         ...initialData,
         propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
@@ -188,49 +180,33 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         saleDate: initialData.saleDate ? new Date(initialData.saleDate) : undefined,
       };
       
-      console.log('🔄 Reset data prepared:', {
-        monthlyMortgage: resetData.monthlyMortgage,
-        interestRate: resetData.interestRate,
-        purchasePrice: resetData.purchasePrice,
-        downPayment: resetData.downPayment,
-        acquisitionDate: resetData.acquisitionDate
-      });
-      
       form.reset(resetData);
       
-      // Force set numeric values specifically with delay to ensure form is ready
-      setTimeout(() => {
-        if (initialData.propertyValue) {
-          form.setValue('propertyValue', Number(initialData.propertyValue));
-          console.log('✅ Set propertyValue:', Number(initialData.propertyValue));
-        }
-        if (initialData.monthlyMortgage) {
-          form.setValue('monthlyMortgage', Number(initialData.monthlyMortgage));
-          console.log('✅ Set monthlyMortgage:', Number(initialData.monthlyMortgage));
-        }
-        if (initialData.interestRate) {
-          form.setValue('interestRate', Number(initialData.interestRate));
-          console.log('✅ Set interestRate:', Number(initialData.interestRate));
-        }
-        if (initialData.purchasePrice) {
-          form.setValue('purchasePrice', Number(initialData.purchasePrice));
-          console.log('✅ Set purchasePrice:', Number(initialData.purchasePrice));
-        }
-        if (initialData.downPayment) {
-          form.setValue('downPayment', Number(initialData.downPayment));
-          console.log('✅ Set downPayment:', Number(initialData.downPayment));
-        }
-        if (initialData.salePrice) {
-          form.setValue('salePrice', Number(initialData.salePrice));
-        }
-        if (initialData.acquisitionDate) {
-          form.setValue('acquisitionDate', new Date(initialData.acquisitionDate));
-          console.log('✅ Set acquisitionDate:', new Date(initialData.acquisitionDate));
-        }
-        if (initialData.saleDate) {
-          form.setValue('saleDate', new Date(initialData.saleDate));
-        }
-      }, 100);
+      // Force set numeric values specifically
+      if (initialData.propertyValue) {
+        form.setValue('propertyValue', Number(initialData.propertyValue));
+      }
+      if (initialData.monthlyMortgage) {
+        form.setValue('monthlyMortgage', Number(initialData.monthlyMortgage));
+      }
+      if (initialData.interestRate) {
+        form.setValue('interestRate', Number(initialData.interestRate));
+      }
+      if (initialData.purchasePrice) {
+        form.setValue('purchasePrice', Number(initialData.purchasePrice));
+      }
+      if (initialData.downPayment) {
+        form.setValue('downPayment', Number(initialData.downPayment));
+      }
+      if (initialData.salePrice) {
+        form.setValue('salePrice', Number(initialData.salePrice));
+      }
+      if (initialData.acquisitionDate) {
+        form.setValue('acquisitionDate', new Date(initialData.acquisitionDate));
+      }
+      if (initialData.saleDate) {
+        form.setValue('saleDate', new Date(initialData.saleDate));
+      }
     }
   }, [initialData, form]);
 

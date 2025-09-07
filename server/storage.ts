@@ -492,6 +492,14 @@ export class DatabaseStorage implements IStorage {
         autoAppreciation: properties.autoAppreciation,
         appreciationRate: properties.appreciationRate,
         valueEntryDate: properties.valueEntryDate,
+        // Mortgage fields
+        monthlyMortgage: properties.monthlyMortgage,
+        interestRate: properties.interestRate,
+        purchasePrice: properties.purchasePrice,
+        downPayment: properties.downPayment,
+        acquisitionDate: properties.acquisitionDate,
+        saleDate: properties.saleDate,
+        salePrice: properties.salePrice,
         // Include ownership information
         ownershipEntityId: propertyOwnerships.entityId,
         ownershipPercent: propertyOwnerships.percent,
@@ -530,6 +538,14 @@ export class DatabaseStorage implements IStorage {
           autoAppreciation: row.autoAppreciation || false,
           appreciationRate: row.appreciationRate ? Number(row.appreciationRate) : undefined,
           valueEntryDate: row.valueEntryDate,
+          // Mortgage fields - these were missing from the properties list!
+          monthlyMortgage: row.monthlyMortgage ? Number(row.monthlyMortgage) : undefined,
+          interestRate: row.interestRate ? Number(row.interestRate) : undefined,
+          purchasePrice: row.purchasePrice ? Number(row.purchasePrice) : undefined,
+          downPayment: row.downPayment ? Number(row.downPayment) : undefined,
+          acquisitionDate: row.acquisitionDate,
+          saleDate: row.saleDate,
+          salePrice: row.salePrice ? Number(row.salePrice) : undefined,
           ownerships: []
         });
       }
