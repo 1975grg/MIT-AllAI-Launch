@@ -214,6 +214,12 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       taxDeductible: true
     },
     {
+      value: "Mortgage",
+      label: "Mortgage Payment (Full)",
+      description: "Complete monthly mortgage payment (principal + interest). Interest allocation adjusted at year-end.",
+      taxDeductible: false
+    },
+    {
       value: "Other Interest",
       label: "Other Interest",
       description: "Interest on loans used for the rental business besides the mortgage",
