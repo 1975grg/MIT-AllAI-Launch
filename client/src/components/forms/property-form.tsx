@@ -168,9 +168,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
     if (initialData && (initialData as any).id) {  // Only reset for editing (when there's an ID)
-      console.log('🔄 FORM: Received initialData for editing:', {
-        id: initialData.id,
-        name: initialData.name,
+      console.log('🔄 FORM: PropertyForm received initialData for editing property:', initialData.name);
+      console.log('🔄 FORM: Mortgage fields in initialData:', {
         monthlyMortgage: initialData.monthlyMortgage,
         interestRate: initialData.interestRate,
         purchasePrice: initialData.purchasePrice,

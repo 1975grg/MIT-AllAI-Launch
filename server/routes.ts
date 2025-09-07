@@ -430,18 +430,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const properties = await storage.getProperties(org.id);
       
-      // Debug: Log mortgage data for the specific property
-      const debugProperty = properties.find(p => p.name === '3535 Suncrest');
-      if (debugProperty) {
-        console.log('🔍 PROPERTIES LIST API sending mortgage data for 3535 Suncrest:', {
-          id: debugProperty.id,
-          monthlyMortgage: debugProperty.monthlyMortgage,
-          interestRate: debugProperty.interestRate,
-          purchasePrice: debugProperty.purchasePrice,
-          downPayment: debugProperty.downPayment,
-          acquisitionDate: debugProperty.acquisitionDate
-        });
-      }
+      // Debug: Log all property names and their mortgage data
+      console.log('🔍 PROPERTIES LIST API - All properties with mortgage data:');
+      properties.forEach(p => {
+        if (p.monthlyMortgage || p.interestRate || p.purchasePrice) {
+          console.log(`   ${p.name}: monthlyMortgage=${p.monthlyMortgage}, interestRate=${p.interestRate}, purchasePrice=${p.purchasePrice}`);
+        } else {
+          console.log(`   ${p.name}: NO MORTGAGE DATA`);
+        }
+      });
       
       res.json(properties);
     } catch (error) {
