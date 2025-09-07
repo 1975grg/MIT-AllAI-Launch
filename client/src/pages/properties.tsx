@@ -190,15 +190,6 @@ export default function Properties() {
   }) || [];
 
   const handleEditProperty = async (property: PropertyWithOwnerships) => {
-    console.log('🔍 EDIT: Original property data from API:', {
-      name: property.name,
-      monthlyMortgage: property.monthlyMortgage,
-      interestRate: property.interestRate,
-      purchasePrice: property.purchasePrice,
-      downPayment: property.downPayment,
-      acquisitionDate: property.acquisitionDate
-    });
-    
     // Convert string values to correct types for form compatibility
     const propertyForEditing = {
       ...property,
@@ -214,15 +205,6 @@ export default function Properties() {
       acquisitionDate: property.acquisitionDate ? new Date(property.acquisitionDate) : undefined,
       saleDate: property.saleDate ? new Date(property.saleDate) : undefined,
     };
-    
-    console.log('🔍 EDIT: Converted property data for form:', {
-      name: propertyForEditing.name,
-      monthlyMortgage: propertyForEditing.monthlyMortgage,
-      interestRate: propertyForEditing.interestRate,
-      purchasePrice: propertyForEditing.purchasePrice,
-      downPayment: propertyForEditing.downPayment,
-      acquisitionDate: propertyForEditing.acquisitionDate
-    });
     
     setEditingProperty(propertyForEditing);
     
@@ -375,6 +357,14 @@ export default function Properties() {
                     propertyValue: editingProperty.propertyValue,
                     autoAppreciation: editingProperty.autoAppreciation || false,
                     appreciationRate: editingProperty.appreciationRate,
+                    // Add ALL mortgage fields
+                    monthlyMortgage: editingProperty.monthlyMortgage,
+                    interestRate: editingProperty.interestRate,
+                    purchasePrice: editingProperty.purchasePrice,
+                    downPayment: editingProperty.downPayment,
+                    acquisitionDate: editingProperty.acquisitionDate,
+                    salePrice: editingProperty.salePrice,
+                    saleDate: editingProperty.saleDate,
                     ownerships: editingProperty.ownerships?.map(o => ({
                       entityId: o.entityId,
                       percent: o.percent
