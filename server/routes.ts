@@ -566,7 +566,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appreciationRate: propertyData.appreciationRate
       });
       
-      const validatedData = updatePropertySchema.parse(propertyData);
+      // Transform date strings to Date objects for validation
+      const propertyDataWithDates = {
+        ...propertyData,
+        acquisitionDate: propertyData.acquisitionDate ? new Date(propertyData.acquisitionDate) : undefined,
+        saleDate: propertyData.saleDate ? new Date(propertyData.saleDate) : undefined,
+      };
+      
+      const validatedData = updatePropertySchema.parse(propertyDataWithDates);
       
       console.log("✅ Validated data:", JSON.stringify(validatedData, null, 2));
       console.log("✅ Validated value fields:", {
