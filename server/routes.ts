@@ -111,6 +111,61 @@ async function createEquipmentReminders({
   await Promise.all(reminderPromises);
 }
 
+// Helper function to create recurring mortgage expense
+async function createMortgageExpense({
+  org,
+  property,
+  monthlyMortgage,
+  acquisitionDate,
+  storage
+}: {
+  org: any;
+  property: any;
+  monthlyMortgage: string;
+  acquisitionDate: Date;
+  storage: any;
+}) {
+  try {
+    // Calculate the next month from acquisition date for the first mortgage payment
+    const firstPaymentDate = new Date(acquisitionDate);
+    firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+    firstPaymentDate.setDate(1); // Set to first day of the month
+    
+    // Set end date to 30 years from acquisition (typical mortgage term)
+    const endDate = new Date(acquisitionDate);
+    endDate.setFullYear(endDate.getFullYear() + 30);
+    
+    const mortgageExpenseData = {
+      orgId: org.id,
+      type: "Expense" as const,
+      propertyId: property.id,
+      scope: "property" as const,
+      amount: monthlyMortgage,
+      description: `Monthly mortgage payment for ${property.name || `${property.street}, ${property.city}`}`,
+      category: "Mortgage",
+      date: firstPaymentDate,
+      isRecurring: true,
+      recurringFrequency: "months",
+      recurringInterval: 1,
+      recurringEndDate: endDate,
+      taxDeductible: false, // Will be adjusted at year-end with interest allocation
+      isBulkEntry: false,
+    };
+    
+    console.log("🏦 Creating recurring mortgage expense:", {
+      propertyId: property.id,
+      amount: monthlyMortgage,
+      firstPayment: firstPaymentDate.toISOString(),
+      endDate: endDate.toISOString()
+    });
+    
+    await storage.createTransaction(mortgageExpenseData);
+  } catch (error) {
+    console.error("Error creating mortgage expense:", error);
+    // Don't throw - we don't want mortgage expense creation to fail the property creation
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -412,6 +467,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerships, 
           units
         );
+        
+        // Auto-create mortgage expense if mortgage details provided
+        if (validatedData.monthlyMortgage && validatedData.acquisitionDate) {
+          await createMortgageExpense({
+            org,
+            property: result.property,
+            monthlyMortgage: validatedData.monthlyMortgage,
+            acquisitionDate: validatedData.acquisitionDate,
+            storage
+          });
+        }
+        
         res.json({ property: result.property, units: result.units });
       }
       // Check if we should create a single default unit
@@ -422,11 +489,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerships, 
           defaultUnit
         );
+        
+        // Auto-create mortgage expense if mortgage details provided
+        if (validatedData.monthlyMortgage && validatedData.acquisitionDate) {
+          await createMortgageExpense({
+            org,
+            property: result.property,
+            monthlyMortgage: validatedData.monthlyMortgage,
+            acquisitionDate: validatedData.acquisitionDate,
+            storage
+          });
+        }
+        
         res.json({ property: result.property, unit: result.unit });
       } else {
         console.log("🏗️ Creating property without units");
         // Use the old method for just property creation
         const property = await storage.createPropertyWithOwnerships(validatedData, ownerships);
+        
+        // Auto-create mortgage expense if mortgage details provided
+        if (validatedData.monthlyMortgage && validatedData.acquisitionDate) {
+          await createMortgageExpense({
+            org,
+            property,
+            monthlyMortgage: validatedData.monthlyMortgage,
+            acquisitionDate: validatedData.acquisitionDate,
+            storage
+          });
+        }
+        
         res.json({ property, unit: null });
       }
     } catch (error) {
