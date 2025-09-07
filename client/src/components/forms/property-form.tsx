@@ -205,8 +205,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Auto-fill purchase price with property value when property value changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === 'propertyValue' && value.propertyValue && (!value.purchasePrice || value.purchasePrice === 0 || value.purchasePrice === '')) {
-        form.setValue('purchasePrice', Number(value.propertyValue));
+      if (name === 'propertyValue' && value.propertyValue) {
+        // Auto-fill if purchase price is empty or if user wants to sync them
+        if (!value.purchasePrice || value.purchasePrice === 0) {
+          form.setValue('purchasePrice', Number(value.propertyValue));
+        }
       }
     });
     return () => subscription.unsubscribe();
@@ -1208,9 +1211,27 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         value={field.value !== undefined ? String(field.value) : ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          // Allow empty, digits, and single decimal point
+                          // Allow typing decimals: empty, digits, decimal point, and digits after decimal
                           if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                            field.onChange(value === '' ? undefined : parseFloat(value));
+                            if (value === '') {
+                              field.onChange(undefined);
+                            } else if (value.includes('.') && !isNaN(parseFloat(value))) {
+                              // Valid decimal number
+                              field.onChange(parseFloat(value));
+                            } else if (value.includes('.') && value.split('.')[1] === '') {
+                              // Just decimal point, store as is temporarily
+                              field.onChange(value);
+                            } else if (!value.includes('.')) {
+                              // Whole number
+                              field.onChange(parseInt(value));
+                            }
+                          }
+                        }}
+                        onBlur={() => {
+                          const currentValue = form.getValues('interestRate');
+                          if (typeof currentValue === 'string' && currentValue.endsWith('.')) {
+                            // Remove trailing decimal if user leaves field
+                            form.setValue('interestRate', parseFloat(currentValue) || undefined);
                           }
                         }}
                         data-testid="input-interest-rate"
