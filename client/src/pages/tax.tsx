@@ -1,9 +1,20 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calculator, FileText, TrendingUp } from "lucide-react";
+import MortgageAdjustmentForm from "@/components/forms/mortgage-adjustment-form";
+import type { Property } from "@shared/schema";
 
 export default function Tax() {
+  const [showMortgageAdjustment, setShowMortgageAdjustment] = useState(false);
+
+  // Fetch properties
+  const { data: properties = [] } = useQuery<Property[]>({
+    queryKey: ["/api/properties"],
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -18,7 +29,7 @@ export default function Tax() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         
         {/* Mortgage Interest Adjustment */}
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" data-testid="card-mortgage-adjustment">
+        <Card className="hover:shadow-md transition-shadow" data-testid="card-mortgage-adjustment">
           <CardHeader className="pb-3">
             <div className="flex items-center space-x-2">
               <Calculator className="h-5 w-5 text-primary" />
@@ -29,10 +40,26 @@ export default function Tax() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" data-testid="button-mortgage-adjustments">
-              <Calculator className="h-4 w-4 mr-2" />
-              Process Adjustments
-            </Button>
+            <Dialog open={showMortgageAdjustment} onOpenChange={setShowMortgageAdjustment}>
+              <DialogTrigger asChild>
+                <Button className="w-full" data-testid="button-mortgage-adjustments">
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Process Adjustments
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Year-End Mortgage Interest Adjustment</DialogTitle>
+                  <DialogDescription>
+                    Split mortgage payments into deductible interest and non-deductible principal based on actual interest paid.
+                  </DialogDescription>
+                </DialogHeader>
+                <MortgageAdjustmentForm
+                  properties={properties}
+                  onClose={() => setShowMortgageAdjustment(false)}
+                />
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
 
