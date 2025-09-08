@@ -1568,20 +1568,37 @@ export class DatabaseStorage implements IStorage {
     const frequency = recurringTransaction.recurringFrequency;
     const interval = recurringTransaction.recurringInterval || 1;
     
-    // Get end date if specified, otherwise use current date
+    console.log(`  → Transaction: ${recurringTransaction.description}, Frequency: ${frequency}, Interval: ${interval}`);
+    
+    // Validate frequency to prevent infinite loops
+    const validFrequencies = ["monthly", "quarterly", "annually", "weeks", "days", "months"];
+    if (!validFrequencies.includes(frequency)) {
+      console.log(`  → Skipping transaction with invalid frequency: ${frequency}`);
+      return;
+    }
+    
+    // Get end date if specified, otherwise use current date + 2 years max
+    const maxEndDate = new Date(now);
+    maxEndDate.setFullYear(maxEndDate.getFullYear() + 2); // Safety limit: 2 years max
+    
     const endDate = recurringTransaction.recurringEndDate 
       ? new Date(recurringTransaction.recurringEndDate)
-      : now;
+      : maxEndDate;
 
-    // Generate all expected monthly transactions
+    // Generate expected transactions with safety limit
     const expectedDates: Date[] = [];
     let currentDate = new Date(startDate);
+    let iterations = 0;
+    const MAX_ITERATIONS = 100; // Safety limit to prevent infinite loops
     
-    while (currentDate <= endDate && currentDate <= now) {
+    while (currentDate <= endDate && currentDate <= now && iterations < MAX_ITERATIONS) {
       expectedDates.push(new Date(currentDate));
+      iterations++;
+      
+      const previousDate = new Date(currentDate);
       
       // Calculate next occurrence based on frequency
-      if (frequency === "monthly") {
+      if (frequency === "monthly" || frequency === "months") {
         currentDate.setMonth(currentDate.getMonth() + interval);
       } else if (frequency === "quarterly") {
         currentDate.setMonth(currentDate.getMonth() + (3 * interval));
@@ -1592,7 +1609,19 @@ export class DatabaseStorage implements IStorage {
       } else if (frequency === "days") {
         currentDate.setDate(currentDate.getDate() + interval);
       }
+      
+      // Safety check: ensure date actually advanced
+      if (currentDate.getTime() <= previousDate.getTime()) {
+        console.error(`  → Date not advancing! Breaking loop to prevent infinite generation.`);
+        break;
+      }
     }
+    
+    if (iterations >= MAX_ITERATIONS) {
+      console.warn(`  → Hit safety limit of ${MAX_ITERATIONS} iterations for ${recurringTransaction.description}`);
+    }
+    
+    console.log(`  → Generated ${expectedDates.length} expected dates for processing`);
 
     // Check which transactions already exist
     const existingTransactions = await db

@@ -1733,6 +1733,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint for recurring generation (safer)
+  app.post('/api/test/generate-recurring', isAuthenticated, async (req: any, res) => {
+    try {
+      console.log("🔧 TEST: Manually triggering safe recurring transaction generation...");
+      await storage.generateRecurringTransactions();
+      res.json({ 
+        success: true, 
+        message: "TEST: Safe recurring transactions generated successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("🔧 TEST: Error generating recurring transactions:", error);
+      res.status(500).json({ 
+        message: "TEST: Failed to generate recurring transactions",
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
