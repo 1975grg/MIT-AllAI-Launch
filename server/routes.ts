@@ -116,23 +116,29 @@ async function createMortgageExpense({
   org,
   property,
   monthlyMortgage,
-  acquisitionDate,
+  mortgageStartDate,
   storage
 }: {
   org: any;
   property: any;
   monthlyMortgage: string;
-  acquisitionDate: Date;
+  mortgageStartDate?: Date;
   storage: any;
 }) {
   try {
-    // Calculate the next month from acquisition date for the first mortgage payment
-    const firstPaymentDate = new Date(acquisitionDate);
-    firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
-    firstPaymentDate.setDate(1); // Set to first day of the month
+    // Use mortgageStartDate if provided, otherwise default to next month from today
+    let firstPaymentDate;
+    if (mortgageStartDate) {
+      firstPaymentDate = new Date(mortgageStartDate);
+    } else {
+      // Default to first day of next month
+      firstPaymentDate = new Date();
+      firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+      firstPaymentDate.setDate(1);
+    }
     
-    // Set end date to sale date if property was sold, otherwise 30 years from acquisition
-    const endDate = property.saleDate ? new Date(property.saleDate) : new Date(acquisitionDate);
+    // Set end date to sale date if property was sold, otherwise 30 years from first payment
+    const endDate = property.saleDate ? new Date(property.saleDate) : new Date(firstPaymentDate);
     if (!property.saleDate) {
       endDate.setFullYear(endDate.getFullYear() + 30); // 30 years if no sale date
     }
@@ -469,6 +475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...propertyData,
         orgId: org.id,
         acquisitionDate: propertyData.acquisitionDate ? new Date(propertyData.acquisitionDate) : undefined,
+        mortgageStartDate: propertyData.mortgageStartDate ? new Date(propertyData.mortgageStartDate) : undefined,
         saleDate: propertyData.saleDate ? new Date(propertyData.saleDate) : undefined,
       };
       
@@ -484,12 +491,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         
         // Auto-create mortgage expense if mortgage details provided
-        if (validatedData.monthlyMortgage && validatedData.acquisitionDate) {
+        if (validatedData.monthlyMortgage) {
           await createMortgageExpense({
             org,
             property: result.property,
             monthlyMortgage: validatedData.monthlyMortgage,
-            acquisitionDate: validatedData.acquisitionDate,
+            mortgageStartDate: validatedData.mortgageStartDate,
             storage
           });
         }
@@ -506,12 +513,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         
         // Auto-create mortgage expense if mortgage details provided
-        if (validatedData.monthlyMortgage && validatedData.acquisitionDate) {
+        if (validatedData.monthlyMortgage) {
           await createMortgageExpense({
             org,
             property: result.property,
             monthlyMortgage: validatedData.monthlyMortgage,
-            acquisitionDate: validatedData.acquisitionDate,
+            mortgageStartDate: validatedData.mortgageStartDate,
             storage
           });
         }
@@ -578,6 +585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyDataWithDates = {
         ...propertyData,
         acquisitionDate: propertyData.acquisitionDate ? new Date(propertyData.acquisitionDate) : undefined,
+        mortgageStartDate: propertyData.mortgageStartDate ? new Date(propertyData.mortgageStartDate) : undefined,
         saleDate: propertyData.saleDate ? new Date(propertyData.saleDate) : undefined,
       };
       
@@ -762,6 +770,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           property,
           unit: updatedUnit,
           unitData: defaultUnit,
+          storage
+        });
+      }
+
+      // Auto-create mortgage expense if mortgage details provided in update
+      if (validatedData.monthlyMortgage) {
+        await createMortgageExpense({
+          org,
+          property,
+          monthlyMortgage: validatedData.monthlyMortgage,
+          mortgageStartDate: validatedData.mortgageStartDate,
           storage
         });
       }
