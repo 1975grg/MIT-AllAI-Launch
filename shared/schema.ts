@@ -118,6 +118,7 @@ export const properties = pgTable("properties", {
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }), // Total purchase price of the property
   downPayment: decimal("down_payment", { precision: 12, scale: 2 }), // Cash invested (down payment + closing costs)
   acquisitionDate: timestamp("acquisition_date"), // Date property was acquired (for partial-year calculations)
+  mortgageStartDate: timestamp("mortgage_start_date"), // Date when mortgage payments should start being auto-generated
   // Property sale tracking
   saleDate: timestamp("sale_date"), // Date property was sold (ends mortgage calculations)
   salePrice: decimal("sale_price", { precision: 12, scale: 2 }), // Sale price of the property

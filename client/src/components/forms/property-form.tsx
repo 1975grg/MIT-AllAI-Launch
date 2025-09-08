@@ -91,6 +91,7 @@ const propertySchema = z.object({
   purchasePrice: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   downPayment: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   acquisitionDate: z.date().optional(),
+  mortgageStartDate: z.date().optional(),
   // Property sale fields (optional)
   saleDate: z.date().optional(),
   salePrice: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
@@ -1252,6 +1253,30 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
                     Annual interest rate for calculations and year-end tax adjustments.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Mortgage Payment Start Date */}
+            <FormField
+              control={form.control}
+              name="mortgageStartDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Payment Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      data-testid="input-mortgage-start-date"
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    When should recurring mortgage expenses start being generated? Defaults to next month if left empty.
                   </p>
                   <FormMessage />
                 </FormItem>
