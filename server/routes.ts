@@ -117,12 +117,14 @@ async function createMortgageExpense({
   property,
   monthlyMortgage,
   mortgageStartDate,
+  mortgageType = "Primary",
   storage
 }: {
   org: any;
   property: any;
   monthlyMortgage: string;
   mortgageStartDate?: Date;
+  mortgageType?: string;
   storage: any;
 }) {
   try {
@@ -149,7 +151,7 @@ async function createMortgageExpense({
       propertyId: property.id,
       scope: "property" as const,
       amount: monthlyMortgage,
-      description: `Monthly mortgage payment for ${property.name || `${property.street}, ${property.city}`}`,
+      description: `${mortgageType} mortgage payment for ${property.name || `${property.street}, ${property.city}`}`,
       category: "Mortgage",
       date: firstPaymentDate,
       isRecurring: true,
@@ -476,6 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orgId: org.id,
         acquisitionDate: propertyData.acquisitionDate ? new Date(propertyData.acquisitionDate) : undefined,
         mortgageStartDate: propertyData.mortgageStartDate ? new Date(propertyData.mortgageStartDate) : undefined,
+        mortgageStartDate2: propertyData.mortgageStartDate2 ? new Date(propertyData.mortgageStartDate2) : undefined,
         saleDate: propertyData.saleDate ? new Date(propertyData.saleDate) : undefined,
       };
       
@@ -490,13 +493,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           units
         );
         
-        // Auto-create mortgage expense if mortgage details provided
+        // Auto-create primary mortgage expense if mortgage details provided
         if (validatedData.monthlyMortgage) {
           await createMortgageExpense({
             org,
             property: result.property,
             monthlyMortgage: validatedData.monthlyMortgage,
             mortgageStartDate: validatedData.mortgageStartDate,
+            mortgageType: "Primary",
+            storage
+          });
+        }
+
+        // Auto-create secondary mortgage expense if provided
+        if (validatedData.monthlyMortgage2) {
+          await createMortgageExpense({
+            org,
+            property: result.property,
+            monthlyMortgage: validatedData.monthlyMortgage2,
+            mortgageStartDate: validatedData.mortgageStartDate2,
+            mortgageType: "Secondary",
             storage
           });
         }
@@ -512,13 +528,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           defaultUnit
         );
         
-        // Auto-create mortgage expense if mortgage details provided
+        // Auto-create primary mortgage expense if mortgage details provided
         if (validatedData.monthlyMortgage) {
           await createMortgageExpense({
             org,
             property: result.property,
             monthlyMortgage: validatedData.monthlyMortgage,
             mortgageStartDate: validatedData.mortgageStartDate,
+            mortgageType: "Primary",
+            storage
+          });
+        }
+
+        // Auto-create secondary mortgage expense if provided
+        if (validatedData.monthlyMortgage2) {
+          await createMortgageExpense({
+            org,
+            property: result.property,
+            monthlyMortgage: validatedData.monthlyMortgage2,
+            mortgageStartDate: validatedData.mortgageStartDate2,
+            mortgageType: "Secondary",
             storage
           });
         }
@@ -586,6 +615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...propertyData,
         acquisitionDate: propertyData.acquisitionDate ? new Date(propertyData.acquisitionDate) : undefined,
         mortgageStartDate: propertyData.mortgageStartDate ? new Date(propertyData.mortgageStartDate) : undefined,
+        mortgageStartDate2: propertyData.mortgageStartDate2 ? new Date(propertyData.mortgageStartDate2) : undefined,
         saleDate: propertyData.saleDate ? new Date(propertyData.saleDate) : undefined,
       };
       
@@ -774,13 +804,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Auto-create mortgage expense if mortgage details provided in update
+      // Auto-create primary mortgage expense if mortgage details provided in update
       if (validatedData.monthlyMortgage) {
         await createMortgageExpense({
           org,
           property,
           monthlyMortgage: validatedData.monthlyMortgage,
           mortgageStartDate: validatedData.mortgageStartDate,
+          mortgageType: "Primary",
+          storage
+        });
+      }
+
+      // Auto-create secondary mortgage expense if provided in update
+      if (validatedData.monthlyMortgage2) {
+        await createMortgageExpense({
+          org,
+          property,
+          monthlyMortgage: validatedData.monthlyMortgage2,
+          mortgageStartDate: validatedData.mortgageStartDate2,
+          mortgageType: "Secondary",
           storage
         });
       }

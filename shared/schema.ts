@@ -112,13 +112,17 @@ export const properties = pgTable("properties", {
   autoAppreciation: boolean("auto_appreciation").default(false), // Enable automatic yearly appreciation
   appreciationRate: decimal("appreciation_rate", { precision: 4, scale: 2 }), // Annual appreciation percentage (e.g., 3.50 for 3.5%)
   valueEntryDate: timestamp("value_entry_date"), // When the value was entered (to calculate yearly increases)
-  // Mortgage tracking
+  // Primary mortgage tracking
   monthlyMortgage: decimal("monthly_mortgage", { precision: 10, scale: 2 }), // Monthly mortgage payment amount
   interestRate: decimal("interest_rate", { precision: 5, scale: 3 }), // Annual interest rate percentage (e.g., 5.250 for 5.25%)
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }), // Total purchase price of the property
   downPayment: decimal("down_payment", { precision: 12, scale: 2 }), // Cash invested (down payment + closing costs)
   acquisitionDate: timestamp("acquisition_date"), // Date property was acquired (for partial-year calculations)
   mortgageStartDate: timestamp("mortgage_start_date"), // Date when mortgage payments should start being auto-generated
+  // Secondary mortgage tracking
+  monthlyMortgage2: decimal("monthly_mortgage_2", { precision: 10, scale: 2 }), // Second mortgage monthly payment amount
+  interestRate2: decimal("interest_rate_2", { precision: 5, scale: 3 }), // Second mortgage annual interest rate percentage
+  mortgageStartDate2: timestamp("mortgage_start_date_2"), // Date when second mortgage payments should start being auto-generated
   // Property sale tracking
   saleDate: timestamp("sale_date"), // Date property was sold (ends mortgage calculations)
   salePrice: decimal("sale_price", { precision: 12, scale: 2 }), // Sale price of the property

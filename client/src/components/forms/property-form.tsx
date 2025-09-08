@@ -85,13 +85,17 @@ const propertySchema = z.object({
   propertyValue: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   autoAppreciation: z.boolean().default(false),
   appreciationRate: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).max(50).optional()),
-  // Mortgage tracking fields (optional)
+  // Primary mortgage tracking fields (optional)
   monthlyMortgage: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   interestRate: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).max(20).optional()),
   purchasePrice: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   downPayment: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
   acquisitionDate: z.date().optional(),
   mortgageStartDate: z.date().optional(),
+  // Secondary mortgage tracking fields (optional)
+  monthlyMortgage2: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
+  interestRate2: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).max(20).optional()),
+  mortgageStartDate2: z.date().optional(),
   // Property sale fields (optional)
   saleDate: z.date().optional(),
   salePrice: z.preprocess((val) => val === null || val === undefined || val === "" ? undefined : Number(val), z.number().min(0).optional()),
@@ -1282,6 +1286,130 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                 </FormItem>
               )}
             />
+
+            <div className="my-6 border-t border-muted-foreground/20" />
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground font-medium">Secondary Mortgage (Optional)</p>
+              <p className="text-xs text-muted-foreground">Add a second mortgage if your property has multiple loans</p>
+            </div>
+
+            {/* Secondary Monthly Mortgage */}
+            <FormField
+              control={form.control}
+              name="monthlyMortgage2"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Secondary Monthly Payment</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="1,000"
+                        className="pl-9"
+                        key={`monthly-mortgage-2-${(initialData as any)?.id || 'new'}`}
+                        value={field.value ? Number(field.value).toLocaleString() : ""}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          field.onChange(numericValue);
+                        }}
+                        onBlur={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
+                          if (!isNaN(numericValue || 0)) {
+                            field.onChange(numericValue);
+                            if (numericValue) {
+                              e.target.value = numericValue.toLocaleString();
+                            }
+                          }
+                        }}
+                        data-testid="input-monthly-mortgage-2"
+                      />
+                    </div>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Second mortgage monthly payment (HELOC, bridge loan, etc.). Will auto-create recurring expense.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Secondary Interest Rate */}
+            <FormField
+              control={form.control}
+              name="interestRate2"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Secondary Interest Rate</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="6.75"
+                        className="pr-8"
+                        key={`interest-rate-2-${(initialData as any)?.id || 'new'}`}
+                        value={field.value !== undefined ? String(field.value) : ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow empty, digits, and decimal point
+                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                            // Just store the raw value to allow typing decimals
+                            field.onChange(value === '' ? undefined : value);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const value = e.target.value;
+                          if (value && value !== '.') {
+                            const numericValue = parseFloat(value);
+                            if (!isNaN(numericValue)) {
+                              field.onChange(numericValue);
+                            }
+                          } else {
+                            field.onChange(undefined);
+                          }
+                        }}
+                        data-testid="input-interest-rate-2"
+                      />
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                    </div>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Annual interest rate for second mortgage calculations and tax adjustments.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Secondary Mortgage Start Date */}
+            <FormField
+              control={form.control}
+              name="mortgageStartDate2"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Secondary First Payment Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      data-testid="input-mortgage-start-date-2"
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    When should secondary mortgage expenses start? Defaults to next month if left empty.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="my-6 border-t border-muted-foreground/20" />
 
             {/* Purchase Price */}
             <FormField
