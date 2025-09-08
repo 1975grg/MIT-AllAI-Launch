@@ -74,5 +74,6 @@ export function startCronJobs() {
     }
   });
 
+
   console.log('Cron jobs started successfully');
 }
