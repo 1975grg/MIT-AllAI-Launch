@@ -165,6 +165,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
   });
 
   const expenseCategories = [
+    // Tax-deductible categories first
     {
       value: "Advertising",
       label: "Advertising",
@@ -190,6 +191,12 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       taxDeductible: true
     },
     {
+      value: "Depreciation Expense",
+      label: "Depreciation Expense",
+      description: "Deduction for wear-and-tear of the building and certain improvements",
+      taxDeductible: true
+    },
+    {
       value: "Insurance",
       label: "Insurance",
       description: "Property insurance, liability insurance, flood insurance, etc.",
@@ -208,27 +215,15 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       taxDeductible: true
     },
     {
-      value: "Mortgage Interest Paid to Banks",
-      label: "Mortgage Interest Paid to Banks",
-      description: "Interest portion of mortgage payments (not principal)",
-      taxDeductible: true
-    },
-    {
-      value: "Mortgage",
-      label: "Mortgage Payment (Full)",
-      description: "Complete monthly mortgage payment (principal + interest). Interest allocation adjusted at year-end.",
-      taxDeductible: false
-    },
-    {
-      value: "Mortgage Principal Payment",
-      label: "Mortgage Principal Payment",
-      description: "Principal portion of mortgage payment (non-tax deductible)",
-      taxDeductible: false
-    },
-    {
       value: "Other Interest",
       label: "Other Interest",
       description: "Interest on loans used for the rental business besides the mortgage",
+      taxDeductible: true
+    },
+    {
+      value: "Other",
+      label: "Other",
+      description: "Any legitimate rental expense not fitting in the above (e.g., HOA fees, bank fees, safety inspections, software subscriptions)",
       taxDeductible: true
     },
     {
@@ -255,17 +250,12 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       description: "Water, electricity, gas, trash collection, etc., if paid by the landlord",
       taxDeductible: true
     },
+    // Non-tax deductible categories at bottom
     {
-      value: "Depreciation Expense",
-      label: "Depreciation Expense",
-      description: "Deduction for wear-and-tear of the building and certain improvements",
-      taxDeductible: true
-    },
-    {
-      value: "Other",
-      label: "Other",
-      description: "Any legitimate rental expense not fitting in the above (e.g., HOA fees, bank fees, safety inspections, software subscriptions)",
-      taxDeductible: true
+      value: "Mortgage",
+      label: "Mortgage",
+      description: "Auto-generated mortgage payments from property setup, or manual extra mortgage payments",
+      taxDeductible: false
     },
     {
       value: "Capital Contribution",
