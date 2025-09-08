@@ -1544,19 +1544,17 @@ export class DatabaseStorage implements IStorage {
   async generateRecurringTransactions(): Promise<void> {
     console.log("Generating missing recurring transactions...");
     
-    // Find all recurring revenue transactions
+    // Find ALL recurring transactions (both Income and Expense)
     const recurringTransactions = await db
       .select()
       .from(transactions)
-      .where(
-        and(
-          eq(transactions.isRecurring, true),
-          eq(transactions.type, "Income")
-        )
-      );
+      .where(eq(transactions.isRecurring, true));
+
+    console.log(`Found ${recurringTransactions.length} recurring transactions to process`);
 
     for (const recurringTransaction of recurringTransactions) {
       try {
+        console.log(`Processing recurring ${recurringTransaction.type}: ${recurringTransaction.description} (${recurringTransaction.category})`);
         await this.generateMissingTransactionsForRecurring(recurringTransaction);
       } catch (error) {
         console.error(`Error generating recurring transactions for ${recurringTransaction.id}:`, error);
@@ -1604,7 +1602,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(transactions.orgId, recurringTransaction.orgId),
           eq(transactions.propertyId, recurringTransaction.propertyId),
-          eq(transactions.type, "Income"),
+          eq(transactions.type, recurringTransaction.type), // Use actual type (Income or Expense)
           eq(transactions.category, recurringTransaction.category),
           eq(transactions.amount, recurringTransaction.amount),
           or(
@@ -1623,25 +1621,27 @@ export class DatabaseStorage implements IStorage {
       const expectedDateString = expectedDate.toISOString().split('T')[0];
       
       if (!existingDateStrings.includes(expectedDateString)) {
-        // Create missing transaction
+        // Create missing transaction with appropriate defaults
+        const isExpense = recurringTransaction.type === "Expense";
+        
         await db.insert(transactions).values({
           orgId: recurringTransaction.orgId,
           propertyId: recurringTransaction.propertyId,
           unitId: recurringTransaction.unitId,
           entityId: recurringTransaction.entityId,
-          type: "Income",
+          type: recurringTransaction.type, // Use actual type (Income or Expense)
           scope: recurringTransaction.scope,
           amount: recurringTransaction.amount,
           description: `${recurringTransaction.description} (Auto-generated)`,
           category: recurringTransaction.category,
           date: expectedDate,
-          notes: `Auto-generated from recurring revenue rule`,
+          notes: `Auto-generated from recurring ${recurringTransaction.type.toLowerCase()} rule`,
           taxDeductible: recurringTransaction.taxDeductible,
           parentRecurringId: recurringTransaction.id,
-          paymentStatus: "Paid", // Default to paid for auto-generated
+          paymentStatus: isExpense ? "Unpaid" : "Paid", // Expenses default to Unpaid, Income to Paid
         });
 
-        console.log(`Generated missing transaction for ${expectedDate.toISOString().split('T')[0]}: ${recurringTransaction.description}`);
+        console.log(`Generated missing ${recurringTransaction.type} for ${expectedDate.toISOString().split('T')[0]}: ${recurringTransaction.description}`);
       }
     }
   }
