@@ -106,14 +106,61 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
           </div>
 
           {selectedPropertyData && (
-            <div className="bg-muted p-3 rounded-lg text-sm">
-              <p><strong>Monthly Mortgage:</strong> ${Number(selectedPropertyData.monthlyMortgage).toLocaleString()}</p>
-              {selectedPropertyData.interestRate && (
-                <p><strong>Interest Rate:</strong> {selectedPropertyData.interestRate}%</p>
-              )}
+            <div className="bg-muted p-4 rounded-lg text-sm space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="font-medium text-foreground">Primary Mortgage</p>
+                  <p><strong>Monthly Payment:</strong> ${Number(selectedPropertyData.monthlyMortgage).toLocaleString()}</p>
+                  {selectedPropertyData.interestRate && (
+                    <p><strong>Interest Rate:</strong> {selectedPropertyData.interestRate}%</p>
+                  )}
+                </div>
+                {selectedPropertyData.monthlyMortgage2 && Number(selectedPropertyData.monthlyMortgage2) > 0 && (
+                  <div>
+                    <p className="font-medium text-foreground">Secondary Mortgage</p>
+                    <p><strong>Monthly Payment:</strong> ${Number(selectedPropertyData.monthlyMortgage2).toLocaleString()}</p>
+                    {selectedPropertyData.interestRate2 && (
+                      <p><strong>Interest Rate:</strong> {selectedPropertyData.interestRate2}%</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
               {selectedPropertyData.acquisitionDate && (
                 <p><strong>Acquired:</strong> {new Date(selectedPropertyData.acquisitionDate).toLocaleDateString()}</p>
               )}
+              
+              <div className="border-t pt-3 mt-3">
+                <p className="font-medium text-foreground mb-2">Annual Mortgage Totals for {form.watch("year") || new Date().getFullYear()}:</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-primary font-semibold">
+                      Primary: ${(Number(selectedPropertyData.monthlyMortgage) * 12).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      ${Number(selectedPropertyData.monthlyMortgage).toLocaleString()} × 12 months
+                    </p>
+                  </div>
+                  {selectedPropertyData.monthlyMortgage2 && Number(selectedPropertyData.monthlyMortgage2) > 0 && (
+                    <div>
+                      <p className="text-primary font-semibold">
+                        Secondary: ${(Number(selectedPropertyData.monthlyMortgage2) * 12).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ${Number(selectedPropertyData.monthlyMortgage2).toLocaleString()} × 12 months
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2 pt-2 border-t">
+                  <p className="text-lg font-bold text-primary">
+                    Total Annual: ${((Number(selectedPropertyData.monthlyMortgage) + (Number(selectedPropertyData.monthlyMortgage2) || 0)) * 12).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    This is the total you should allocate between interest and principal
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
