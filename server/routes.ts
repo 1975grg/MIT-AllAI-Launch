@@ -1532,6 +1532,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adjustedCount++;
       }
 
+      // Store mortgage adjustment data for form memory
+      const adjustmentData = {
+        orgId: org.id,
+        propertyId,
+        year,
+        actualInterestPaid,
+        totalMortgagePayments: totalPayments,
+        calculatedPrincipal: totalPrincipal,
+        expenseCount: adjustedCount
+      };
+
+      // Check if an adjustment already exists for this property/year
+      const existingAdjustment = await storage.getMortgageAdjustment(propertyId, year);
+      
+      if (existingAdjustment) {
+        // Update existing adjustment
+        await storage.updateMortgageAdjustment(propertyId, year, adjustmentData);
+      } else {
+        // Create new adjustment
+        await storage.createMortgageAdjustment(adjustmentData);
+      }
+
       res.json({ 
         message: "Mortgage adjustment completed successfully",
         adjustedCount,
