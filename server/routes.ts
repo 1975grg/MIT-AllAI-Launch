@@ -17,7 +17,6 @@ import {
   insertTransactionSchema,
   insertExpenseSchema,
   insertReminderSchema,
-  insertMortgageAdjustmentSchema,
 } from "@shared/schema";
 
 // Revenue schema for API validation
@@ -1532,28 +1531,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adjustedCount++;
       }
 
-      // Store mortgage adjustment data for form memory
-      const adjustmentData = {
-        orgId: org.id,
-        propertyId,
-        year,
-        actualInterestPaid,
-        totalMortgagePayments: totalPayments,
-        calculatedPrincipal: totalPrincipal,
-        expenseCount: adjustedCount
-      };
-
-      // Check if an adjustment already exists for this property/year
-      const existingAdjustment = await storage.getMortgageAdjustment(propertyId, year);
-      
-      if (existingAdjustment) {
-        // Update existing adjustment
-        await storage.updateMortgageAdjustment(propertyId, year, adjustmentData);
-      } else {
-        // Create new adjustment
-        await storage.createMortgageAdjustment(adjustmentData);
-      }
-
       res.json({ 
         message: "Mortgage adjustment completed successfully",
         adjustedCount,
@@ -1567,33 +1544,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing mortgage adjustment:", error);
       res.status(500).json({ message: "Failed to process mortgage adjustment" });
-    }
-  });
-
-  // Get existing mortgage adjustment
-  app.get("/api/expenses/mortgage-adjustment/:propertyId/:year", isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req as any).user.claims.sub;
-      const org = await storage.getUserOrganization(userId);
-      if (!org) return res.status(404).json({ message: "Organization not found" });
-
-      const { propertyId, year } = req.params;
-      const yearNum = parseInt(year);
-
-      if (!propertyId || !yearNum) {
-        return res.status(400).json({ message: "Property ID and year are required" });
-      }
-
-      const adjustment = await storage.getMortgageAdjustment(propertyId, yearNum);
-      
-      if (!adjustment) {
-        return res.status(404).json({ message: "No mortgage adjustment found for this property and year" });
-      }
-
-      res.json(adjustment);
-    } catch (error) {
-      console.error("Error fetching mortgage adjustment:", error);
-      res.status(500).json({ message: "Failed to fetch mortgage adjustment" });
     }
   });
 

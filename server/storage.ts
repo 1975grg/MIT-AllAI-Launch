@@ -18,7 +18,6 @@ import {
   camCategories,
   transactions,
   transactionLineItems,
-  mortgageAdjustments,
   camEntries,
   reminders,
   regulatoryRules,
@@ -52,8 +51,6 @@ import {
   type InsertTransaction,
   type InsertTransactionLineItem,
   type InsertExpense,
-  type MortgageAdjustment,
-  type InsertMortgageAdjustment,
   type Reminder,
   type InsertReminder,
   type Notification,
@@ -129,12 +126,6 @@ export interface IStorage {
   updateTransactionPaymentStatus(id: string, paymentStatus: string): Promise<void>;
   createExpense(expense: InsertExpense): Promise<Transaction>;
   getTransactionLineItems(transactionId: string): Promise<TransactionLineItem[]>;
-  
-  // Mortgage adjustment operations
-  getMortgageAdjustment(propertyId: string, year: number): Promise<MortgageAdjustment | undefined>;
-  createMortgageAdjustment(adjustment: InsertMortgageAdjustment): Promise<MortgageAdjustment>;
-  updateMortgageAdjustment(propertyId: string, year: number, adjustment: Partial<InsertMortgageAdjustment>): Promise<MortgageAdjustment>;
-  deleteMortgageAdjustment(propertyId: string, year: number): Promise<void>;
   
   // Reminder operations
   getReminders(orgId: string): Promise<Reminder[]>;
@@ -1155,50 +1146,6 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(transactionLineItems)
       .where(eq(transactionLineItems.transactionId, transactionId));
-  }
-
-  // Mortgage adjustment operations
-  async getMortgageAdjustment(propertyId: string, year: number): Promise<MortgageAdjustment | undefined> {
-    const result = await db
-      .select()
-      .from(mortgageAdjustments)
-      .where(and(
-        eq(mortgageAdjustments.propertyId, propertyId),
-        eq(mortgageAdjustments.year, year)
-      ))
-      .limit(1);
-    
-    return result[0];
-  }
-
-  async createMortgageAdjustment(adjustment: InsertMortgageAdjustment): Promise<MortgageAdjustment> {
-    const [newAdjustment] = await db.insert(mortgageAdjustments).values(adjustment).returning();
-    return newAdjustment;
-  }
-
-  async updateMortgageAdjustment(propertyId: string, year: number, adjustment: Partial<InsertMortgageAdjustment>): Promise<MortgageAdjustment> {
-    const [updatedAdjustment] = await db
-      .update(mortgageAdjustments)
-      .set({
-        ...adjustment,
-        updatedAt: new Date()
-      })
-      .where(and(
-        eq(mortgageAdjustments.propertyId, propertyId),
-        eq(mortgageAdjustments.year, year)
-      ))
-      .returning();
-    
-    return updatedAdjustment;
-  }
-
-  async deleteMortgageAdjustment(propertyId: string, year: number): Promise<void> {
-    await db
-      .delete(mortgageAdjustments)
-      .where(and(
-        eq(mortgageAdjustments.propertyId, propertyId),
-        eq(mortgageAdjustments.year, year)
-      ));
   }
 
   private async createRecurringExpenses(originalExpense: Transaction): Promise<void> {
