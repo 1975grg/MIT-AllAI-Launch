@@ -1424,15 +1424,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownershipDays = Math.ceil((ownershipEnd.getTime() - ownershipStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const yearDays = new Date(year, 11, 31).getDate() === 31 && new Date(year, 1, 29).getDate() === 29 ? 366 : 365;
 
-      // Calculate total mortgage payments for the year
-      const totalMortgagePayments = mortgageExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
+      // Calculate expected total mortgage payments for the year based on monthly amount and ownership period
+      const monthlyPrimary = Number(property.monthlyMortgage) || 0;
+      const monthlySecondary = Number(property.monthlyMortgage2) || 0;
+      const totalMonthlyMortgage = monthlyPrimary + monthlySecondary;
+      
+      // Calculate months of ownership in the year
+      const monthsInYear = 12;
+      const yearStartMonth = Math.max(0, ownershipStart.getMonth());
+      const yearEndMonth = Math.min(11, ownershipEnd.getMonth());
+      const ownershipMonths = (ownershipEnd.getFullYear() > ownershipStart.getFullYear()) ? 
+        monthsInYear : (yearEndMonth - yearStartMonth + 1);
+      
+      const expectedTotalPayments = totalMonthlyMortgage * ownershipMonths;
+      
+      // Use the higher of recorded payments or expected payments for validation
+      const actualMortgagePayments = mortgageExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
+      const totalMortgagePayments = Math.max(expectedTotalPayments, actualMortgagePayments);
       
       // Calculate interest vs principal split
       const totalPrincipal = totalMortgagePayments - actualInterestPaid;
       
       if (totalPrincipal < 0) {
         return res.status(400).json({ 
-          message: `Interest paid ($${actualInterestPaid}) exceeds total mortgage payments ($${totalMortgagePayments}) for ${year}` 
+          message: `Interest paid ($${actualInterestPaid}) exceeds expected total mortgage payments ($${totalMortgagePayments.toFixed(2)}) for ${year}` 
         });
       }
 
