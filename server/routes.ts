@@ -1429,18 +1429,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const monthlySecondary = Number(property.monthlyMortgage2) || 0;
       const totalMonthlyMortgage = monthlyPrimary + monthlySecondary;
       
-      // Calculate months of ownership in the year
-      const monthsInYear = 12;
-      const yearStartMonth = Math.max(0, ownershipStart.getMonth());
-      const yearEndMonth = Math.min(11, ownershipEnd.getMonth());
-      const ownershipMonths = (ownershipEnd.getFullYear() > ownershipStart.getFullYear()) ? 
-        monthsInYear : (yearEndMonth - yearStartMonth + 1);
+      // For full year ownership, use 12 months
+      let ownershipMonths = 12;
+      
+      // Adjust for partial year if acquired during the year
+      if (acquisitionDate.getFullYear() === year) {
+        ownershipMonths = 12 - acquisitionDate.getMonth(); // Months from acquisition to end of year
+      }
+      
+      // Adjust for partial year if sold during the year
+      if (saleDate && saleDate.getFullYear() === year) {
+        ownershipMonths = saleDate.getMonth() + 1; // Months from start of year to sale
+      }
       
       const expectedTotalPayments = totalMonthlyMortgage * ownershipMonths;
       
-      // Use the higher of recorded payments or expected payments for validation
+      // Use expected payments for validation (this represents what should have been paid)
       const actualMortgagePayments = mortgageExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
-      const totalMortgagePayments = Math.max(expectedTotalPayments, actualMortgagePayments);
+      
+      console.log(`🏦 Mortgage calculation debug:`, {
+        monthlyPrimary,
+        monthlySecondary,
+        totalMonthlyMortgage,
+        ownershipMonths,
+        expectedTotalPayments,
+        actualMortgagePayments,
+        acquisitionYear: acquisitionDate.getFullYear(),
+        targetYear: year
+      });
+      
+      // Use expected payments for validation
+      const totalMortgagePayments = expectedTotalPayments;
       
       // Calculate interest vs principal split
       const totalPrincipal = totalMortgagePayments - actualInterestPaid;
