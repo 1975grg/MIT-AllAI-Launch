@@ -401,6 +401,20 @@ export const transactionLineItems = pgTable("transaction_line_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Mortgage Adjustments (for tracking interest/principal splits)
+export const mortgageAdjustments = pgTable("mortgage_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  propertyId: varchar("property_id").notNull().references(() => properties.id),
+  year: integer("year").notNull(),
+  actualInterestPaid: decimal("actual_interest_paid", { precision: 10, scale: 2 }).notNull(),
+  totalMortgagePayments: decimal("total_mortgage_payments", { precision: 10, scale: 2 }).notNull(),
+  calculatedPrincipal: decimal("calculated_principal", { precision: 10, scale: 2 }).notNull(),
+  expenseCount: integer("expense_count").notNull(), // Number of expenses that were split
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // CAM Entries
 export const camEntries = pgTable("cam_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -568,6 +582,7 @@ export const insertReminderSchema = createInsertSchema(reminders).omit({ id: tru
 });
 // Line Item schemas
 export const insertTransactionLineItemSchema = createInsertSchema(transactionLineItems).omit({ id: true, createdAt: true });
+export const insertMortgageAdjustmentSchema = createInsertSchema(mortgageAdjustments).omit({ id: true, createdAt: true, updatedAt: true });
 
 export const insertExpenseSchema = insertTransactionSchema.extend({
   type: z.literal("Expense"),
@@ -626,6 +641,8 @@ export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type TransactionLineItem = typeof transactionLineItems.$inferSelect;
 export type InsertTransactionLineItem = z.infer<typeof insertTransactionLineItemSchema>;
+export type MortgageAdjustment = typeof mortgageAdjustments.$inferSelect;
+export type InsertMortgageAdjustment = z.infer<typeof insertMortgageAdjustmentSchema>;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Reminder = typeof reminders.$inferSelect;
 export type InsertReminder = z.infer<typeof insertReminderSchema>;
