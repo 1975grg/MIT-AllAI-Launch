@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import type { Property } from "@shared/schema";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RefreshCw } from "lucide-react";
+import type { Property, MortgageAdjustment } from "@shared/schema";
 
 interface MortgageAdjustmentFormProps {
   properties: Property[];
@@ -30,6 +32,7 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedProperty, setSelectedProperty] = useState<string>("");
+  const [showPrefilledAlert, setShowPrefilledAlert] = useState(false);
 
   const form = useForm<MortgageAdjustmentData>({
     resolver: zodResolver(mortgageAdjustmentSchema),
@@ -39,6 +42,27 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
       actualInterestPaid: 0,
     },
   });
+
+  const propertyId = form.watch("propertyId");
+  const year = form.watch("year");
+
+  // Query to fetch existing mortgage adjustment
+  const { data: existingAdjustment, isLoading: isLoadingExisting } = useQuery<MortgageAdjustment>({
+    queryKey: [`/api/expenses/mortgage-adjustment/${propertyId}/${year}`],
+    enabled: !!(propertyId && year),
+    retry: false, // Don't retry if not found (404 is expected)
+  });
+
+  // Pre-populate form when existing adjustment is found
+  useEffect(() => {
+    if (existingAdjustment && propertyId && year) {
+      form.setValue("actualInterestPaid", Number(existingAdjustment.actualInterestPaid));
+      setShowPrefilledAlert(true);
+      // Auto-hide the alert after 5 seconds
+      const timer = setTimeout(() => setShowPrefilledAlert(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [existingAdjustment, propertyId, year, form]);
 
   // Filter properties to only show those with mortgage info
   const propertiesWithMortgage = properties.filter(p => p.monthlyMortgage && Number(p.monthlyMortgage) > 0);
@@ -73,6 +97,16 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      {showPrefilledAlert && existingAdjustment && (
+        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950">
+          <RefreshCw className="h-4 w-4" />
+          <AlertDescription>
+            Previous values loaded from {existingAdjustment.createdAt ? new Date(existingAdjustment.createdAt).toLocaleDateString() : 'earlier adjustment'}. 
+            Interest amount: ${Number(existingAdjustment.actualInterestPaid).toLocaleString()}
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {propertiesWithMortgage.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-muted-foreground">No properties with mortgage information found.</p>
