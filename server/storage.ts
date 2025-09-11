@@ -495,6 +495,10 @@ export class DatabaseStorage implements IStorage {
         // Mortgage fields
         monthlyMortgage: properties.monthlyMortgage,
         interestRate: properties.interestRate,
+        mortgageStartDate: properties.mortgageStartDate,
+        monthlyMortgage2: properties.monthlyMortgage2,
+        interestRate2: properties.interestRate2,
+        mortgageStartDate2: properties.mortgageStartDate2,
         purchasePrice: properties.purchasePrice,
         downPayment: properties.downPayment,
         acquisitionDate: properties.acquisitionDate,
@@ -541,6 +545,10 @@ export class DatabaseStorage implements IStorage {
           // Mortgage fields - these were missing from the properties list!
           monthlyMortgage: row.monthlyMortgage ? Number(row.monthlyMortgage) : undefined,
           interestRate: row.interestRate ? Number(row.interestRate) : undefined,
+          mortgageStartDate: row.mortgageStartDate,
+          monthlyMortgage2: row.monthlyMortgage2 ? Number(row.monthlyMortgage2) : undefined,
+          interestRate2: row.interestRate2 ? Number(row.interestRate2) : undefined,
+          mortgageStartDate2: row.mortgageStartDate2,
           purchasePrice: row.purchasePrice ? Number(row.purchasePrice) : undefined,
           downPayment: row.downPayment ? Number(row.downPayment) : undefined,
           acquisitionDate: row.acquisitionDate,
