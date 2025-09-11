@@ -1412,12 +1412,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: `No mortgage expenses found for ${year}` });
       }
 
-      // Calculate mortgage payment period for the year (use mortgage start date, not acquisition)
-      const mortgageStartDate = new Date(property.mortgageStartDate || property.acquisitionDate);
+      // Find the first actual mortgage payment date from transaction history
+      const allMortgageTransactions = allTransactions.filter((transaction: any) => 
+        transaction.propertyId === propertyId &&
+        transaction.category === "Mortgage"
+      );
+      
+      const firstMortgagePayment = allMortgageTransactions.reduce((earliest: any, current: any) => {
+        if (!earliest) return current;
+        return new Date(current.date) < new Date(earliest.date) ? current : earliest;
+      }, null);
+      
+      const actualMortgageStartDate = firstMortgagePayment ? 
+        new Date(firstMortgagePayment.date) : 
+        new Date(property.mortgageStartDate || property.acquisitionDate);
+      
       const yearStart = new Date(year, 0, 1);
       const yearEnd = new Date(year, 11, 31);
       
-      const mortgageActiveStart = mortgageStartDate > yearStart ? mortgageStartDate : yearStart;
+      const mortgageActiveStart = actualMortgageStartDate > yearStart ? actualMortgageStartDate : yearStart;
       // Use sale date as end of mortgage payments if property was sold during the year
       const saleDate = property.saleDate ? new Date(property.saleDate) : null;
       const mortgageActiveEnd = (saleDate && saleDate.getFullYear() === year && saleDate < yearEnd) ? saleDate : yearEnd;
@@ -1433,15 +1446,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let mortgageActiveMonths = 12;
       
       // Adjust for partial year if mortgage started during the year
-      if (mortgageStartDate.getFullYear() === year) {
-        mortgageActiveMonths = 12 - mortgageStartDate.getMonth(); // Months from mortgage start to end of year
+      if (actualMortgageStartDate.getFullYear() === year) {
+        mortgageActiveMonths = 12 - actualMortgageStartDate.getMonth(); // Months from mortgage start to end of year
       }
       
       // Adjust for partial year if sold during the year
       if (saleDate && saleDate.getFullYear() === year) {
-        if (mortgageStartDate.getFullYear() === year) {
+        if (actualMortgageStartDate.getFullYear() === year) {
           // Both mortgage start and sale in same year
-          mortgageActiveMonths = Math.max(0, saleDate.getMonth() - mortgageStartDate.getMonth() + 1);
+          mortgageActiveMonths = Math.max(0, saleDate.getMonth() - actualMortgageStartDate.getMonth() + 1);
         } else {
           // Mortgage started before this year, sold during year
           mortgageActiveMonths = saleDate.getMonth() + 1; // Months from start of year to sale
@@ -1460,9 +1473,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mortgageActiveMonths,
         expectedTotalPayments,
         actualMortgagePayments,
-        mortgageStartYear: mortgageStartDate.getFullYear(),
-        mortgageStartMonth: mortgageStartDate.getMonth() + 1,
-        targetYear: year
+        firstPaymentDate: firstMortgagePayment?.date,
+        actualMortgageStartYear: actualMortgageStartDate.getFullYear(),
+        actualMortgageStartMonth: actualMortgageStartDate.getMonth() + 1,
+        targetYear: year,
+        totalMortgageTransactions: allMortgageTransactions.length
       });
       
       // Use expected payments for validation
