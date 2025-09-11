@@ -1412,16 +1412,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: `No mortgage expenses found for ${year}` });
       }
 
-      // Calculate ownership days for partial year (if applicable)
-      const acquisitionDate = new Date(property.acquisitionDate);
+      // Calculate mortgage payment period for the year (use mortgage start date, not acquisition)
+      const mortgageStartDate = new Date(property.mortgageStartDate || property.acquisitionDate);
       const yearStart = new Date(year, 0, 1);
       const yearEnd = new Date(year, 11, 31);
       
-      const ownershipStart = acquisitionDate > yearStart ? acquisitionDate : yearStart;
-      // Use sale date as end of ownership if property was sold during the year
+      const mortgageActiveStart = mortgageStartDate > yearStart ? mortgageStartDate : yearStart;
+      // Use sale date as end of mortgage payments if property was sold during the year
       const saleDate = property.saleDate ? new Date(property.saleDate) : null;
-      const ownershipEnd = (saleDate && saleDate.getFullYear() === year && saleDate < yearEnd) ? saleDate : yearEnd;
-      const ownershipDays = Math.ceil((ownershipEnd.getTime() - ownershipStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const mortgageActiveEnd = (saleDate && saleDate.getFullYear() === year && saleDate < yearEnd) ? saleDate : yearEnd;
+      const mortgageActiveDays = Math.ceil((mortgageActiveEnd.getTime() - mortgageActiveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const yearDays = new Date(year, 11, 31).getDate() === 31 && new Date(year, 1, 29).getDate() === 29 ? 366 : 365;
 
       // Calculate expected total mortgage payments for the year based on monthly amount and ownership period
@@ -1429,20 +1429,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const monthlySecondary = Number(property.monthlyMortgage2) || 0;
       const totalMonthlyMortgage = monthlyPrimary + monthlySecondary;
       
-      // For full year ownership, use 12 months
-      let ownershipMonths = 12;
+      // Calculate months of mortgage payments in the year
+      let mortgageActiveMonths = 12;
       
-      // Adjust for partial year if acquired during the year
-      if (acquisitionDate.getFullYear() === year) {
-        ownershipMonths = 12 - acquisitionDate.getMonth(); // Months from acquisition to end of year
+      // Adjust for partial year if mortgage started during the year
+      if (mortgageStartDate.getFullYear() === year) {
+        mortgageActiveMonths = 12 - mortgageStartDate.getMonth(); // Months from mortgage start to end of year
       }
       
       // Adjust for partial year if sold during the year
       if (saleDate && saleDate.getFullYear() === year) {
-        ownershipMonths = saleDate.getMonth() + 1; // Months from start of year to sale
+        if (mortgageStartDate.getFullYear() === year) {
+          // Both mortgage start and sale in same year
+          mortgageActiveMonths = Math.max(0, saleDate.getMonth() - mortgageStartDate.getMonth() + 1);
+        } else {
+          // Mortgage started before this year, sold during year
+          mortgageActiveMonths = saleDate.getMonth() + 1; // Months from start of year to sale
+        }
       }
       
-      const expectedTotalPayments = totalMonthlyMortgage * ownershipMonths;
+      const expectedTotalPayments = totalMonthlyMortgage * mortgageActiveMonths;
       
       // Use expected payments for validation (this represents what should have been paid)
       const actualMortgagePayments = mortgageExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
@@ -1451,10 +1457,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         monthlyPrimary,
         monthlySecondary,
         totalMonthlyMortgage,
-        ownershipMonths,
+        mortgageActiveMonths,
         expectedTotalPayments,
         actualMortgagePayments,
-        acquisitionYear: acquisitionDate.getFullYear(),
+        mortgageStartYear: mortgageStartDate.getFullYear(),
+        mortgageStartMonth: mortgageStartDate.getMonth() + 1,
         targetYear: year
       });
       
@@ -1475,7 +1482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalPayments: totalMortgagePayments,
         actualInterest: actualInterestPaid,
         calculatedPrincipal: totalPrincipal,
-        ownershipDays,
+        mortgageActiveDays,
         yearDays,
         expenseCount: mortgageExpenses.length
       });
@@ -1536,9 +1543,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adjustedCount,
         totalInterest: actualInterestPaid,
         totalPrincipal: totalPrincipal,
-        ownershipInfo: ownershipDays < yearDays ? 
-          `Partial year: ${ownershipDays} days of ${yearDays}` : 
-          "Full year ownership"
+        mortgageInfo: mortgageActiveDays < yearDays ? 
+          `Partial year: ${mortgageActiveDays} days of ${yearDays}` : 
+          "Full year mortgage payments"
       });
 
     } catch (error) {
