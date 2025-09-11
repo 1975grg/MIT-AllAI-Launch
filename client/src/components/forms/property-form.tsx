@@ -229,10 +229,10 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Auto-fill purchase price with property value when property value changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === 'propertyValue' && value.propertyValue && value.propertyValue !== '') {
+      if (name === 'propertyValue' && value.propertyValue && value.propertyValue !== 0) {
         // Auto-fill if purchase price is empty, zero, or not yet set
         const currentPurchasePrice = value.purchasePrice;
-        if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === '' || currentPurchasePrice === undefined) {
+        if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === undefined) {
           form.setValue('purchasePrice', Number(value.propertyValue));
         }
       }
