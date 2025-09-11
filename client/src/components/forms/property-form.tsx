@@ -184,6 +184,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         salePrice: initialData.salePrice ? Number(initialData.salePrice) : undefined,
         acquisitionDate: initialData.acquisitionDate ? new Date(initialData.acquisitionDate) : undefined,
         saleDate: initialData.saleDate ? new Date(initialData.saleDate) : undefined,
+        mortgageStartDate: initialData.mortgageStartDate ? new Date(initialData.mortgageStartDate) : undefined,
+        mortgageStartDate2: initialData.mortgageStartDate2 ? new Date(initialData.mortgageStartDate2) : undefined,
       };
       
       form.reset(resetData);
@@ -212,6 +214,12 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       }
       if (initialData.saleDate) {
         form.setValue('saleDate', new Date(initialData.saleDate));
+      }
+      if (initialData.mortgageStartDate) {
+        form.setValue('mortgageStartDate', new Date(initialData.mortgageStartDate));
+      }
+      if (initialData.mortgageStartDate2) {
+        form.setValue('mortgageStartDate2', new Date(initialData.mortgageStartDate2));
       }
     }
   }, [initialData, form]);
