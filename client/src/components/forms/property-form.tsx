@@ -1281,7 +1281,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   <FormControl>
                     <Input
                       type="date"
-                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                      value={field.value ? 
+                        (field.value instanceof Date ? 
+                          field.value.toISOString().split('T')[0] : 
+                          new Date(field.value).toISOString().split('T')[0]
+                        ) : ''}
                       onChange={(e) => {
                         const newDate = e.target.value ? new Date(e.target.value) : undefined;
                         console.log('🗓️ Mortgage start date changed:', { 
@@ -1410,7 +1414,11 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   <FormControl>
                     <Input
                       type="date"
-                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                      value={field.value ? 
+                        (field.value instanceof Date ? 
+                          field.value.toISOString().split('T')[0] : 
+                          new Date(field.value).toISOString().split('T')[0]
+                        ) : ''}
                       onChange={(e) => {
                         const newDate = e.target.value ? new Date(e.target.value) : undefined;
                         console.log('🗓️ Secondary mortgage start date changed:', { 
