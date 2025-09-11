@@ -132,34 +132,69 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
               
               <div className="border-t pt-3 mt-3">
                 <p className="font-medium text-foreground mb-2">Annual Mortgage Totals for {form.watch("year") || new Date().getFullYear()}:</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-primary font-semibold">
-                      Primary: ${(Number(selectedPropertyData.monthlyMortgage) * 12).toLocaleString()}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      ${Number(selectedPropertyData.monthlyMortgage).toLocaleString()} × 12 months
-                    </p>
-                  </div>
-                  {selectedPropertyData.monthlyMortgage2 && Number(selectedPropertyData.monthlyMortgage2) > 0 && (
-                    <div>
-                      <p className="text-primary font-semibold">
-                        Secondary: ${(Number(selectedPropertyData.monthlyMortgage2) * 12).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        ${Number(selectedPropertyData.monthlyMortgage2).toLocaleString()} × 12 months
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-2 pt-2 border-t">
-                  <p className="text-lg font-bold text-primary">
-                    Total Annual: ${((Number(selectedPropertyData.monthlyMortgage) + (Number(selectedPropertyData.monthlyMortgage2) || 0)) * 12).toLocaleString()}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    This is the total you should allocate between interest and principal
-                  </p>
-                </div>
+                {(() => {
+                  const year = form.watch("year") || new Date().getFullYear();
+                  
+                  // Calculate active months based on mortgage start date
+                  const calculateActiveMonths = (mortgageStartDate: string | Date | undefined) => {
+                    if (!mortgageStartDate) return 12;
+                    
+                    const startDate = new Date(mortgageStartDate);
+                    const yearStart = new Date(year, 0, 1);
+                    const yearEnd = new Date(year, 11, 31);
+                    
+                    const activeStart = startDate > yearStart ? startDate : yearStart;
+                    const activeEnd = yearEnd;
+                    
+                    if (activeStart > yearEnd) return 0;
+                    
+                    const startMonth = activeStart.getMonth();
+                    const startYear = activeStart.getFullYear();
+                    const endMonth = activeEnd.getMonth();
+                    const endYear = activeEnd.getFullYear();
+                    
+                    return (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+                  };
+                  
+                  const primaryMonths = calculateActiveMonths(selectedPropertyData.mortgageStartDate);
+                  const secondaryMonths = calculateActiveMonths(selectedPropertyData.mortgageStartDate2);
+                  
+                  const primaryTotal = Number(selectedPropertyData.monthlyMortgage) * primaryMonths;
+                  const secondaryTotal = selectedPropertyData.monthlyMortgage2 ? Number(selectedPropertyData.monthlyMortgage2) * secondaryMonths : 0;
+                  
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-primary font-semibold">
+                            Primary: ${primaryTotal.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            ${Number(selectedPropertyData.monthlyMortgage).toLocaleString()} × {primaryMonths} months
+                          </p>
+                        </div>
+                        {selectedPropertyData.monthlyMortgage2 && Number(selectedPropertyData.monthlyMortgage2) > 0 && (
+                          <div>
+                            <p className="text-primary font-semibold">
+                              Secondary: ${secondaryTotal.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              ${Number(selectedPropertyData.monthlyMortgage2).toLocaleString()} × {secondaryMonths} months
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 pt-2 border-t">
+                        <p className="text-lg font-bold text-primary">
+                          Total Annual: ${(primaryTotal + secondaryTotal).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          This is the total you should allocate between interest and principal
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
