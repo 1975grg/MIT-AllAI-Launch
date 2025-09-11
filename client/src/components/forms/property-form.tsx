@@ -1281,9 +1281,16 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   <FormControl>
                     <Input
                       type="date"
-                      {...field}
                       value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      onChange={(e) => {
+                        const newDate = e.target.value ? new Date(e.target.value) : undefined;
+                        console.log('🗓️ Mortgage start date changed:', { 
+                          inputValue: e.target.value, 
+                          newDate,
+                          previousValue: field.value 
+                        });
+                        field.onChange(newDate);
+                      }}
                       data-testid="input-mortgage-start-date"
                     />
                   </FormControl>
@@ -1403,9 +1410,16 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                   <FormControl>
                     <Input
                       type="date"
-                      {...field}
                       value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      onChange={(e) => {
+                        const newDate = e.target.value ? new Date(e.target.value) : undefined;
+                        console.log('🗓️ Secondary mortgage start date changed:', { 
+                          inputValue: e.target.value, 
+                          newDate,
+                          previousValue: field.value 
+                        });
+                        field.onChange(newDate);
+                      }}
                       data-testid="input-mortgage-start-date-2"
                     />
                   </FormControl>
