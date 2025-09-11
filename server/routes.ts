@@ -444,6 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const properties = await storage.getProperties(org.id);
       
+      console.log("🏠 GET /api/properties response sample:", JSON.stringify(properties[0], null, 2));
       
       res.json(properties);
     } catch (error) {
