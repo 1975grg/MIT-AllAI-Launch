@@ -365,6 +365,8 @@ export default function Properties() {
                     purchasePrice: editingProperty.purchasePrice,
                     downPayment: editingProperty.downPayment,
                     acquisitionDate: editingProperty.acquisitionDate,
+                    mortgageStartDate: editingProperty.mortgageStartDate,
+                    mortgageStartDate2: editingProperty.mortgageStartDate2,
                     salePrice: editingProperty.salePrice,
                     saleDate: editingProperty.saleDate,
                     ownerships: editingProperty.ownerships?.map(o => ({
