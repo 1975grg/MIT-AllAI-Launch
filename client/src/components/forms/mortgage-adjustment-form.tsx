@@ -107,6 +107,13 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
 
           {selectedPropertyData && (
             <div className="bg-muted p-4 rounded-lg text-sm space-y-3">
+              {console.log("🏠 Selected property data:", {
+                id: selectedPropertyData.id,
+                name: selectedPropertyData.name,
+                acquisitionDate: selectedPropertyData.acquisitionDate,
+                mortgageStartDate: selectedPropertyData.mortgageStartDate,
+                mortgageStartDate2: selectedPropertyData.mortgageStartDate2
+              })}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="font-medium text-foreground">Primary Mortgage</p>
