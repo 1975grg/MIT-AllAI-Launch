@@ -70,6 +70,12 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
   };
 
   const selectedPropertyData = propertiesWithMortgage.find(p => p.id === selectedProperty);
+  
+  // Debug: Log all properties data when component mounts
+  React.useEffect(() => {
+    console.log("🏠 All properties passed to MortgageAdjustmentForm:", properties);
+    console.log("🏠 Properties with mortgage:", propertiesWithMortgage);
+  }, [properties, propertiesWithMortgage]);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
