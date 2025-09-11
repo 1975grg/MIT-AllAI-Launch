@@ -71,11 +71,6 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
 
   const selectedPropertyData = propertiesWithMortgage.find(p => p.id === selectedProperty);
   
-  // Debug: Log all properties data when component mounts
-  useEffect(() => {
-    console.log("🏠 All properties passed to MortgageAdjustmentForm:", properties);
-    console.log("🏠 Properties with mortgage:", propertiesWithMortgage);
-  }, [properties, propertiesWithMortgage]);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -141,22 +136,12 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
                 {(() => {
                   const year = form.watch("year") || new Date().getFullYear();
                   
-                  // Debug logging
-                  console.log("🏠 Selected property data:", {
-                    id: selectedPropertyData.id,
-                    name: selectedPropertyData.name,
-                    acquisitionDate: selectedPropertyData.acquisitionDate,
-                    mortgageStartDate: selectedPropertyData.mortgageStartDate,
-                    mortgageStartDate2: selectedPropertyData.mortgageStartDate2
-                  });
                   
                   // Calculate active months based on mortgage start date  
                   const calculateActiveMonths = (mortgageStartDate: string | Date | undefined) => {
                     if (!mortgageStartDate) {
-                      console.log("⚠️ No mortgage start date provided, defaulting to 12 months");
-                      return 12;
+                        return 12;
                     }
-                    console.log("📅 Using mortgage start date:", mortgageStartDate);
                     
                     const startDate = new Date(mortgageStartDate);
                     const yearStart = new Date(Date.UTC(year, 0, 1));
@@ -173,7 +158,6 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
                     const endYear = activeEnd.getUTCFullYear();
                     
                     const calculatedMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-                    console.log("🧮 Calculated months:", calculatedMonths, "for start:", activeStart.toISOString().split('T')[0]);
                     return calculatedMonths;
                   };
                   
