@@ -172,7 +172,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
-    if (initialData && (initialData as any).id) {  // Only reset for editing (when there's an ID)
+    if (initialData) {  // Reset for any initialData (removed ID check)
       console.log("🏠 Property form initialData:", initialData);
       console.log("🗓️ mortgageStartDate field:", initialData.mortgageStartDate);
       
@@ -1289,7 +1289,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                           new Date(field.value).toISOString().split('T')[0]
                         ) : ''}
                       onChange={(e) => {
-                        const newDate = e.target.value ? new Date(e.target.value) : undefined;
+                        const newDate = e.target.value ? new Date(e.target.value + 'T00:00:00.000Z') : undefined;
                         console.log('🗓️ Mortgage start date changed:', { 
                           inputValue: e.target.value, 
                           newDate,
