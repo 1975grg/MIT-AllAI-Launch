@@ -204,6 +204,8 @@ export default function Properties() {
       // Convert date fields to Date objects
       acquisitionDate: property.acquisitionDate ? new Date(property.acquisitionDate) : undefined,
       saleDate: property.saleDate ? new Date(property.saleDate) : undefined,
+      mortgageStartDate: property.mortgageStartDate ? new Date(property.mortgageStartDate) : undefined,
+      mortgageStartDate2: property.mortgageStartDate2 ? new Date(property.mortgageStartDate2) : undefined,
     };
     
     setEditingProperty(propertyForEditing);
