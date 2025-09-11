@@ -1412,20 +1412,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: `No mortgage expenses found for ${year}` });
       }
 
-      // Find the first actual mortgage payment date from transaction history
-      const allMortgageTransactions = allTransactions.filter((transaction: any) => 
-        transaction.propertyId === propertyId &&
-        transaction.category === "Mortgage"
-      );
-      
-      const firstMortgagePayment = allMortgageTransactions.reduce((earliest: any, current: any) => {
-        if (!earliest) return current;
-        return new Date(current.date) < new Date(earliest.date) ? current : earliest;
-      }, null);
-      
-      const actualMortgageStartDate = firstMortgagePayment ? 
-        new Date(firstMortgagePayment.date) : 
-        new Date(property.mortgageStartDate || property.acquisitionDate);
+      // Use the property's mortgage start date field
+      const actualMortgageStartDate = new Date(property.mortgageStartDate || property.acquisitionDate);
       
       const yearStart = new Date(year, 0, 1);
       const yearEnd = new Date(year, 11, 31);
@@ -1473,11 +1461,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mortgageActiveMonths,
         expectedTotalPayments,
         actualMortgagePayments,
-        firstPaymentDate: firstMortgagePayment?.date,
+        propertyMortgageStartDate: property.mortgageStartDate,
         actualMortgageStartYear: actualMortgageStartDate.getFullYear(),
         actualMortgageStartMonth: actualMortgageStartDate.getMonth() + 1,
-        targetYear: year,
-        totalMortgageTransactions: allMortgageTransactions.length
+        targetYear: year
       });
       
       // Use expected payments for validation
