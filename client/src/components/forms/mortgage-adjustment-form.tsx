@@ -107,13 +107,6 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
 
           {selectedPropertyData && (
             <div className="bg-muted p-4 rounded-lg text-sm space-y-3">
-              {console.log("🏠 Selected property data:", {
-                id: selectedPropertyData.id,
-                name: selectedPropertyData.name,
-                acquisitionDate: selectedPropertyData.acquisitionDate,
-                mortgageStartDate: selectedPropertyData.mortgageStartDate,
-                mortgageStartDate2: selectedPropertyData.mortgageStartDate2
-              })}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="font-medium text-foreground">Primary Mortgage</p>
@@ -142,6 +135,15 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
                 {(() => {
                   const year = form.watch("year") || new Date().getFullYear();
                   
+                  // Debug logging
+                  console.log("🏠 Selected property data:", {
+                    id: selectedPropertyData.id,
+                    name: selectedPropertyData.name,
+                    acquisitionDate: selectedPropertyData.acquisitionDate,
+                    mortgageStartDate: selectedPropertyData.mortgageStartDate,
+                    mortgageStartDate2: selectedPropertyData.mortgageStartDate2
+                  });
+                  
                   // Calculate active months based on mortgage start date
                   const calculateActiveMonths = (mortgageStartDate: string | Date | undefined) => {
                     if (!mortgageStartDate) {
@@ -169,8 +171,8 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
                     return calculatedMonths;
                   };
                   
-                  const primaryMonths = calculateActiveMonths(selectedPropertyData.mortgageStartDate);
-                  const secondaryMonths = calculateActiveMonths(selectedPropertyData.mortgageStartDate2);
+                  const primaryMonths = calculateActiveMonths(selectedPropertyData.mortgageStartDate || undefined);
+                  const secondaryMonths = calculateActiveMonths(selectedPropertyData.mortgageStartDate2 || undefined);
                   
                   const primaryTotal = Number(selectedPropertyData.monthlyMortgage) * primaryMonths;
                   const secondaryTotal = selectedPropertyData.monthlyMortgage2 ? Number(selectedPropertyData.monthlyMortgage2) * secondaryMonths : 0;
