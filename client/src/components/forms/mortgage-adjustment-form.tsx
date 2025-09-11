@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -72,7 +72,7 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
   const selectedPropertyData = propertiesWithMortgage.find(p => p.id === selectedProperty);
   
   // Debug: Log all properties data when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("🏠 All properties passed to MortgageAdjustmentForm:", properties);
     console.log("🏠 Properties with mortgage:", propertiesWithMortgage);
   }, [properties, propertiesWithMortgage]);
@@ -150,7 +150,7 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
                     mortgageStartDate2: selectedPropertyData.mortgageStartDate2
                   });
                   
-                  // Calculate active months based on mortgage start date
+                  // Calculate active months based on mortgage start date  
                   const calculateActiveMonths = (mortgageStartDate: string | Date | undefined) => {
                     if (!mortgageStartDate) {
                       console.log("⚠️ No mortgage start date provided, defaulting to 12 months");
@@ -159,21 +159,21 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
                     console.log("📅 Using mortgage start date:", mortgageStartDate);
                     
                     const startDate = new Date(mortgageStartDate);
-                    const yearStart = new Date(year, 0, 1);
-                    const yearEnd = new Date(year, 11, 31);
+                    const yearStart = new Date(Date.UTC(year, 0, 1));
+                    const yearEnd = new Date(Date.UTC(year, 11, 31));
                     
                     const activeStart = startDate > yearStart ? startDate : yearStart;
                     const activeEnd = yearEnd;
                     
                     if (activeStart > yearEnd) return 0;
                     
-                    const startMonth = activeStart.getMonth();
-                    const startYear = activeStart.getFullYear();
-                    const endMonth = activeEnd.getMonth();
-                    const endYear = activeEnd.getFullYear();
+                    const startMonth = activeStart.getUTCMonth();
+                    const startYear = activeStart.getUTCFullYear();
+                    const endMonth = activeEnd.getUTCMonth();
+                    const endYear = activeEnd.getUTCFullYear();
                     
                     const calculatedMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-                    console.log("🧮 Calculated months:", calculatedMonths, "for start:", activeStart.toLocaleDateString());
+                    console.log("🧮 Calculated months:", calculatedMonths, "for start:", activeStart.toISOString().split('T')[0]);
                     return calculatedMonths;
                   };
                   
