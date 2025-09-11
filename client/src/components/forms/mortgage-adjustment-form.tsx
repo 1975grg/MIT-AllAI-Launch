@@ -137,7 +137,11 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
                   
                   // Calculate active months based on mortgage start date
                   const calculateActiveMonths = (mortgageStartDate: string | Date | undefined) => {
-                    if (!mortgageStartDate) return 12;
+                    if (!mortgageStartDate) {
+                      console.log("⚠️ No mortgage start date provided, defaulting to 12 months");
+                      return 12;
+                    }
+                    console.log("📅 Using mortgage start date:", mortgageStartDate);
                     
                     const startDate = new Date(mortgageStartDate);
                     const yearStart = new Date(year, 0, 1);
@@ -153,7 +157,9 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
                     const endMonth = activeEnd.getMonth();
                     const endYear = activeEnd.getFullYear();
                     
-                    return (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+                    const calculatedMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+                    console.log("🧮 Calculated months:", calculatedMonths, "for start:", activeStart.toLocaleDateString());
+                    return calculatedMonths;
                   };
                   
                   const primaryMonths = calculateActiveMonths(selectedPropertyData.mortgageStartDate);
