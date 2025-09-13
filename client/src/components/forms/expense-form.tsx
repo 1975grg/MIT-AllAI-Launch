@@ -336,11 +336,6 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
 
   return (
     <div className="max-h-[80vh] overflow-y-auto">
-      {/* Debug info */}
-      <div className="text-xs text-gray-500 mb-2">
-        Debug: Form valid: {form.formState.isValid ? 'Yes' : 'No'}, 
-        Errors: {Object.keys(form.formState.errors).join(', ') || 'None'}
-      </div>
       <Form {...form}>
         <form onSubmit={(e) => {
           console.log("Form onSubmit triggered!");
@@ -497,7 +492,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
         <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
           <div className="flex items-center space-x-2">
             <Receipt className="h-4 w-4" />
-            <h4 className="text-sm font-medium">Tax & Deduction Settings</h4>
+            <h4 className="text-sm font-medium">Tax Deduction</h4>
           </div>
           
           {/* Tax Deductible Override */}
@@ -520,7 +515,10 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                     )}
                   </FormLabel>
                   <div className="text-sm text-muted-foreground">
-                    Override the automatic category-based tax deductible status
+                    {selectedCategory?.taxDeductible !== undefined 
+                      ? `Most "${selectedCategory.label}" expenses are ${selectedCategory.taxDeductible ? 'tax deductible' : 'not deductible'}`
+                      : 'Toggle if this expense has different tax treatment than typical for its category'
+                    }
                   </div>
                 </div>
                 <FormControl>
@@ -543,9 +541,9 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                     <div className="space-y-0.5">
-                      <FormLabel>Deduction Method</FormLabel>
+                      <FormLabel>When to Deduct</FormLabel>
                       <div className="text-sm text-muted-foreground">
-                        Choose how to deduct this expense for tax purposes
+                        Most expenses are deducted in the year they occur
                       </div>
                     </div>
                     <FormControl>
@@ -571,14 +569,14 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                         <SelectContent>
                           <SelectItem value="full">
                             <div className="flex flex-col items-start">
-                              <span className="font-medium">Full deduction this year</span>
-                              <span className="text-xs text-muted-foreground">Deduct entire amount in {new Date().getFullYear()}</span>
+                              <span className="font-medium">Deduct all this year</span>
+                              <span className="text-xs text-muted-foreground">Full ${form.watch("amount") ? Number(form.watch("amount")).toLocaleString() : '0'} deduction in {new Date().getFullYear()} (typical)</span>
                             </div>
                           </SelectItem>
                           <SelectItem value="amortized">
                             <div className="flex flex-col items-start">
-                              <span className="font-medium">Amortize over multiple years</span>
-                              <span className="text-xs text-muted-foreground">Spread deduction over several years</span>
+                              <span className="font-medium">Spread over multiple years</span>
+                              <span className="text-xs text-muted-foreground">Split deduction across several tax years</span>
                             </div>
                           </SelectItem>
                         </SelectContent>
@@ -596,7 +594,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                     name="amortizationYears"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Amortization Period</FormLabel>
+                        <FormLabel>Number of Years</FormLabel>
                         <Select
                           value={field.value?.toString()}
                           onValueChange={(value) => field.onChange(parseInt(value))}
@@ -628,7 +626,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                     name="amortizationStartDate"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Amortization Start Date</FormLabel>
+                        <FormLabel>Start Date</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
