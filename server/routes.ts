@@ -1359,8 +1359,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amortizationMethod: req.body.amortizationMethod,
       };
 
+      console.log("DEBUG: Data being sent to storage.updateTransaction:", JSON.stringify(cleanedData, null, 2));
+
       // Validate the data using the expense schema
       const validatedData = insertExpenseSchema.parse(cleanedData);
+      console.log("DEBUG: Data after Zod validation:", JSON.stringify(validatedData, null, 2));
 
       const updatedExpense = await storage.updateTransaction(req.params.id, validatedData as any);
       res.json(updatedExpense);
