@@ -580,6 +580,11 @@ export const insertExpenseSchema = insertTransactionSchema.extend({
   recurringFrequency: z.enum(["days", "weeks", "months", "years"]).optional(),
   recurringInterval: z.number().min(1).default(1),
   recurringEndDate: z.string().datetime().optional(),
+  // Explicitly include amortization fields to ensure they're not stripped
+  isAmortized: z.boolean().default(false),
+  amortizationYears: z.number().int().min(2).max(30).optional(),
+  amortizationStartDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  amortizationMethod: z.enum(["straight_line"]).default("straight_line"),
   taxDeductible: z.boolean().default(true),
   parentRecurringId: z.string().optional(),
   scope: z.enum(["property", "operational"]).default("property"),
