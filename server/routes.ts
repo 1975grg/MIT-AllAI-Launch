@@ -18,6 +18,7 @@ import {
   insertExpenseSchema,
   insertReminderSchema,
 } from "@shared/schema";
+import OpenAI from "openai";
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
@@ -1874,6 +1875,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "TEST: Failed to generate recurring transactions",
         error: error.message,
         timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // AI Property Assistant endpoint
+  app.post('/api/ai/ask', isAuthenticated, async (req: any, res) => {
+    try {
+      const { question } = req.body;
+      const orgId = req.user.orgId;
+
+      if (!question?.trim()) {
+        return res.status(400).json({ message: "Question is required" });
+      }
+
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ 
+          message: "AI service not configured" 
+        });
+      }
+
+      // Initialize OpenAI
+      const openai = new OpenAI({ 
+        apiKey: process.env.OPENAI_API_KEY 
+      });
+
+      // Gather property data for context
+      const [properties, units, tenants, cases, reminders, transactions, expenses] = await Promise.all([
+        storage.getProperties(orgId),
+        storage.getUnits(orgId),
+        storage.getTenants(orgId),
+        storage.getCases(orgId),
+        storage.getReminders(orgId),
+        storage.getTransactions(orgId),
+        storage.getExpenses(orgId)
+      ]);
+
+      // Build context for AI
+      const context = {
+        properties: properties.map(p => ({
+          name: p.name,
+          type: p.type,
+          city: p.city,
+          state: p.state,
+          value: p.propertyValue,
+          monthlyMortgage: p.monthlyMortgage,
+          interestRate: p.interestRate,
+          purchasePrice: p.purchasePrice,
+          acquisitionDate: p.acquisitionDate
+        })),
+        units: units.map(u => ({
+          propertyName: u.propertyName,
+          unitNumber: u.unitNumber,
+          bedrooms: u.bedrooms,
+          bathrooms: u.bathrooms,
+          sqft: u.sqft,
+          monthlyRent: u.monthlyRent
+        })),
+        tenants: tenants.map(t => ({
+          name: t.name,
+          propertyName: t.propertyName,
+          unitNumber: t.unitNumber,
+          monthlyRent: t.monthlyRent,
+          leaseStart: t.leaseStart,
+          leaseEnd: t.leaseEnd,
+          status: t.status
+        })),
+        maintenanceCases: cases.map(c => ({
+          title: c.title,
+          status: c.status,
+          priority: c.priority,
+          createdAt: c.createdAt
+        })),
+        reminders: reminders.map(r => ({
+          title: r.title,
+          type: r.type,
+          dueAt: r.dueAt,
+          completed: r.completed
+        })),
+        financials: {
+          totalRevenue: transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + (t.amount || 0), 0),
+          totalExpenses: expenses.reduce((sum, e) => sum + (e.amount || 0), 0),
+          monthlyRevenue: transactions.filter(t => {
+            const transactionDate = new Date(t.date);
+            const currentMonth = new Date();
+            return t.type === 'income' && 
+                   transactionDate.getMonth() === currentMonth.getMonth() && 
+                   transactionDate.getFullYear() === currentMonth.getFullYear();
+          }).reduce((sum, t) => sum + (t.amount || 0), 0)
+        }
+      };
+
+      // Create AI prompt
+      const prompt = `You are a helpful property management assistant. Answer questions about the user's property portfolio based on the provided data.
+
+PROPERTY DATA:
+${JSON.stringify(context, null, 2)}
+
+USER QUESTION: ${question}
+
+Please provide a helpful, specific answer based on the actual data provided. Keep responses concise but informative. If you need data that isn't available, mention what additional information would be helpful.`;
+
+      // Call OpenAI
+      // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      const completion = await openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [
+          {
+            role: "system",
+            content: "You are a knowledgeable property management assistant. Provide helpful, accurate answers based on the user's actual property data. Be concise but thorough."
+          },
+          {
+            role: "user", 
+            content: prompt
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      });
+
+      const answer = completion.choices[0].message.content;
+
+      res.json({
+        answer: answer || "I'm sorry, I couldn't generate a response right now.",
+        sources: ["Property Database"],
+        confidence: 0.9
+      });
+
+    } catch (error) {
+      console.error("AI request failed:", error);
+      res.status(500).json({ 
+        message: "Failed to process AI request",
+        error: error.message 
       });
     }
   });

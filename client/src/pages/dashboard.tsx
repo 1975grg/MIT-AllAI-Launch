@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Building, DollarSign, AlertTriangle, Bell, Check, Clock, X, Receipt, Users, Wrench } from "lucide-react";
 import type { SmartCase, Reminder } from "@shared/schema";
+import PropertyAssistant from "@/components/ai/property-assistant";
 
 type DashboardStats = {
   totalProperties: number;
@@ -179,6 +180,9 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* AI Property Assistant */}
+          <PropertyAssistant />
 
           {/* Main Dashboard Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
