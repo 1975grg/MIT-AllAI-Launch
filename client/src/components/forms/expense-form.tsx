@@ -494,181 +494,159 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
         </div>
 
         {/* Tax & Deduction Settings */}
-        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+        <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
           <div className="flex items-center space-x-2">
             <Receipt className="h-4 w-4" />
             <h4 className="text-sm font-medium">Tax & Deduction Settings</h4>
           </div>
           
-          {/* Tax Deductible Override */}
+          {/* Deduction Method - Primary Choice at Top */}
           <FormField
             control={form.control}
-            name="taxDeductible"
+            name="isAmortized"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                <div className="space-y-0.5">
-                  <FormLabel className="flex items-center space-x-2">
-                    <span>Tax Deductible</span>
-                    {form.watch("taxDeductible") ? (
-                      <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 border border-green-300 rounded-full text-xs font-medium">
-                        ✓ Tax Deductible
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full text-xs font-medium">
-                        ⚠ Not Deductible
-                      </div>
-                    )}
-                  </FormLabel>
-                  <div className="text-sm text-muted-foreground">
-                    Override the automatic category-based tax deductible status
-                  </div>
-                </div>
+              <FormItem className="space-y-2">
+                <FormLabel>Deduction Method</FormLabel>
                 <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="switch-tax-deductible"
-                  />
+                  <Select
+                    value={field.value ? "amortized" : "full"}
+                    onValueChange={(value) => {
+                      const isAmortized = value === "amortized";
+                      field.onChange(isAmortized);
+                      
+                      // Reset amortization fields when switching to full deduction
+                      if (!isAmortized) {
+                        form.setValue("amortizationYears", undefined);
+                        form.setValue("amortizationStartDate", undefined);
+                      } else {
+                        // Set default start date to expense date when enabling amortization
+                        form.setValue("amortizationStartDate", form.getValues("date"));
+                      }
+                    }}
+                  >
+                    <SelectTrigger data-testid="select-deduction-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full">Fully this year</SelectItem>
+                      <SelectItem value="amortized">Deduct over time</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FormControl>
               </FormItem>
             )}
           />
 
-          {/* Amortization Selector - Only for Deductible Expenses */}
-          {form.watch("taxDeductible") && (
-            <div className="space-y-4">
+          {/* Years Dropdown - Only show when "Deduct over time" is selected */}
+          {form.watch("isAmortized") && (
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="isAmortized"
+                name="amortizationYears"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Deduction Method</FormLabel>
-                      <div className="text-sm text-muted-foreground">
-                        Choose how to deduct this expense for tax purposes
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Select
-                        value={field.value ? "amortized" : "full"}
-                        onValueChange={(value) => {
-                          const isAmortized = value === "amortized";
-                          field.onChange(isAmortized);
-                          
-                          // Reset amortization fields when switching to full deduction
-                          if (!isAmortized) {
-                            form.setValue("amortizationYears", undefined);
-                            form.setValue("amortizationStartDate", undefined);
-                          } else {
-                            // Set default start date to expense date when enabling amortization
-                            form.setValue("amortizationStartDate", form.getValues("date"));
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-48" data-testid="select-deduction-method">
-                          <SelectValue />
+                  <FormItem>
+                    <FormLabel>Years</FormLabel>
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-amortization-years">
+                          <SelectValue placeholder="Select years" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="full">
-                            <div className="flex flex-col items-start">
-                              <span className="font-medium">Full deduction this year</span>
-                              <span className="text-xs text-muted-foreground">Deduct entire amount in {new Date().getFullYear()}</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="amortized">
-                            <div className="flex flex-col items-start">
-                              <span className="font-medium">Amortize over multiple years</span>
-                              <span className="text-xs text-muted-foreground">Spread deduction over several years</span>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="2">2 years</SelectItem>
+                        <SelectItem value="3">3 years</SelectItem>
+                        <SelectItem value="5">5 years</SelectItem>
+                        <SelectItem value="7">7 years</SelectItem>
+                        <SelectItem value="10">10 years</SelectItem>
+                        <SelectItem value="15">15 years</SelectItem>
+                        <SelectItem value="20">20 years</SelectItem>
+                        <SelectItem value="25">25 years</SelectItem>
+                        <SelectItem value="30">30 years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Amortization Years Selector */}
-              {form.watch("isAmortized") && (
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="amortizationYears"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Amortization Period</FormLabel>
-                        <Select
-                          value={field.value?.toString()}
-                          onValueChange={(value) => field.onChange(parseInt(value))}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-amortization-years">
-                              <SelectValue placeholder="Select years" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="2">2 years</SelectItem>
-                            <SelectItem value="3">3 years</SelectItem>
-                            <SelectItem value="5">5 years</SelectItem>
-                            <SelectItem value="7">7 years</SelectItem>
-                            <SelectItem value="10">10 years</SelectItem>
-                            <SelectItem value="15">15 years</SelectItem>
-                            <SelectItem value="20">20 years</SelectItem>
-                            <SelectItem value="25">25 years</SelectItem>
-                            <SelectItem value="30">30 years</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="amortizationStartDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Amortization Start Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "justify-start text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                data-testid="button-amortization-start-date"
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick start date</span>
-                                )}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date > new Date() || date < new Date("1900-01-01")
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
+              <FormField
+                control={form.control}
+                name="amortizationStartDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Start Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-amortization-start-date"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick date</span>
+                            )}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           )}
+
+          {/* Override Toggle - Small and at Bottom */}
+          <FormField
+            control={form.control}
+            name="taxDeductible"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between pt-2 border-t border-muted">
+                <div className="space-y-0">
+                  <FormLabel className="text-xs text-muted-foreground">
+                    Override automatic tax deductible status
+                  </FormLabel>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value !== (selectedCategory?.taxDeductible ?? true)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        // User wants to override - toggle the automatic value
+                        field.onChange(!(selectedCategory?.taxDeductible ?? true));
+                      } else {
+                        // User wants to use automatic - set to category default
+                        field.onChange(selectedCategory?.taxDeductible ?? true);
+                      }
+                    }}
+                    data-testid="switch-tax-deductible-override"
+                    className="scale-75"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
         </div>
 
         {/* Date Selection */}
