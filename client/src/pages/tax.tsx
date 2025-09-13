@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calculator, FileText, TrendingUp } from "lucide-react";
 import MortgageAdjustmentForm from "@/components/forms/mortgage-adjustment-form";
-import type { Property } from "@shared/schema";
+import type { Property, Transaction } from "@shared/schema";
+import { getExpenseDeductionForYear, getAmortizationStatus } from "@/lib/calculations";
 
 export default function Tax() {
   const { toast } = useToast();
@@ -34,9 +35,13 @@ export default function Tax() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch properties
+  // Fetch properties and transactions
   const { data: properties = [], error } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
+  });
+
+  const { data: transactions = [] } = useQuery<Transaction[]>({
+    queryKey: ["/api/transactions"],
   });
 
   // Handle query errors
@@ -73,7 +78,7 @@ export default function Tax() {
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header title="Tax" />
         
         <main className="flex-1 overflow-y-auto">
           <div className="p-6">
@@ -85,6 +90,122 @@ export default function Tax() {
           Manage tax-related features, adjustments, and reporting for your properties.
         </p>
       </div>
+
+      {/* Current Year Tax Summary */}
+      {(() => {
+        const currentYear = new Date().getFullYear();
+        const deductibleExpenses = transactions.filter(t => t.taxDeductible);
+        
+        // Calculate current year deductions
+        const currentYearDeductions = deductibleExpenses.map(expense => {
+          const deduction = getExpenseDeductionForYear(expense, currentYear);
+          const amortizationStatus = getAmortizationStatus(expense, currentYear);
+          return {
+            expense,
+            deduction,
+            isAmortized: amortizationStatus.isAmortized,
+            yearsRemaining: amortizationStatus.yearsRemaining,
+            isCompleted: amortizationStatus.isCompleted
+          };
+        }).filter(item => item.deduction > 0);
+
+        const totalCurrentYearDeduction = currentYearDeductions.reduce((sum, item) => sum + item.deduction, 0);
+        const amortizedDeductions = currentYearDeductions.filter(item => item.isAmortized);
+        const nonAmortizedDeductions = currentYearDeductions.filter(item => !item.isAmortized);
+        const totalAmortizedAmount = amortizedDeductions.reduce((sum, item) => sum + item.deduction, 0);
+        const totalNonAmortizedAmount = nonAmortizedDeductions.reduce((sum, item) => sum + item.deduction, 0);
+
+        return (
+          <Card className="border-green-200 bg-green-50/50" data-testid="card-tax-summary">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2 text-green-800">
+                <TrendingUp className="h-5 w-5" />
+                <span>{currentYear} Tax Deductions Summary</span>
+              </CardTitle>
+              <CardDescription className="text-green-700">
+                Current year deductible amounts including multi-year amortized expenses
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                
+                {/* Total Current Year Deductions */}
+                <div className="bg-white rounded-lg p-4 border border-green-200">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600" data-testid="text-total-deductions">
+                      ${totalCurrentYearDeduction.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-green-700 font-medium">Total {currentYear} Deductions</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {currentYearDeductions.length} deductible expense{currentYearDeductions.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Amortized Expenses */}
+                <div className="bg-white rounded-lg p-4 border border-blue-200">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-600" data-testid="text-amortized-deductions">
+                      ${totalAmortizedAmount.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-blue-700 font-medium">From Amortized Expenses</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {amortizedDeductions.length} multi-year expense{amortizedDeductions.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Non-Amortized Expenses */}
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-600" data-testid="text-full-deductions">
+                      ${totalNonAmortizedAmount.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-gray-700 font-medium">Full Deductions</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {nonAmortizedDeductions.length} single-year expense{nonAmortizedDeductions.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Amortization Details */}
+              {amortizedDeductions.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-green-200">
+                  <h4 className="font-semibold text-green-800 mb-3">Multi-Year Amortization Details</h4>
+                  <div className="space-y-2">
+                    {amortizedDeductions.slice(0, 5).map((item, index) => (
+                      <div key={index} className="flex justify-between items-center text-sm" data-testid={`amortization-detail-${index}`}>
+                        <div className="flex-1">
+                          <span className="font-medium">{item.expense.description}</span>
+                          <span className="text-blue-600 ml-2">
+                            {item.yearsRemaining > 0 
+                              ? `${item.yearsRemaining} years left`
+                              : item.isCompleted 
+                                ? "Complete" 
+                                : "Final year"}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">${item.deduction.toLocaleString()}</div>
+                          <div className="text-xs text-muted-foreground">of ${Number(item.expense.amount).toLocaleString()} total</div>
+                        </div>
+                      </div>
+                    ))}
+                    {amortizedDeductions.length > 5 && (
+                      <div className="text-xs text-muted-foreground text-center pt-2">
+                        ... and {amortizedDeductions.length - 5} more amortized expenses
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Tax Features Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
