@@ -23,13 +23,16 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">
             Simplified Property Management
             <span className="block text-primary">For Part-Time Landlords</span>
           </h1>
+          <p className="text-lg text-primary/80 mb-6 font-medium">
+            Unlock the power of your AI assistant
+          </p>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             Never miss another important task. Track properties, manage tenants, monitor maintenance, 
-            and stay on top of reminders with our intuitive property management platform.
+            and get AI-powered insights with our intuitive property management platform.
           </p>
           <Button size="lg" asChild className="text-lg px-8 py-3" data-testid="button-get-started">
             <a href="/api/login">Get Started Free</a>
