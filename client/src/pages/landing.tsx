@@ -23,13 +23,10 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             Simplified Property Management
             <span className="block text-primary">For Part-Time Landlords</span>
           </h1>
-          <p className="text-lg text-primary/80 mb-6 font-medium">
-            Unlock the power of your AI assistant
-          </p>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             Never miss another important task. Track properties, manage tenants, monitor maintenance, 
             and get AI-powered insights with our intuitive property management platform.
@@ -44,7 +41,7 @@ export default function Landing() {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold text-center text-foreground mb-12">
-            Everything You Need to Stay Organized
+            Unlock the power of your AI assistant — and free up your time.
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
