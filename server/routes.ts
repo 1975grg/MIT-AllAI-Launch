@@ -1297,6 +1297,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recurringEndDate: req.body.recurringEndDate ? (typeof req.body.recurringEndDate === 'string' ? new Date(req.body.recurringEndDate) : req.body.recurringEndDate) : undefined,
         taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
         isBulkEntry: req.body.isBulkEntry || false,
+        isAmortized: req.body.isAmortized || false,
+        amortizationYears: req.body.amortizationYears,
+        amortizationStartDate: req.body.amortizationStartDate ? (typeof req.body.amortizationStartDate === 'string' ? new Date(req.body.amortizationStartDate) : req.body.amortizationStartDate) : undefined,
+        amortizationMethod: req.body.amortizationMethod,
       };
       
       const validatedData = insertExpenseSchema.parse(cleanedData);
@@ -1344,6 +1348,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scope: req.body.scope || "property",
         taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
         isBulkEntry: req.body.isBulkEntry || false,
+        isAmortized: req.body.isAmortized || false,
+        amortizationYears: req.body.amortizationYears,
+        amortizationStartDate: req.body.amortizationStartDate ? (typeof req.body.amortizationStartDate === 'string' ? new Date(req.body.amortizationStartDate) : req.body.amortizationStartDate) : undefined,
+        amortizationMethod: req.body.amortizationMethod,
       };
 
       const updatedExpense = await storage.updateTransaction(req.params.id, cleanedData as any);
