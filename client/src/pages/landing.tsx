@@ -40,7 +40,7 @@ export default function Landing() {
       {/* Features Section */}
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">
+          <h2 className="text-2xl font-bold text-center text-foreground mb-12">
             Unlock the power of your AI assistant — and free up your time.
           </h2>
           
