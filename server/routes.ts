@@ -1953,15 +1953,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           completed: r.completed
         })),
         financials: {
-          totalRevenue: transactions.filter((t: any) => t.type === 'Income').reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
-          totalExpenses: transactions.filter((t: any) => t.type === 'Expense').reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
+          totalRevenue: transactions.filter((t: any) => t.type === 'Income').reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0),
+          totalExpenses: transactions.filter((t: any) => t.type === 'Expense').reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0),
           monthlyRevenue: transactions.filter((t: any) => {
             const transactionDate = new Date(t.date);
             const currentMonth = new Date();
             return t.type === 'Income' && 
                    transactionDate.getMonth() === currentMonth.getMonth() && 
                    transactionDate.getFullYear() === currentMonth.getFullYear();
-          }).reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
+          }).reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0)
         }
       };
 
