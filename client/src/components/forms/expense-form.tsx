@@ -48,6 +48,11 @@ const expenseSchema = z.object({
   scope: z.enum(["property", "operational"]).default("property"),
   entityId: z.string().optional(),
   isBulkEntry: z.boolean().default(false),
+  // Multi-year amortization fields
+  isAmortized: z.boolean().default(false),
+  amortizationYears: z.number().min(2).max(40).optional(),
+  amortizationStartDate: z.date().optional(),
+  amortizationMethod: z.enum(["straight_line"]).default("straight_line"),
 }).refine((data) => {
   if (data.isRecurring && !data.recurringFrequency) {
     return false;
@@ -96,6 +101,24 @@ const expenseSchema = z.object({
 }, {
   message: "Entity selection is required for operational expenses",
   path: ["entityId"],
+}).refine((data) => {
+  // Amortization validation: only allow for tax deductible expenses
+  if (data.isAmortized && !data.taxDeductible) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Amortization is only available for tax deductible expenses",
+  path: ["isAmortized"],
+}).refine((data) => {
+  // Amortization validation: require years when amortized
+  if (data.isAmortized && !data.amortizationYears) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Number of years is required for amortized expenses",
+  path: ["amortizationYears"],
 });
 
 interface ExpenseFormProps {
@@ -148,6 +171,11 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       scope: expense.scope || "property",
       entityId: expense.entityId || undefined,
       isBulkEntry: expense.isBulkEntry || false,
+      // Amortization fields
+      isAmortized: expense.isAmortized || false,
+      amortizationYears: expense.amortizationYears || undefined,
+      amortizationStartDate: expense.amortizationStartDate ? new Date(expense.amortizationStartDate) : undefined,
+      amortizationMethod: expense.amortizationMethod || "straight_line",
     } : {
       description: "",
       amount: undefined,
@@ -161,6 +189,11 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       lineItems: [],
       scope: "property" as const,
       isBulkEntry: false,
+      // Amortization fields
+      isAmortized: false,
+      amortizationYears: undefined,
+      amortizationStartDate: undefined,
+      amortizationMethod: "straight_line",
     },
   });
 
@@ -290,6 +323,16 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
   const currentLineItems = form.watch("lineItems") || [];
   const watchedCategory = form.watch("category");
   const showCustomCategoryInput = watchedCategory === "custom";
+  
+  // Auto-reset amortization fields when expense becomes non-deductible
+  const watchedTaxDeductible = form.watch("taxDeductible");
+  useEffect(() => {
+    if (!watchedTaxDeductible) {
+      form.setValue("isAmortized", false);
+      form.setValue("amortizationYears", undefined);
+      form.setValue("amortizationStartDate", undefined);
+    }
+  }, [watchedTaxDeductible, form]);
 
   return (
     <div className="max-h-[80vh] overflow-y-auto">
@@ -447,6 +490,184 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                 </FormItem>
               )}
             />
+          )}
+        </div>
+
+        {/* Tax & Deduction Settings */}
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+          <div className="flex items-center space-x-2">
+            <Receipt className="h-4 w-4" />
+            <h4 className="text-sm font-medium">Tax & Deduction Settings</h4>
+          </div>
+          
+          {/* Tax Deductible Override */}
+          <FormField
+            control={form.control}
+            name="taxDeductible"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                  <FormLabel className="flex items-center space-x-2">
+                    <span>Tax Deductible</span>
+                    {form.watch("taxDeductible") ? (
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 border border-green-300 rounded-full text-xs font-medium">
+                        ✓ Tax Deductible
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full text-xs font-medium">
+                        ⚠ Not Deductible
+                      </div>
+                    )}
+                  </FormLabel>
+                  <div className="text-sm text-muted-foreground">
+                    Override the automatic category-based tax deductible status
+                  </div>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="switch-tax-deductible"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* Amortization Selector - Only for Deductible Expenses */}
+          {form.watch("taxDeductible") && (
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="isAmortized"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel>Deduction Method</FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        Choose how to deduct this expense for tax purposes
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Select
+                        value={field.value ? "amortized" : "full"}
+                        onValueChange={(value) => {
+                          const isAmortized = value === "amortized";
+                          field.onChange(isAmortized);
+                          
+                          // Reset amortization fields when switching to full deduction
+                          if (!isAmortized) {
+                            form.setValue("amortizationYears", undefined);
+                            form.setValue("amortizationStartDate", undefined);
+                          } else {
+                            // Set default start date to expense date when enabling amortization
+                            form.setValue("amortizationStartDate", form.getValues("date"));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-48" data-testid="select-deduction-method">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full">
+                            <div className="flex flex-col items-start">
+                              <span className="font-medium">Full deduction this year</span>
+                              <span className="text-xs text-muted-foreground">Deduct entire amount in {new Date().getFullYear()}</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="amortized">
+                            <div className="flex flex-col items-start">
+                              <span className="font-medium">Amortize over multiple years</span>
+                              <span className="text-xs text-muted-foreground">Spread deduction over several years</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {/* Amortization Years Selector */}
+              {form.watch("isAmortized") && (
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="amortizationYears"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amortization Period</FormLabel>
+                        <Select
+                          value={field.value?.toString()}
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-amortization-years">
+                              <SelectValue placeholder="Select years" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="2">2 years</SelectItem>
+                            <SelectItem value="3">3 years</SelectItem>
+                            <SelectItem value="5">5 years</SelectItem>
+                            <SelectItem value="7">7 years</SelectItem>
+                            <SelectItem value="10">10 years</SelectItem>
+                            <SelectItem value="15">15 years</SelectItem>
+                            <SelectItem value="20">20 years</SelectItem>
+                            <SelectItem value="25">25 years</SelectItem>
+                            <SelectItem value="30">30 years</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="amortizationStartDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Amortization Start Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "justify-start text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                data-testid="button-amortization-start-date"
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick start date</span>
+                                )}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date > new Date() || date < new Date("1900-01-01")
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+            </div>
           )}
         </div>
 
