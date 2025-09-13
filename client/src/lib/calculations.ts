@@ -18,26 +18,20 @@ export function getExpenseDeductionForYear(expense: Transaction, year: number): 
     return expenseYear === year ? Number(expense.amount) : 0;
   }
 
-  // Calculate amortized deduction using month-index arithmetic
+  // Calculate amortized deduction using simple year-based arithmetic
+  // For expenses: if entered in Sept 2025 for 2 years, half goes to 2025 and half to 2026
   const totalAmount = Number(expense.amount);
-  const totalMonths = expense.amortizationYears * 12;
-  const monthlyAmount = totalAmount / totalMonths;
+  const startYear = new Date(expense.amortizationStartDate).getUTCFullYear();
+  const endYear = startYear + expense.amortizationYears - 1;
   
-  const startDate = new Date(expense.amortizationStartDate);
-  const startYear = startDate.getUTCFullYear();
-  const startMonth = startDate.getUTCMonth(); // 0-based (January = 0)
+  // Check if target year is within amortization period
+  if (year < startYear || year > endYear) {
+    return 0;
+  }
   
-  // Month-index arithmetic for exact boundaries
-  const firstIdx = startYear * 12 + startMonth;
-  const lastIdxExcl = firstIdx + totalMonths;
-  
-  // Calculate months in this year that fall within amortization period
-  const yearFirstIdx = year * 12;
-  const yearLastIdxExcl = (year + 1) * 12;
-  
-  const monthsInYear = Math.max(0, Math.min(lastIdxExcl, yearLastIdxExcl) - Math.max(firstIdx, yearFirstIdx));
-
-  return monthlyAmount * monthsInYear;
+  // Simple equal distribution across years
+  const yearlyAmount = totalAmount / expense.amortizationYears;
+  return yearlyAmount;
 }
 
 /**
@@ -89,27 +83,20 @@ export function getAmortizationStatus(expense: Transaction, currentYear: number 
     };
   }
 
-  // Amortized expenses using month-index arithmetic
-  const startDate = new Date(expense.amortizationStartDate);
-  const startYear = startDate.getUTCFullYear();
-  const startMonth = startDate.getUTCMonth();
-  const totalMonths = expense.amortizationYears * 12;
+  // Amortized expenses using simple year-based arithmetic
+  const startYear = new Date(expense.amortizationStartDate).getUTCFullYear();
+  const endYear = startYear + expense.amortizationYears - 1;
   const annualAmount = totalAmount / expense.amortizationYears;
-
-  // Month-index arithmetic for exact boundaries
-  const firstIdx = startYear * 12 + startMonth;
-  const lastIdxExcl = firstIdx + totalMonths;
-  const endYearInclusive = Math.floor((lastIdxExcl - 1) / 12);
 
   // Calculate total deducted so far (all years from start through current year)
   let totalDeductedSoFar = 0;
-  for (let year = startYear; year <= Math.min(currentYear, endYearInclusive); year++) {
+  for (let year = startYear; year <= Math.min(currentYear, endYear); year++) {
     totalDeductedSoFar += getExpenseDeductionForYear(expense, year);
   }
 
   const remainingToDeduct = Math.max(0, totalAmount - totalDeductedSoFar);
-  const yearsRemaining = Math.max(0, endYearInclusive - currentYear);
-  const isCompleted = currentYear > endYearInclusive;
+  const yearsRemaining = Math.max(0, endYear - currentYear);
+  const isCompleted = currentYear > endYear;
 
   return {
     isAmortized: true,
@@ -117,7 +104,7 @@ export function getAmortizationStatus(expense: Transaction, currentYear: number 
     totalAmount,
     amortizationYears: expense.amortizationYears,
     startYear,
-    endYear: endYearInclusive,
+    endYear: endYear,
     currentYearDeduction,
     totalDeductedSoFar,
     remainingToDeduct,
