@@ -1,0 +1,72 @@
+I understand your request for multi-year deductible expense amortization! This is a sophisticated feature that would allow users to spread large deductible expenses over multiple years for more accurate tax planning.
+
+Let me first understand the current expense system and then get architectural guidance on the best approach:
+
+
+Searched for "Find how deductible expenses are currently handled, stored, and displayed. Look for expense categories with checkmarks and deductible status tracking"
+
+Designed multi-year expense amortization system
+
+Planned amortization expense integration (12 seconds)
+Perfect! I can see exactly what you're looking for. From the screenshot, I can see the expense categories with checkmarks (✓) indicating deductible status, and you want to add multi-year amortization for these deductible expenses.
+
+The architect has provided an excellent comprehensive plan that addresses your concerns about display errors and storage complexity. Here's the approach:
+
+🏗️ Multi-Year Expense Amortization Architecture
+1. Enhanced UI Clarity
+Problem: Checkmarks aren't clear enough for deductible indication
+Solution:
+
+Better visual badges: "Tax Deductible ✓" vs "Not Deductible ⚠"
+Clearer category tooltips explaining tax status
+Color-coded indicators (green/orange)
+2. Amortization Feature Design
+For deductible expenses only, add a "Deduction Method" selector:
+
+┌─ Deduction Method ─────────────────┐
+│ ○ Full deduction this year (default)│ 
+│ ○ Amortize over: [5 years ▼]       │
+└────────────────────────────────────┘
+Dropdown options: 2, 3, 5, 7, 10, 15, 20, 25, 30 years
+
+3. Data Storage Strategy
+Your concern: "Storage and matching errors"
+Solution: Extend existing transactions table (no new tables needed):
+
+// Add to existing transaction:
+isAmortized: boolean (default: false)
+amortizationYears: integer (2-40)  
+amortizationStartDate: timestamp
+amortizationMethod: 'straight_line'
+4. Display & Calculations
+Your concern: "Display logic errors"
+Solution: Pure calculation functions (no stored derived data):
+
+getExpenseDeductionForYear(expense, year) {
+  if (!expense.isAmortized) return expense.amount;
+  return expense.amount / expense.amortizationYears; // Simple straight-line
+}
+Tax Page: Shows only current year portions
+Expense List: Shows badges like "Amortized • 5 yrs" + current year amount
+
+5. Multi-Year Tracking
+Example: $10,000 roof repair amortized over 5 years
+
+2025: $2,000 deductible (shown in tax calculations)
+2026-2029: $2,000 each year automatically calculated
+Amortization Section: Shows remaining $8,000 over 4 years
+🎯 Benefits of This Approach:
+✅ No display errors: All calculations derived, no stored duplicates
+✅ Simple storage: Extends existing table, no complex relationships
+✅ Cross-year accuracy: UTC date math prevents timezone bugs
+✅ Tax compliance: Only current-year portions in tax totals
+✅ User-friendly: Clear visual indicators and intuitive workflow
+
+📋 Implementation Plan:
+Schema: Add amortization fields to transactions
+UI: Enhanced category indicators + amortization selector
+Calculations: Pure helper functions for year-based deductions
+Display: Badges, current-year amounts, amortization tracking section
+Question: Does this approach address your concerns about storage complexity and display errors? Would you like me to proceed with this implementation, or do you have any modifications to suggest?
+
+The key insight is keeping calculations derived rather than stored, which eliminates your worry about matching and display consistency issues across years.

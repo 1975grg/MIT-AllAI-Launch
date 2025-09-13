@@ -387,6 +387,11 @@ export const transactions = pgTable("transactions", {
   isBulkEntry: boolean("is_bulk_entry").default(false), // For bulk expense entries
   paymentStatus: paymentStatusEnum("payment_status").default("Paid"), // Payment tracking status
   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }), // Amount actually paid for partial payments
+  // Multi-year amortization fields
+  isAmortized: boolean("is_amortized").notNull().default(false), // Whether expense is amortized over multiple years
+  amortizationYears: integer("amortization_years"), // Number of years to amortize over (2-40)
+  amortizationStartDate: timestamp("amortization_start_date"), // When amortization period begins
+  amortizationMethod: varchar("amortization_method").notNull().default("straight_line"), // Amortization calculation method
   createdAt: timestamp("created_at").defaultNow(),
 });
 
