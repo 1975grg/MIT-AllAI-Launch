@@ -41,7 +41,7 @@ export default function Landing() {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
           <h2 className="text-2xl font-bold text-center text-foreground mb-12">
-            Unlock the power of your AI assistant — and free up your time.
+            <span className="text-primary">Unlock</span> the power of <span className="text-primary">your AI assistant</span> — and free up your time.
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
