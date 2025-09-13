@@ -18,7 +18,7 @@ export function getExpenseDeductionForYear(expense: Transaction, year: number): 
     return expenseYear === year ? Number(expense.amount) : 0;
   }
 
-  // Calculate amortized deduction using monthly approach
+  // Calculate amortized deduction using month-index arithmetic
   const totalAmount = Number(expense.amount);
   const totalMonths = expense.amortizationYears * 12;
   const monthlyAmount = totalAmount / totalMonths;
@@ -27,38 +27,15 @@ export function getExpenseDeductionForYear(expense: Transaction, year: number): 
   const startYear = startDate.getUTCFullYear();
   const startMonth = startDate.getUTCMonth(); // 0-based (January = 0)
   
-  // Calculate the end of amortization period
-  const endDate = new Date(startDate);
-  endDate.setUTCMonth(endDate.getUTCMonth() + totalMonths);
-  const endYear = endDate.getUTCFullYear();
+  // Month-index arithmetic for exact boundaries
+  const firstIdx = startYear * 12 + startMonth;
+  const lastIdxExcl = firstIdx + totalMonths;
   
-  // Year is outside amortization period
-  if (year < startYear || year >= endYear) {
-    return 0;
-  }
-
   // Calculate months in this year that fall within amortization period
-  let monthsInYear = 0;
+  const yearFirstIdx = year * 12;
+  const yearLastIdxExcl = (year + 1) * 12;
   
-  if (year === startYear) {
-    // First year: from start month to December
-    monthsInYear = 12 - startMonth;
-  } else {
-    // Subsequent years: check if it's the last year
-    const yearStart = new Date(year, 0, 1); // January 1st of this year
-    const yearEnd = new Date(year + 1, 0, 1); // January 1st of next year
-    
-    if (endDate <= yearEnd) {
-      // This is the last year: from January to end month
-      monthsInYear = endDate.getUTCMonth();
-      if (endDate.getUTCDate() > 1) {
-        monthsInYear++; // Include partial month if it starts after the 1st
-      }
-    } else {
-      // Full year
-      monthsInYear = 12;
-    }
-  }
+  const monthsInYear = Math.max(0, Math.min(lastIdxExcl, yearLastIdxExcl) - Math.max(firstIdx, yearFirstIdx));
 
   return monthlyAmount * monthsInYear;
 }
@@ -112,24 +89,27 @@ export function getAmortizationStatus(expense: Transaction, currentYear: number 
     };
   }
 
-  // Amortized expenses
+  // Amortized expenses using month-index arithmetic
   const startDate = new Date(expense.amortizationStartDate);
   const startYear = startDate.getUTCFullYear();
+  const startMonth = startDate.getUTCMonth();
   const totalMonths = expense.amortizationYears * 12;
-  const endDate = new Date(startDate);
-  endDate.setUTCMonth(endDate.getUTCMonth() + totalMonths);
-  const endYear = endDate.getUTCFullYear();
   const annualAmount = totalAmount / expense.amortizationYears;
 
-  // Calculate total deducted so far (all years before and including current year)
+  // Month-index arithmetic for exact boundaries
+  const firstIdx = startYear * 12 + startMonth;
+  const lastIdxExcl = firstIdx + totalMonths;
+  const endYearInclusive = Math.floor((lastIdxExcl - 1) / 12);
+
+  // Calculate total deducted so far (all years from start through current year)
   let totalDeductedSoFar = 0;
-  for (let year = startYear; year <= Math.min(currentYear, endYear); year++) {
+  for (let year = startYear; year <= Math.min(currentYear, endYearInclusive); year++) {
     totalDeductedSoFar += getExpenseDeductionForYear(expense, year);
   }
 
   const remainingToDeduct = Math.max(0, totalAmount - totalDeductedSoFar);
-  const yearsRemainingExclusive = Math.max(0, endYear - currentYear - 1);
-  const isCompleted = currentYear >= endYear;
+  const yearsRemaining = Math.max(0, endYearInclusive - currentYear);
+  const isCompleted = currentYear > endYearInclusive;
 
   return {
     isAmortized: true,
@@ -137,11 +117,11 @@ export function getAmortizationStatus(expense: Transaction, currentYear: number 
     totalAmount,
     amortizationYears: expense.amortizationYears,
     startYear,
-    endYear,
+    endYear: endYearInclusive,
     currentYearDeduction,
     totalDeductedSoFar,
     remainingToDeduct,
-    yearsRemaining: yearsRemainingExclusive,
+    yearsRemaining,
     isCompleted,
     annualAmount
   };

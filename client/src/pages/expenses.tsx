@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, List, BarChart3, GitCompare, Grid3x3, Clock, PieChart } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart as RechartsPieChart, Pie } from "recharts";
 import type { Transaction, Property, Unit } from "@shared/schema";
+import { getExpenseDeductionForYear, getAmortizationStatus, formatAmortizationDisplay } from "@/lib/calculations";
 
 export default function Expenses() {
   const { toast } = useToast();
@@ -603,24 +604,82 @@ export default function Expenses() {
                                 Auto-generated
                               </Badge>
                             )}
-                            {expense.taxDeductible === false ? (
-                              <Badge variant="outline" className="text-orange-600 border-orange-600" data-testid={`badge-non-deductible-${index}`}>
-                                ⚠ Not Deductible
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-green-600 border-green-600" data-testid={`badge-tax-deductible-${index}`}>
-                                ✓ Tax Deductible
-                              </Badge>
-                            )}
+                            {(() => {
+                              const currentYear = new Date().getFullYear();
+                              const amortizationStatus = getAmortizationStatus(expense, currentYear);
+                              const displayInfo = formatAmortizationDisplay(amortizationStatus);
+                              
+                              return (
+                                <>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={expense.taxDeductible === false 
+                                      ? "text-orange-600 border-orange-600" 
+                                      : "text-green-600 border-green-600"
+                                    } 
+                                    data-testid={`badge-tax-deductible-${index}`}
+                                  >
+                                    {displayInfo.badge}
+                                  </Badge>
+                                  {expense.taxDeductible && amortizationStatus.isAmortized && (
+                                    <Badge 
+                                      variant="outline" 
+                                      className="text-blue-600 border-blue-600" 
+                                      data-testid={`badge-amortization-${index}`}
+                                    >
+                                      {amortizationStatus.yearsRemaining > 0 
+                                        ? `${amortizationStatus.yearsRemaining} Years Left`
+                                        : amortizationStatus.isCompleted 
+                                          ? "Complete" 
+                                          : "Final Year"}
+                                    </Badge>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
                       
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
-                          <p className="text-xl font-bold text-foreground" data-testid={`text-expense-amount-${index}`}>
-                            ${Number(expense.amount).toLocaleString()}
-                          </p>
+                          {(() => {
+                            const currentYear = new Date().getFullYear();
+                            const currentYearDeduction = getExpenseDeductionForYear(expense, currentYear);
+                            const amortizationStatus = getAmortizationStatus(expense, currentYear);
+                            const totalAmount = Number(expense.amount);
+                            
+                            if (expense.taxDeductible && amortizationStatus.isAmortized) {
+                              return (
+                                <>
+                                  <p className="text-xl font-bold text-foreground" data-testid={`text-expense-amount-${index}`}>
+                                    ${totalAmount.toLocaleString()}
+                                  </p>
+                                  <p className="text-sm font-medium text-blue-600" data-testid={`text-current-year-deduction-${index}`}>
+                                    ${currentYearDeduction.toLocaleString()} this year
+                                  </p>
+                                  {amortizationStatus.remainingToDeduct > 0 && (
+                                    <p className="text-xs text-muted-foreground" data-testid={`text-remaining-amount-${index}`}>
+                                      ${amortizationStatus.remainingToDeduct.toLocaleString()} remaining
+                                    </p>
+                                  )}
+                                </>
+                              );
+                            } else {
+                              return (
+                                <>
+                                  <p className="text-xl font-bold text-foreground" data-testid={`text-expense-amount-${index}`}>
+                                    ${totalAmount.toLocaleString()}
+                                  </p>
+                                  {expense.taxDeductible && currentYearDeduction > 0 && (
+                                    <p className="text-sm text-green-600" data-testid={`text-current-year-deduction-${index}`}>
+                                      Deductible {currentYear}
+                                    </p>
+                                  )}
+                                </>
+                              );
+                            }
+                          })()}
                           <div className="text-sm text-muted-foreground">
                             {expense.scope === 'property' && expense.propertyId && (
                               <>
