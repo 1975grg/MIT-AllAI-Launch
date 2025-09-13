@@ -603,9 +603,13 @@ export default function Expenses() {
                                 Auto-generated
                               </Badge>
                             )}
-                            {expense.taxDeductible === false && (
+                            {expense.taxDeductible === false ? (
                               <Badge variant="outline" className="text-orange-600 border-orange-600" data-testid={`badge-non-deductible-${index}`}>
-                                Non-deductible
+                                ⚠ Not Deductible
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-green-600 border-green-600" data-testid={`badge-tax-deductible-${index}`}>
+                                ✓ Tax Deductible
                               </Badge>
                             )}
                           </div>
@@ -1151,9 +1155,13 @@ export default function Expenses() {
                                 
                                 <div className="text-right">
                                   <p className="text-xl font-bold text-foreground">${Number(expense.amount).toLocaleString()}</p>
-                                  {expense.taxDeductible === false && (
+                                  {expense.taxDeductible === false ? (
                                     <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
-                                      Non-deductible
+                                      ⚠ Not Deductible
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
+                                      ✓ Tax Deductible
                                     </Badge>
                                   )}
                                 </div>

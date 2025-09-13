@@ -404,9 +404,17 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                       <SelectItem key={category.value} value={category.value}>
                         <div className="flex items-center justify-between w-full">
                           <span>{category.label}</span>
-                          <span className="text-xs ml-2">
-                            {category.taxDeductible ? "✓" : "⚠"}
-                          </span>
+                          <div className="ml-2">
+                            {category.taxDeductible ? (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 border border-green-300 rounded-full text-xs font-medium">
+                                ✓ Tax Deductible
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full text-xs font-medium">
+                                ⚠ Not Deductible
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </SelectItem>
                     ))}
@@ -906,9 +914,17 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                                 <SelectItem key={category.value} value={category.value}>
                                   <div className="flex items-center justify-between w-full">
                                     <span>{category.label}</span>
-                                    <span className="text-xs ml-2">
-                                      {category.taxDeductible ? "✓" : "⚠"}
-                                    </span>
+                                    <div className="ml-2">
+                                      {category.taxDeductible ? (
+                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 border border-green-300 rounded-full text-xs font-medium">
+                                          ✓ Tax Deductible
+                                        </div>
+                                      ) : (
+                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full text-xs font-medium">
+                                          ⚠ Not Deductible
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </SelectItem>
                               ))}
