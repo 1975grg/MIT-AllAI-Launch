@@ -23,6 +23,16 @@ import {
 const insertRevenueSchema = insertTransactionSchema;
 import { startCronJobs } from "./cronJobs";
 
+// Helper function to parse dates safely with UTC normalization
+function parseUTCDate(dateString: string | Date | null | undefined): Date | undefined {
+  if (!dateString) return undefined;
+  if (dateString instanceof Date) return dateString;
+  
+  // Parse the date string and treat it as UTC to avoid timezone shifts
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? undefined : date;
+}
+
 // Helper function to create equipment reminders
 async function createEquipmentReminders({
   org,
@@ -1268,7 +1278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      // Handle custom category logic
+      // Handle custom category logic (business logic that the schema can't handle)
       let finalCategory = req.body.category;
       if (req.body.category === "custom" && req.body.customCategory) {
         finalCategory = req.body.customCategory;
@@ -1276,81 +1286,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         finalCategory = "";
       }
       
-      // Clean up the data to match schema expectations
-      const cleanedData = {
+      // Prepare data for schema validation with proper date parsing
+      const dataForValidation = {
+        ...req.body,
         orgId: org.id,
         type: "Expense" as const,
-        propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
-        entityId: req.body.entityId || undefined,
-        scope: req.body.scope || "property",
-        amount: (req.body.amount !== undefined && req.body.amount !== null && req.body.amount !== "") ? String(req.body.amount) : "0",
-        description: req.body.description || "",
         category: finalCategory,
-        date: typeof req.body.date === 'string' ? new Date(req.body.date) : req.body.date,
-        isDateRange: req.body.isDateRange || false,
-        endDate: req.body.endDate ? (typeof req.body.endDate === 'string' ? new Date(req.body.endDate) : req.body.endDate) : undefined,
-        receiptUrl: req.body.receiptUrl,
-        notes: req.body.notes,
-        isRecurring: req.body.isRecurring || false,
-        recurringFrequency: req.body.recurringFrequency,
-        recurringInterval: req.body.recurringInterval || 1,
-        recurringEndDate: req.body.recurringEndDate ? (typeof req.body.recurringEndDate === 'string' ? new Date(req.body.recurringEndDate) : req.body.recurringEndDate) : undefined,
-        taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
-        isBulkEntry: req.body.isBulkEntry || false,
+        propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
+        // Use proper UTC date parsing for all date fields
+        date: parseUTCDate(req.body.date),
+        endDate: parseUTCDate(req.body.endDate),
+        recurringEndDate: parseUTCDate(req.body.recurringEndDate),
+        amortizationStartDate: parseUTCDate(req.body.amortizationStartDate),
       };
       
-      const validatedData = insertExpenseSchema.parse(cleanedData);
+      // Let the schema handle validation, defaults, and coercion
+      const validatedData = insertExpenseSchema.parse(dataForValidation);
       
       const expense = await storage.createTransaction(validatedData as any);
       res.json(expense);
     } catch (error) {
       console.error("Error creating expense:", error);
-      res.status(500).json({ message: "Failed to create expense" });
+      if (error.errors) {
+        console.error("Validation errors:", error.errors);
+        res.status(400).json({ message: "Validation failed", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create expense" });
+      }
     }
   });
 
   // Update an expense
   app.put("/api/expenses/:id", isAuthenticated, async (req, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
       console.log("Updating expense ID:", req.params.id);
       console.log("Update request body:", JSON.stringify(req.body, null, 2));
 
-      const { category, customCategory, scope, ...requestBody } = req.body;
-
-      let finalCategory = category;
-      if (category === "custom" && customCategory) {
-        finalCategory = customCategory;
+      // Handle custom category logic (business logic that the schema can't handle)
+      let finalCategory = req.body.category;
+      if (req.body.category === "custom" && req.body.customCategory) {
+        finalCategory = req.body.customCategory;
+      } else if (req.body.category === "none") {
+        finalCategory = "";
       }
 
-      const cleanedData = {
-        id: req.params.id,
-        type: "Expense",
-        amount: (req.body.amount !== undefined && req.body.amount !== null && req.body.amount !== "") ? String(req.body.amount) : "0",
-        description: req.body.description || "",
+      // Prepare data for schema validation with proper date parsing
+      const dataForValidation = {
+        ...req.body,
         category: finalCategory,
-        date: typeof req.body.date === 'string' ? new Date(req.body.date) : req.body.date,
-        isDateRange: req.body.isDateRange || false,
-        endDate: req.body.endDate ? (typeof req.body.endDate === 'string' ? new Date(req.body.endDate) : req.body.endDate) : undefined,
-        receiptUrl: req.body.receiptUrl,
-        notes: req.body.notes,
-        isRecurring: req.body.isRecurring || false,
-        recurringFrequency: req.body.recurringFrequency,
-        recurringInterval: req.body.recurringInterval || 1,
-        recurringEndDate: req.body.recurringEndDate ? (typeof req.body.recurringEndDate === 'string' ? new Date(req.body.recurringEndDate) : req.body.recurringEndDate) : undefined,
-        propertyId: scope === "property" ? req.body.propertyId : undefined,
-        entityId: scope === "operational" ? req.body.entityId : undefined,
-        vendorId: req.body.vendorId,
-        userId: (req.user as any).claims.sub,
-        scope: req.body.scope || "property",
-        taxDeductible: req.body.taxDeductible !== undefined ? req.body.taxDeductible : true,
-        isBulkEntry: req.body.isBulkEntry || false,
+        propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
+        // Use proper UTC date parsing for all date fields
+        date: parseUTCDate(req.body.date),
+        endDate: parseUTCDate(req.body.endDate),
+        recurringEndDate: parseUTCDate(req.body.recurringEndDate),
+        amortizationStartDate: parseUTCDate(req.body.amortizationStartDate),
       };
 
-      const updatedExpense = await storage.updateTransaction(req.params.id, cleanedData as any);
+      // For updates, validate against base transaction schema and then add expense-specific validation
+      const baseUpdateSchema = insertTransactionSchema.partial();
+      const validatedData = baseUpdateSchema.parse(dataForValidation);
+      
+      // Additional validation for expense-specific fields if they're provided
+      if (validatedData.isAmortized) {
+        if (!validatedData.amortizationYears) {
+          throw new Error("Amortization years is required for amortized expenses");
+        }
+        if (!validatedData.taxDeductible) {
+          throw new Error("Only tax-deductible expenses can be amortized");
+        }
+      }
+
+      const updatedExpense = await storage.updateTransaction(req.params.id, validatedData as any);
       res.json(updatedExpense);
     } catch (error) {
       console.error("Error updating expense:", error);
-      res.status(500).json({ message: "Failed to update expense" });
+      if (error.errors) {
+        console.error("Validation errors:", error.errors);
+        res.status(400).json({ message: "Validation failed", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update expense" });
+      }
     }
   });
 
