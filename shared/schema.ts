@@ -383,11 +383,6 @@ export const transactions = pgTable("transactions", {
   recurringInterval: integer("recurring_interval").default(1), // Every X (frequency)
   recurringEndDate: timestamp("recurring_end_date"),
   taxDeductible: boolean("tax_deductible").default(true),
-  // Amortization fields for multi-year deduction
-  isAmortized: boolean("is_amortized").default(false), // Whether this expense is amortized over multiple years
-  amortizationYears: integer("amortization_years"), // Number of years to amortize (2-40)
-  amortizationStartDate: timestamp("amortization_start_date"), // When amortization begins (defaults to expense date)
-  amortizationMethod: varchar("amortization_method").default("straight_line"), // Method: straight_line
   parentRecurringId: varchar("parent_recurring_id"), // Reference to the original transaction for recurring instances
   isBulkEntry: boolean("is_bulk_entry").default(false), // For bulk expense entries
   paymentStatus: paymentStatusEnum("payment_status").default("Paid"), // Payment tracking status
@@ -581,11 +576,6 @@ export const insertExpenseSchema = insertTransactionSchema.extend({
   recurringInterval: z.number().min(1).default(1),
   recurringEndDate: z.string().datetime().optional(),
   taxDeductible: z.boolean().default(true),
-  // Amortization validation
-  isAmortized: z.boolean().default(false),
-  amortizationYears: z.number().min(2).max(40).optional(),
-  amortizationStartDate: z.string().datetime().optional(),
-  amortizationMethod: z.enum(["straight_line"]).default("straight_line"),
   parentRecurringId: z.string().optional(),
   scope: z.enum(["property", "operational"]).default("property"),
   entityId: z.string().optional(),
@@ -607,22 +597,6 @@ export const insertExpenseSchema = insertTransactionSchema.extend({
 }, {
   message: "Entity ID is required for operational expenses",
   path: ["entityId"],
-}).refine((data) => {
-  if (data.isAmortized && !data.amortizationYears) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Amortization years is required for amortized expenses",
-  path: ["amortizationYears"],
-}).refine((data) => {
-  if (data.isAmortized && (!data.taxDeductible || data.lineItems?.some(item => !item.taxDeductible))) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Only tax-deductible expenses can be amortized",
-  path: ["isAmortized"],
 });
 
 // Types

@@ -1114,7 +1114,6 @@ export class DatabaseStorage implements IStorage {
     const [newExpense] = await db.insert(transactions).values({
       ...expense,
       recurringEndDate: expense.recurringEndDate ? (typeof expense.recurringEndDate === 'string' ? new Date(expense.recurringEndDate) : expense.recurringEndDate) : null,
-      amortizationStartDate: expense.amortizationStartDate ? (typeof expense.amortizationStartDate === 'string' ? new Date(expense.amortizationStartDate) : expense.amortizationStartDate) : null,
     }).returning();
     
     // If this is a recurring expense, create future instances
@@ -1223,13 +1222,8 @@ export class DatabaseStorage implements IStorage {
         isRecurring: false, // Future instances are not recurring themselves
         recurringFrequency: undefined,
         recurringInterval: 1,
-        recurringEndDate: undefined,
+        recurringEndDate: null,
         taxDeductible: originalExpense.taxDeductible || true,
-        // Amortization fields for future instances (copy from original)
-        isAmortized: originalExpense.isAmortized || false,
-        amortizationYears: originalExpense.amortizationYears || undefined,
-        amortizationStartDate: originalExpense.amortizationStartDate || undefined,
-        amortizationMethod: originalExpense.amortizationMethod || "straight_line",
         parentRecurringId: originalExpense.id,
         isBulkEntry: false,
       });
