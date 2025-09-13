@@ -1976,9 +1976,8 @@ USER QUESTION: ${question}
 Please provide a helpful, specific answer based on the actual data provided. Keep responses concise but informative. If you need data that isn't available, mention what additional information would be helpful.`;
 
       // Call OpenAI
-      // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
       const completion = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
