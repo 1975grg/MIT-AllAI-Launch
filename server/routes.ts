@@ -1319,6 +1319,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Updating expense ID:", req.params.id);
       console.log("Update request body:", JSON.stringify(req.body, null, 2));
 
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
       const { category, customCategory, scope, ...requestBody } = req.body;
 
       let finalCategory = category;
@@ -1328,6 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const cleanedData = {
         id: req.params.id,
+        orgId: org.id,
         type: "Expense",
         amount: (req.body.amount !== undefined && req.body.amount !== null && req.body.amount !== "") ? String(req.body.amount) : "0",
         description: req.body.description || "",
@@ -1338,7 +1343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         receiptUrl: req.body.receiptUrl,
         notes: req.body.notes,
         isRecurring: req.body.isRecurring || false,
-        recurringFrequency: req.body.recurringFrequency,
+        recurringFrequency: req.body.recurringFrequency || undefined,
         recurringInterval: req.body.recurringInterval || 1,
         recurringEndDate: req.body.recurringEndDate ? (typeof req.body.recurringEndDate === 'string' ? new Date(req.body.recurringEndDate) : req.body.recurringEndDate) : undefined,
         propertyId: scope === "property" ? req.body.propertyId : undefined,
