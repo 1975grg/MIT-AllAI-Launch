@@ -519,8 +519,9 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                         form.setValue("amortizationYears", undefined);
                         form.setValue("amortizationStartDate", undefined);
                       } else {
-                        // Set default start date to expense date when enabling amortization
+                        // Set default start date and auto-select 5 years when enabling amortization
                         form.setValue("amortizationStartDate", form.getValues("date"));
+                        form.setValue("amortizationYears", 5); // Auto-select 5 years as default
                       }
                     }}
                   >
@@ -529,7 +530,17 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="full">Fully this year</SelectItem>
-                      <SelectItem value="amortized">Deduct over time</SelectItem>
+                      <SelectItem 
+                        value="amortized" 
+                        disabled={!form.watch("taxDeductible")}
+                      >
+                        <div className="flex flex-col">
+                          <span>Deduct over time</span>
+                          {!form.watch("taxDeductible") && (
+                            <span className="text-xs text-muted-foreground">Requires tax deductible expense</span>
+                          )}
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </FormControl>
@@ -565,6 +576,9 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                         <SelectItem value="20">20 years</SelectItem>
                         <SelectItem value="25">25 years</SelectItem>
                         <SelectItem value="30">30 years</SelectItem>
+                        <SelectItem value="35">35 years</SelectItem>
+                        <SelectItem value="39">39 years</SelectItem>
+                        <SelectItem value="40">40 years</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
