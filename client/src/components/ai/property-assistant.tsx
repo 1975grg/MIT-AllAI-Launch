@@ -97,8 +97,8 @@ export default function PropertyAssistant() {
             <Bot className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <CardTitle className="text-lg">AI Property Assistant</CardTitle>
-            <p className="text-sm text-muted-foreground">Ask me anything about your properties</p>
+            <CardTitle className="text-lg">Mailla</CardTitle>
+            <p className="text-sm text-muted-foreground">Your AI assistant for part-time landlords</p>
           </div>
         </div>
       </CardHeader>

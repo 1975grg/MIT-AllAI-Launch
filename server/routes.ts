@@ -1901,14 +1901,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Gather property data for context
-      const [properties, units, tenants, cases, reminders, transactions, expenses] = await Promise.all([
+      const [properties, units, tenantGroups, cases, reminders, transactions] = await Promise.all([
         storage.getProperties(orgId),
-        storage.getUnits(orgId),
-        storage.getTenants(orgId),
-        storage.getCases(orgId),
+        storage.getAllUnits(orgId),
+        storage.getTenantGroups(orgId),
+        storage.getSmartCases(orgId),
         storage.getReminders(orgId),
-        storage.getTransactions(orgId),
-        storage.getExpenses(orgId)
+        storage.getTransactions(orgId)
       ]);
 
       // Build context for AI
@@ -1932,14 +1931,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sqft: u.sqft,
           monthlyRent: u.monthlyRent
         })),
-        tenants: tenants.map(t => ({
-          name: t.name,
-          propertyName: t.propertyName,
-          unitNumber: t.unitNumber,
-          monthlyRent: t.monthlyRent,
-          leaseStart: t.leaseStart,
-          leaseEnd: t.leaseEnd,
-          status: t.status
+        tenants: tenantGroups.map((tg: any) => ({
+          name: tg.name,
+          propertyName: tg.propertyName,
+          unitNumber: tg.unitNumber,
+          monthlyRent: tg.monthlyRent,
+          leaseStart: tg.leaseStart,
+          leaseEnd: tg.leaseEnd,
+          status: tg.status
         })),
         maintenanceCases: cases.map(c => ({
           title: c.title,
@@ -1954,15 +1953,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           completed: r.completed
         })),
         financials: {
-          totalRevenue: transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + (t.amount || 0), 0),
-          totalExpenses: expenses.reduce((sum, e) => sum + (e.amount || 0), 0),
-          monthlyRevenue: transactions.filter(t => {
+          totalRevenue: transactions.filter((t: any) => t.type === 'Income').reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
+          totalExpenses: transactions.filter((t: any) => t.type === 'Expense').reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
+          monthlyRevenue: transactions.filter((t: any) => {
             const transactionDate = new Date(t.date);
             const currentMonth = new Date();
-            return t.type === 'income' && 
+            return t.type === 'Income' && 
                    transactionDate.getMonth() === currentMonth.getMonth() && 
                    transactionDate.getFullYear() === currentMonth.getFullYear();
-          }).reduce((sum, t) => sum + (t.amount || 0), 0)
+          }).reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
         }
       };
 
