@@ -244,7 +244,11 @@ export default function Tax() {
                         <p className="text-amber-700 text-sm mb-3">
                           You have {uncategorizedExpenses.length} uncategorized expenses that need Schedule E categories.
                         </p>
-                        <Button size="sm" data-testid="button-categorize-expenses">
+                        <Button 
+                          size="sm" 
+                          data-testid="button-categorize-expenses"
+                          onClick={() => window.location.href = '/expenses'}
+                        >
                           Categorize Expenses
                         </Button>
                       </div>
