@@ -2041,7 +2041,7 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
         messages: [
           { role: "user", content: systemPrompt }
         ],
-        response_format: { type: "json_object" },
+        text: { format: { type: "json_object" } },
         max_output_tokens: 500
       });
 
