@@ -2035,12 +2035,10 @@ USER QUESTION: ${question}
 
 Provide helpful analysis based on the actual data. Respond with valid JSON only:`;
 
-      // Call OpenAI Responses API (GPT-5) with correct format
+      // Call OpenAI Responses API (GPT-5) with correct format  
       const response = await openai.responses.create({
         model: "gpt-5",
-        messages: [
-          { role: "user", content: systemPrompt }
-        ],
+        input: systemPrompt,
         text: { format: { type: "json_object" } },
         max_output_tokens: 500
       });
