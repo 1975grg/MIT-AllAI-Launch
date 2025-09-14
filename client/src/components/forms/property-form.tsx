@@ -174,6 +174,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   React.useEffect(() => {
     if (initialData) {  // Reset for any initialData (removed ID check)
       console.log("🏠 Property form initialData:", initialData);
+      console.log("💰 purchasePrice in initialData:", initialData.purchasePrice);
+      console.log("🏡 propertyValue in initialData:", initialData.propertyValue);
       console.log("🗓️ mortgageStartDate field:", initialData.mortgageStartDate);
       
       const resetData = {
@@ -245,10 +247,19 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   useEffect(() => {
     if (initialData && initialData.propertyValue) {
       const currentPurchasePrice = initialData.purchasePrice;
-      // Auto-fill if purchase price is missing, zero, empty string, or null
-      if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === "" || currentPurchasePrice === null) {
+      console.log("🔍 Checking auto-fill conditions:");
+      console.log("  - propertyValue:", initialData.propertyValue);
+      console.log("  - currentPurchasePrice:", currentPurchasePrice);
+      console.log("  - typeof currentPurchasePrice:", typeof currentPurchasePrice);
+      
+      // Auto-fill if purchase price is missing, zero, empty string, null, or 1 (which shouldn't be there)
+      if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === "" || currentPurchasePrice === null || currentPurchasePrice === 1) {
         console.log("🏠 Auto-filling purchase price from property value:", initialData.propertyValue);
-        form.setValue('purchasePrice', Number(initialData.propertyValue));
+        setTimeout(() => {
+          form.setValue('purchasePrice', Number(initialData.propertyValue));
+        }, 100);
+      } else {
+        console.log("⏹️ Not auto-filling because purchasePrice already has value:", currentPurchasePrice);
       }
     }
   }, [initialData, form]);
