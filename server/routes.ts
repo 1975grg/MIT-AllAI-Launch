@@ -250,6 +250,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       leadDays: 30,
       channel: "inapp" as const,
       status: "Pending" as const,
+      isRecurring: false,
+      recurringInterval: 1,
+      isBulkEntry: false,
     };
     
     await storage.createReminder(reminderData);
@@ -383,6 +386,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             leadDays: 30,
             channel: "inapp" as const,
             status: "Pending" as const,
+            isRecurring: false,
+            recurringInterval: 1,
+            isBulkEntry: false,
           };
           
           await storage.createReminder(reminderData);
@@ -1104,6 +1110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leadDays: 0,
         channel: "inapp" as const,
         status: "Pending" as const,
+        isRecurring: false,
+        recurringInterval: 1,
+        isBulkEntry: false,
         payloadJson: {
           leaseId: lease.id,
           unitId: lease.unitId,
@@ -1129,6 +1138,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leadDays: 0,
         channel: "inapp" as const,
         status: "Pending" as const,
+        isRecurring: false,
+        recurringInterval: 1,
+        isBulkEntry: false,
         payloadJson: {
           leaseId: lease.id,
           unitId: lease.unitId,
@@ -1863,11 +1875,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const validatedData = insertReminderSchema.parse({
+      // Handle date conversions for recurring reminders
+      const requestData = {
         ...req.body,
         orgId: org.id,
-      });
+        dueAt: req.body.dueAt ? new Date(req.body.dueAt) : undefined,
+        recurringEndDate: req.body.recurringEndDate ? new Date(req.body.recurringEndDate) : undefined,
+      };
       
+      const validatedData = insertReminderSchema.parse(requestData);
+      
+      // storage.createReminder already handles recurring reminder creation
       const reminder = await storage.createReminder(validatedData);
       res.json(reminder);
     } catch (error) {
@@ -1883,7 +1901,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
       const { id } = req.params;
-      const updateData = req.body;
+      const { mode, ...updateData } = req.body; // Extract mode from request body
+      const queryMode = req.query.mode as string; // Also check query params
+      const finalMode = mode || queryMode;
       
       // Convert date strings to Date objects if provided
       if (updateData.completedAt) {
@@ -1892,9 +1912,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (updateData.dueAt) {
         updateData.dueAt = new Date(updateData.dueAt);
       }
+      if (updateData.recurringEndDate) {
+        updateData.recurringEndDate = new Date(updateData.recurringEndDate);
+      }
       
-      const reminder = await storage.updateReminder(id, updateData);
-      res.json(reminder);
+      // Validate mode parameter if provided
+      if (finalMode && !['future', 'all'].includes(finalMode)) {
+        return res.status(400).json({ message: "Invalid mode. Must be 'future' or 'all'" });
+      }
+      
+      // Validate update data using Zod schema
+      const validatedUpdateData = insertReminderSchema.partial().omit({ orgId: true }).parse(updateData);
+      
+      // Check if this is a recurring operation
+      if (finalMode && ['future', 'all'].includes(finalMode)) {
+        // Check if the reminder exists and belongs to the user's organization
+        const reminder = await storage.getReminders(org.id);
+        const targetReminder = reminder.find(r => r.id === id);
+        if (!targetReminder) {
+          return res.status(404).json({ message: "Reminder not found" });
+        }
+        
+        // Verify this is actually a recurring reminder
+        if (!targetReminder.isRecurring && !targetReminder.parentRecurringId) {
+          return res.status(400).json({ message: "This is not a recurring reminder" });
+        }
+        
+        await storage.updateRecurringReminder(id, validatedUpdateData, finalMode as "future" | "all");
+        res.json({ message: `Recurring reminder series updated successfully (mode: ${finalMode})` });
+      } else {
+        // Single reminder update - SECURITY FIX: Verify org ownership
+        const reminders = await storage.getReminders(org.id);
+        const targetReminder = reminders.find(r => r.id === id);
+        if (!targetReminder) {
+          return res.status(404).json({ message: "Reminder not found" });
+        }
+        
+        const reminder = await storage.updateReminder(id, validatedUpdateData);
+        res.json(reminder);
+      }
     } catch (error) {
       console.error("Error updating reminder:", error);
       res.status(500).json({ message: "Failed to update reminder" });
@@ -1908,8 +1964,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
       const { id } = req.params;
-      await storage.deleteReminder(id);
-      res.json({ message: "Reminder deleted successfully" });
+      const mode = req.query.mode as string; // Get mode from query params
+      
+      // Validate mode parameter if provided
+      if (mode && !['future', 'all'].includes(mode)) {
+        return res.status(400).json({ message: "Invalid mode. Must be 'future' or 'all'" });
+      }
+      
+      // Check if this is a recurring operation
+      if (mode && ['future', 'all'].includes(mode)) {
+        // Check if the reminder exists and belongs to the user's organization
+        const reminders = await storage.getReminders(org.id);
+        const targetReminder = reminders.find(r => r.id === id);
+        if (!targetReminder) {
+          return res.status(404).json({ message: "Reminder not found" });
+        }
+        
+        // Verify this is actually a recurring reminder
+        if (!targetReminder.isRecurring && !targetReminder.parentRecurringId) {
+          return res.status(400).json({ message: "This is not a recurring reminder" });
+        }
+        
+        await storage.deleteRecurringReminder(id, mode as "future" | "all");
+        res.json({ message: `Recurring reminder series deleted successfully (mode: ${mode})` });
+      } else {
+        // Single reminder deletion - SECURITY FIX: Verify org ownership
+        const reminders = await storage.getReminders(org.id);
+        const targetReminder = reminders.find(r => r.id === id);
+        if (!targetReminder) {
+          return res.status(404).json({ message: "Reminder not found" });
+        }
+        
+        await storage.deleteReminder(id);
+        res.json({ message: "Reminder deleted successfully" });
+      }
     } catch (error) {
       console.error("Error deleting reminder:", error);
       res.status(500).json({ message: "Failed to delete reminder" });
