@@ -13,7 +13,7 @@ type AIResponse = {
   confidence?: number;
 };
 
-const EXAMPLE_QUESTIONS = [
+const DEFAULT_EXAMPLE_QUESTIONS = [
   "What needs my attention this week?",
   "How are my properties performing?", 
   "Which property is my best investment?",
@@ -24,7 +24,12 @@ const EXAMPLE_QUESTIONS = [
   "Should I raise rent on any properties?"
 ];
 
-export default function PropertyAssistant() {
+type PropertyAssistantProps = {
+  context?: string;
+  exampleQuestions?: string[];
+};
+
+export default function PropertyAssistant({ context = "dashboard", exampleQuestions: customQuestions }: PropertyAssistantProps) {
   const [question, setQuestion] = useState("");
   const [conversation, setConversation] = useState<Array<{
     type: "user" | "ai";
@@ -35,11 +40,17 @@ export default function PropertyAssistant() {
 
   // Get a rotating set of 4 example questions
   const getExampleQuestions = () => {
-    const shuffled = [...EXAMPLE_QUESTIONS].sort(() => 0.5 - Math.random());
+    const questions = customQuestions || DEFAULT_EXAMPLE_QUESTIONS;
+    if (customQuestions) {
+      // If custom questions provided, use them as-is
+      return questions;
+    }
+    // Otherwise, randomize the default questions
+    const shuffled = [...questions].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, 4);
   };
 
-  const [exampleQuestions] = useState(getExampleQuestions());
+  const [displayQuestions] = useState(getExampleQuestions());
 
   const handleAskQuestion = async (questionText: string) => {
     if (!questionText.trim() || isAsking) return;
@@ -57,7 +68,8 @@ export default function PropertyAssistant() {
 
     try {
       const response = await apiRequest("POST", "/api/ai/ask", {
-        question: userQuestion
+        question: userQuestion,
+        context: context
       });
       
       const data = await response.json() as AIResponse;
@@ -166,7 +178,7 @@ export default function PropertyAssistant() {
               <span>Try these:</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {exampleQuestions.map((example, index) => (
+              {displayQuestions.map((example, index) => (
                 <Button
                   key={index}
                   variant="outline"

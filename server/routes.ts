@@ -1882,7 +1882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Property Assistant endpoint
   app.post('/api/ai/ask', isAuthenticated, async (req: any, res) => {
     try {
-      const { question } = req.body;
+      const { question, context } = req.body;
       const orgId = req.user.orgId;
 
       if (!question?.trim()) {
@@ -1910,8 +1910,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getTransactions(orgId)
       ]);
 
-      // Build context for AI
-      const context = {
+      // Build data context for AI
+      const aiData = {
         properties: properties.map(p => ({
           name: p.name,
           type: p.type,
@@ -1948,9 +1948,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })),
         reminders: reminders.map(r => ({
           title: r.title,
+          description: r.description,
           type: r.type,
+          status: r.status,
+          priority: r.priority,
           dueAt: r.dueAt,
-          completed: r.completed
+          completed: r.completed,
+          scope: r.scope,
+          propertyName: r.propertyName,
+          createdAt: r.createdAt
         })),
         financials: {
           totalRevenue: transactions.filter((t: any) => t.type === 'Income').reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0),
@@ -1965,11 +1971,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      // Create AI prompt
+      // Create context-aware AI prompt
+      let contextualGuidance = "";
+      
+      if (context === "reminders") {
+        contextualGuidance = `
+
+REMINDERS FOCUS: When answering, prioritize information about:
+- Upcoming due dates and overdue items  
+- Task prioritization and urgency
+- Property-specific reminder patterns
+- Maintenance scheduling and lease renewals
+- Regulatory compliance deadlines`;
+      }
+
       const prompt = `You are a helpful property management assistant. Answer questions about the user's property portfolio based on the provided data.
+${contextualGuidance}
 
 PROPERTY DATA:
-${JSON.stringify(context, null, 2)}
+${JSON.stringify(aiData, null, 2)}
 
 USER QUESTION: ${question}
 
