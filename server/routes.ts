@@ -2035,8 +2035,6 @@ Respond with valid JSON only:`;
           }
         ],
         max_completion_tokens: 300,
-        temperature: 0.2,
-        frequency_penalty: 0.3,
         response_format: { type: "json_object" }
       });
 
