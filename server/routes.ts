@@ -1998,32 +1998,42 @@ EXAMPLE OUTPUT for reminders question "What needs my attention?":
 }`;
       }
 
-      const systemPrompt = `You are a concise property management assistant. Provide structured, scannable answers for busy part-time landlords.
+      const systemPrompt = `You are a helpful property management assistant. Analyze the provided property data and answer user questions with structured, concise responses.
 
-STRICT REQUIREMENTS:
-- Maximum 120 words visible content total
-- Maximum 5 bullet points
-- Maximum 3 action items
-- Use only provided data - if missing, say "Not available"
-- Quote exact numbers from data
-- No speculation or assumptions
-- Start with TL;DR, use bullets over paragraphs
-- No preamble, apologies, or filler${contextualGuidance}
+KEY REQUIREMENTS:
+- Always analyze the actual data provided
+- Be concise but informative (max 120 words total)
+- Focus on actionable insights
+- Use exact numbers from the data when available${contextualGuidance}
 
 RESPONSE FORMAT (JSON):
 {
-  "tldr": "string (max 160 chars - key insight/summary)",
-  "bullets": ["string array (max 5 - key facts with numbers)"],
-  "actions": [{"label": "string", "due": "string", "id": "string (optional)"}],
-  "caveats": "string (optional - if data incomplete)"
-}${fewShotExample}
+  "tldr": "string (key insight in 1-2 sentences)",
+  "bullets": ["string array (2-5 key facts with specific numbers)"],
+  "actions": [{"label": "string", "due": "string (timeframe)"}],
+  "caveats": "string (optional - only if data is truly incomplete)"
+}
+
+EXAMPLE for question "What needs my attention?":
+{
+  "tldr": "You have 1 HVAC maintenance item due and 6 properties generating $15,400 monthly revenue.",
+  "bullets": [
+    "HVAC System Replacement needed at 3535 Suncrest (365 days overdue)",
+    "6 properties with total value of $3,000,000",
+    "Monthly mortgage payments total $15,000"
+  ],
+  "actions": [
+    {"label": "Schedule HVAC system replacement", "due": "This week"},
+    {"label": "Review maintenance budget for next quarter", "due": "This month"}
+  ]
+}
 
 PROPERTY DATA:
 ${JSON.stringify(aiData, null, 2)}
 
 USER QUESTION: ${question}
 
-Respond with valid JSON only:`;
+Provide helpful analysis based on the actual data. Respond with valid JSON only:`;
 
       // Call OpenAI Chat Completions API (temporarily using GPT-4 for testing)
       const completion = await openai.chat.completions.create({
