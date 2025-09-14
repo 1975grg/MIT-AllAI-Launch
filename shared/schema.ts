@@ -666,7 +666,7 @@ export const insertExpenseSchema = insertTransactionSchema.extend({
   isRecurring: z.boolean().default(false),
   recurringFrequency: z.enum(["days", "weeks", "months", "years"]).optional(),
   recurringInterval: z.number().min(1).default(1),
-  recurringEndDate: z.string().datetime().optional(),
+  recurringEndDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
   // Explicitly include amortization fields to ensure they're not stripped
   isAmortized: z.boolean().default(false),
   amortizationYears: z.number().int().min(2).max(30).optional(),
