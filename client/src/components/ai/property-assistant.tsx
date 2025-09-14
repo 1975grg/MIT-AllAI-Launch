@@ -141,12 +141,14 @@ export default function PropertyAssistant({ context = "dashboard", exampleQuesti
                   ) : (
                     <div className="space-y-3">
                       {/* TL;DR Section */}
-                      <div className="text-sm font-medium text-primary" data-testid="text-tldr">
-                        {message.content.tldr}
-                      </div>
+                      {message.content.tldr && (
+                        <div className="text-sm font-medium text-primary" data-testid="text-tldr">
+                          {message.content.tldr}
+                        </div>
+                      )}
                       
                       {/* Key Facts Bullets */}
-                      {message.content.bullets.length > 0 && (
+                      {message.content.bullets && message.content.bullets.length > 0 && (
                         <>
                           <Separator className="my-2" />
                           <ul className="space-y-1" data-testid="list-facts">
@@ -161,7 +163,7 @@ export default function PropertyAssistant({ context = "dashboard", exampleQuesti
                       )}
                       
                       {/* Action Items */}
-                      {message.content.actions.length > 0 && (
+                      {message.content.actions && message.content.actions.length > 0 && (
                         <>
                           <Separator className="my-2" />
                           <div className="space-y-2" data-testid="list-actions">

@@ -2039,27 +2039,64 @@ Respond with valid JSON only:`;
       });
 
       const aiResponse = completion.choices[0].message.content;
+      
+      console.log("🤖 Raw AI response:", aiResponse);
+
+      if (!aiResponse || aiResponse.trim().length === 0) {
+        console.log("❌ Empty AI response received");
+        return res.json({
+          answer: {
+            tldr: "No data available for analysis",
+            bullets: ["Unable to analyze your property data at this time"],
+            actions: [{ label: "Please try your question again", due: "Now" }],
+            caveats: "The AI assistant is temporarily unavailable"
+          },
+          sources: ["Property Database"],
+          confidence: 0.3
+        });
+      }
 
       try {
+        // Clean the response by removing potential code fences
+        let cleanResponse = aiResponse.trim();
+        if (cleanResponse.startsWith('```json')) {
+          cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+        } else if (cleanResponse.startsWith('```')) {
+          cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/```\s*$/, '');
+        }
+        
         // Parse the structured JSON response from AI
-        const structuredResponse = JSON.parse(aiResponse || "{}");
+        const structuredResponse = JSON.parse(cleanResponse);
+        
+        // Validate required fields and structure
+        const isValidStructure = 
+          structuredResponse &&
+          typeof structuredResponse === 'object' &&
+          typeof structuredResponse.tldr === 'string' &&
+          Array.isArray(structuredResponse.bullets) &&
+          Array.isArray(structuredResponse.actions);
+        
+        if (!isValidStructure) {
+          throw new Error("Invalid response structure");
+        }
+        
+        console.log("✅ Parsed AI response:", JSON.stringify(structuredResponse, null, 2));
         
         res.json({
           answer: structuredResponse,
           sources: ["Property Database"],
           confidence: 0.9
         });
+        
       } catch (parseError) {
-        // Fallback to plain text response if JSON parsing fails
+        console.log("❌ JSON parsing failed:", parseError);
+        console.log("Raw response that failed to parse:", aiResponse);
+        
+        // Try to use the raw response as plain text if JSON parsing fails
         res.json({
-          answer: {
-            tldr: "Unable to parse AI response",
-            bullets: ["There was an issue processing your request"],
-            actions: [],
-            caveats: "Please try again"
-          },
+          answer: aiResponse.trim(),  // Fallback to plain text
           sources: ["Property Database"],
-          confidence: 0.5
+          confidence: 0.6
         });
       }
 
