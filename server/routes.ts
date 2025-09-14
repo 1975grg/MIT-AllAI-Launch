@@ -1988,8 +1988,7 @@ Please provide a helpful, specific answer based on the actual data provided. Kee
             content: prompt
           }
         ],
-        max_completion_tokens: 500,
-        temperature: 0.7
+        max_completion_tokens: 500
       });
 
       const answer = completion.choices[0].message.content;
