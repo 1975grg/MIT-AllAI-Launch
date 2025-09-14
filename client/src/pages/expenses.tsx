@@ -33,6 +33,15 @@ export default function Expenses() {
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "category" | "property" | "calendar" | "timeline">("list");
 
+  // Check for URL parameters and set filters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterParam = urlParams.get('filter');
+    if (filterParam === 'uncategorized') {
+      setCategoryFilter('uncategorized');
+    }
+  }, []);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -156,7 +165,7 @@ export default function Expenses() {
     
   const filteredExpenses = expenseTransactions.filter(expense => {
     const categoryMatch = categoryFilter === "all" || 
-      (categoryFilter === "uncategorized" && !expense.category) ||
+      (categoryFilter === "uncategorized" && !expense.scheduleECategory) ||
       expense.category === categoryFilter;
     const propertyMatch = propertyFilter === "all" || expense.propertyId === propertyFilter;
     const entityMatch = entityFilter === "all" || expense.entityId === entityFilter;

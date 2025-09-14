@@ -247,7 +247,7 @@ export default function Tax() {
                         <Button 
                           size="sm" 
                           data-testid="button-categorize-expenses"
-                          onClick={() => window.location.href = '/expenses'}
+                          onClick={() => window.location.href = '/expenses?filter=uncategorized'}
                         >
                           Categorize Expenses
                         </Button>
