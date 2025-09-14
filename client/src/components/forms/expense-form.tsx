@@ -531,8 +531,9 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
             <h4 className="text-sm font-medium">Tax & Deduction Settings</h4>
           </div>
           
-          {/* Deduction Method - Primary Choice at Top */}
-          <FormField
+          {/* Deduction Method - Only show for tax deductible expenses */}
+          {form.watch("taxDeductible") && (
+            <FormField
             control={form.control}
             name="isAmortized"
             render={({ field }) => (
@@ -578,6 +579,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
               </FormItem>
             )}
           />
+          )}
 
           {/* Years Dropdown - Only show when "Deduct over time" is selected */}
           {form.watch("isAmortized") && (
