@@ -125,6 +125,7 @@ export interface IStorage {
   updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction>;
   deleteTransaction(id: string): Promise<void>;
   deleteRecurringTransaction(id: string): Promise<void>;
+  updateRecurringTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<void>;
   updateTransactionPaymentStatus(id: string, paymentStatus: string): Promise<void>;
   createExpense(expense: InsertExpense): Promise<Transaction>;
   getTransactionLineItems(transactionId: string): Promise<TransactionLineItem[]>;
@@ -1189,6 +1190,61 @@ export class DatabaseStorage implements IStorage {
           recurringEndDate: previousDay
         })
         .where(eq(transactions.id, parentRecurringId));
+    }
+  }
+
+  async updateRecurringTransaction(id: string, updateData: Partial<InsertTransaction>): Promise<void> {
+    // Get the transaction to determine its recurring relationship
+    const transaction = await this.getTransactionById(id);
+    if (!transaction) {
+      throw new Error("Transaction not found");
+    }
+
+    // If this is not a recurring transaction, just update it normally
+    if (!transaction.isRecurring && !transaction.parentRecurringId) {
+      await this.updateTransaction(id, updateData);
+      return;
+    }
+
+    const currentDate = new Date(transaction.date);
+
+    if (transaction.isRecurring && !transaction.parentRecurringId) {
+      // Case 1: This is the original recurring transaction (parent)
+      // Update the parent and all future children
+      
+      // Update the parent transaction
+      await db
+        .update(transactions)
+        .set(updateData)
+        .where(eq(transactions.id, id));
+      
+      // Update all future child transactions (from current date onwards)
+      await db
+        .update(transactions)
+        .set(updateData)
+        .where(
+          and(
+            eq(transactions.parentRecurringId, id),
+            gte(transactions.date, currentDate)
+          )
+        );
+      
+    } else if (transaction.parentRecurringId) {
+      // Case 2: This is a child recurring transaction
+      // Update this child and all future children
+      
+      const parentRecurringId = transaction.parentRecurringId;
+      
+      // Update this transaction and all future recurring instances
+      await db
+        .update(transactions)
+        .set(updateData)
+        .where(
+          and(
+            eq(transactions.parentRecurringId, parentRecurringId),
+            gte(transactions.date, currentDate)
+          )
+        );
     }
   }
 

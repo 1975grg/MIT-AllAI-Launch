@@ -25,6 +25,8 @@ export default function Expenses() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Transaction | null>(null);
+  const [pendingEditExpense, setPendingEditExpense] = useState<Transaction | null>(null);
+  const [isEditingSeries, setIsEditingSeries] = useState(false);
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
   const [showMortgageAdjustment, setShowMortgageAdjustment] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -176,6 +178,41 @@ export default function Expenses() {
       toast({
         title: "Error",
         description: "Failed to delete recurring expense series",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkEditExpenseMutation = useMutation({
+    mutationFn: async ({ expenseId, data }: { expenseId: string; data: any }) => {
+      const response = await apiRequest("PUT", `/api/expenses/${expenseId}/recurring`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      setShowExpenseForm(false);
+      setEditingExpense(null);
+      setPendingEditExpense(null);
+      toast({
+        title: "Success",
+        description: "Recurring expense series updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update recurring expense series",
         variant: "destructive",
       });
     },
@@ -512,12 +549,19 @@ export default function Expenses() {
                     units={units}
                     entities={entities}
                     expense={editingExpense}
-                    onSubmit={(data) => createExpenseMutation.mutate(data)}
+                    onSubmit={(data) => {
+                      if (isEditingSeries && editingExpense) {
+                        bulkEditExpenseMutation.mutate({ expenseId: editingExpense.id, data });
+                      } else {
+                        createExpenseMutation.mutate(data);
+                      }
+                    }}
                     onClose={() => {
                       setShowExpenseForm(false);
                       setEditingExpense(null);
+                      setIsEditingSeries(false);
                     }}
-                    isLoading={createExpenseMutation.isPending}
+                    isLoading={createExpenseMutation.isPending || bulkEditExpenseMutation.isPending}
                     onTriggerMortgageAdjustment={() => {
                       setShowExpenseForm(false);
                       setShowMortgageAdjustment(true);
@@ -797,8 +841,13 @@ export default function Expenses() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setEditingExpense(expense);
-                              setShowExpenseForm(true);
+                              const isRecurring = expense.isRecurring || expense.parentRecurringId;
+                              if (isRecurring) {
+                                setPendingEditExpense(expense);
+                              } else {
+                                setEditingExpense(expense);
+                                setShowExpenseForm(true);
+                              }
                             }}
                             data-testid={`button-edit-expense-${index}`}
                           >
@@ -1469,6 +1518,62 @@ export default function Expenses() {
               );
             }
           })()}
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Choice Dialog */}
+      <AlertDialog open={!!pendingEditExpense} onOpenChange={() => setPendingEditExpense(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit Recurring Expense</AlertDialogTitle>
+            <AlertDialogDescription>
+              This is part of a recurring expense series. What would you like to edit?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto p-4"
+                onClick={() => {
+                  if (pendingEditExpense) {
+                    setEditingExpense(pendingEditExpense);
+                    setIsEditingSeries(false);
+                    setShowExpenseForm(true);
+                    setPendingEditExpense(null);
+                  }
+                }}
+                data-testid="button-edit-single"
+              >
+                <div className="text-left">
+                  <div className="font-semibold">Edit this payment only</div>
+                  <div className="text-sm text-muted-foreground">Modify just this single expense, keep future recurring payments unchanged</div>
+                </div>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto p-4 border-blue-200 hover:bg-blue-50"
+                onClick={() => {
+                  if (pendingEditExpense) {
+                    setEditingExpense(pendingEditExpense);
+                    setIsEditingSeries(true);
+                    setShowExpenseForm(true);
+                    setPendingEditExpense(null);
+                  }
+                }}
+                data-testid="button-edit-recurring"
+              >
+                <div className="text-left">
+                  <div className="font-semibold text-blue-700">Edit this and all future payments</div>
+                  <div className="text-sm text-blue-600">Update the recurring series - changes will apply to future expenses</div>
+                </div>
+              </Button>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

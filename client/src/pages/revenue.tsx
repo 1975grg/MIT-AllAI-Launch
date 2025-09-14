@@ -26,6 +26,8 @@ export default function Revenue() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showRevenueForm, setShowRevenueForm] = useState(false);
   const [editingRevenue, setEditingRevenue] = useState<Transaction | null>(null);
+  const [pendingEditRevenue, setPendingEditRevenue] = useState<Transaction | null>(null);
+  const [isEditingSeries, setIsEditingSeries] = useState(false);
   const [deleteRevenueId, setDeleteRevenueId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
@@ -72,8 +74,13 @@ export default function Revenue() {
   const createRevenueMutation = useMutation({
     mutationFn: async (data: any) => {
       if (editingRevenue) {
-        const response = await apiRequest("PUT", `/api/revenues/${editingRevenue.id}`, data);
-        return response.json();
+        if (isEditingSeries) {
+          const response = await apiRequest("PUT", `/api/revenues/${editingRevenue.id}/recurring`, data);
+          return response.json();
+        } else {
+          const response = await apiRequest("PUT", `/api/revenues/${editingRevenue.id}`, data);
+          return response.json();
+        }
       } else {
         const response = await apiRequest("POST", "/api/revenues", data);
         return response.json();
@@ -83,9 +90,11 @@ export default function Revenue() {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       setShowRevenueForm(false);
       setEditingRevenue(null);
+      setPendingEditRevenue(null);
+      setIsEditingSeries(false);
       toast({
         title: "Success",
-        description: editingRevenue ? "Revenue updated successfully" : "Revenue logged successfully",
+        description: editingRevenue ? (isEditingSeries ? "Recurring revenue series updated successfully" : "Revenue updated successfully") : "Revenue logged successfully",
       });
     },
     onError: (error) => {
@@ -136,6 +145,74 @@ export default function Revenue() {
       toast({
         title: "Error",
         description: "Failed to delete revenue",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDeleteRevenueMutation = useMutation({
+    mutationFn: async (revenueId: string) => {
+      const response = await apiRequest("DELETE", `/api/revenues/${revenueId}/recurring`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      setDeleteRevenueId(null);
+      toast({
+        title: "Success",
+        description: "Recurring revenue series deleted successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete recurring revenue series",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkEditRevenueMutation = useMutation({
+    mutationFn: async ({ revenueId, data }: { revenueId: string; data: any }) => {
+      const response = await apiRequest("PUT", `/api/revenues/${revenueId}/recurring`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      setShowRevenueForm(false);
+      setEditingRevenue(null);
+      setPendingEditRevenue(null);
+      toast({
+        title: "Success",
+        description: "Recurring revenue series updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update recurring revenue series",
         variant: "destructive",
       });
     },
@@ -693,8 +770,13 @@ export default function Revenue() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setEditingRevenue(revenue);
-                              setShowRevenueForm(true);
+                              const isRecurring = revenue.isRecurring || revenue.parentRecurringId;
+                              if (isRecurring) {
+                                setPendingEditRevenue(revenue);
+                              } else {
+                                setEditingRevenue(revenue);
+                                setShowRevenueForm(true);
+                              }
                             }}
                             data-testid={`button-edit-revenue-${index}`}
                           >
@@ -1434,24 +1516,143 @@ export default function Revenue() {
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteRevenueId} onOpenChange={() => setDeleteRevenueId(null)}>
         <AlertDialogContent>
+          {(() => {
+            const revenueToDelete = revenues?.find(r => r.id === deleteRevenueId);
+            const isRecurring = revenueToDelete?.isRecurring || revenueToDelete?.parentRecurringId;
+            
+            if (isRecurring) {
+              return (
+                <>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Recurring Revenue</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This is part of a recurring revenue series. What would you like to delete?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-3">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-auto p-4"
+                        onClick={() => {
+                          if (deleteRevenueId) {
+                            deleteRevenueMutation.mutate(deleteRevenueId);
+                          }
+                        }}
+                        disabled={deleteRevenueMutation.isPending || bulkDeleteRevenueMutation.isPending}
+                        data-testid="button-delete-single"
+                      >
+                        <div className="text-left">
+                          <div className="font-semibold">Delete this payment only</div>
+                          <div className="text-sm text-muted-foreground">Remove just this single revenue entry, keep future recurring payments</div>
+                        </div>
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-auto p-4 border-red-200 hover:bg-red-50"
+                        onClick={() => {
+                          if (deleteRevenueId) {
+                            bulkDeleteRevenueMutation.mutate(deleteRevenueId);
+                          }
+                        }}
+                        disabled={deleteRevenueMutation.isPending || bulkDeleteRevenueMutation.isPending}
+                        data-testid="button-delete-recurring"
+                      >
+                        <div className="text-left">
+                          <div className="font-semibold text-red-700">Delete this and all future payments</div>
+                          <div className="text-sm text-red-600">Stop the recurring series and remove all future revenue entries</div>
+                        </div>
+                      </Button>
+                    </div>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  </AlertDialogFooter>
+                </>
+              );
+            } else {
+              return (
+                <>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Revenue</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this revenue entry? This action cannot be undone and will permanently remove the revenue record.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        if (deleteRevenueId) {
+                          deleteRevenueMutation.mutate(deleteRevenueId);
+                        }
+                      }}
+                      className="bg-red-600 hover:bg-red-700"
+                      disabled={deleteRevenueMutation.isPending}
+                    >
+                      {deleteRevenueMutation.isPending ? "Deleting..." : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </>
+              );
+            }
+          })()}
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Choice Dialog */}
+      <AlertDialog open={!!pendingEditRevenue} onOpenChange={() => setPendingEditRevenue(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Revenue</AlertDialogTitle>
+            <AlertDialogTitle>Edit Recurring Revenue</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this revenue entry? This action cannot be undone.
+              This is part of a recurring revenue series. What would you like to edit?
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto p-4"
+                onClick={() => {
+                  if (pendingEditRevenue) {
+                    setEditingRevenue(pendingEditRevenue);
+                    setIsEditingSeries(false);
+                    setShowRevenueForm(true);
+                    setPendingEditRevenue(null);
+                  }
+                }}
+                data-testid="button-edit-single"
+              >
+                <div className="text-left">
+                  <div className="font-semibold">Edit this payment only</div>
+                  <div className="text-sm text-muted-foreground">Modify just this single revenue entry, keep future recurring payments unchanged</div>
+                </div>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto p-4 border-blue-200 hover:bg-blue-50"
+                onClick={() => {
+                  if (pendingEditRevenue) {
+                    setEditingRevenue(pendingEditRevenue);
+                    setIsEditingSeries(true);
+                    setShowRevenueForm(true);
+                    setPendingEditRevenue(null);
+                  }
+                }}
+                data-testid="button-edit-recurring"
+              >
+                <div className="text-left">
+                  <div className="font-semibold text-blue-700">Edit this and all future payments</div>
+                  <div className="text-sm text-blue-600">Update the recurring series and modify all future revenue entries</div>
+                </div>
+              </Button>
+            </div>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                if (deleteRevenueId) {
-                  deleteRevenueMutation.mutate(deleteRevenueId);
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
