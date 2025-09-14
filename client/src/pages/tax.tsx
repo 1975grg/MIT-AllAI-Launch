@@ -2,23 +2,28 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Calculator, FileText, TrendingUp } from "lucide-react";
-import MortgageAdjustmentForm from "@/components/forms/mortgage-adjustment-form";
-import type { Property, Transaction } from "@shared/schema";
-import { getExpenseDeductionForYear, getAmortizationStatus } from "@/lib/calculations";
+import { Calculator, FileText, Users, Download, AlertCircle, TrendingUp } from "lucide-react";
+import PropertyAssistant from "@/components/ai/property-assistant";
+import type { Property, Transaction, Vendor } from "@shared/schema";
+
+interface TaxData {
+  properties: Property[];
+  transactions: Transaction[];
+  vendors: Vendor[];
+  depreciationAssets: any[];
+}
 
 export default function Tax() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-  const [showMortgageAdjustment, setShowMortgageAdjustment] = useState(false);
+  const [activeTab, setActiveTab] = useState("schedule-e");
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -35,28 +40,37 @@ export default function Tax() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch properties and transactions
-  const { data: properties = [], error } = useQuery<Property[]>({
+  // Fetch all tax-related data
+  const { data: properties = [], error: propertiesError } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
   });
-
-  const { data: transactions = [] } = useQuery<Transaction[]>({
+  const { data: transactions = [], error: transactionsError } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
+  });
+  const { data: vendors = [], error: vendorsError } = useQuery<Vendor[]>({
+    queryKey: ["/api/vendors"],
+  });
+  const { data: depreciationAssets = [] } = useQuery<any[]>({
+    queryKey: ["/api/depreciation-assets"],
   });
 
   // Handle query errors
   useEffect(() => {
-    if (error && isUnauthorizedError(error)) {
-      toast({
-        title: "Session Expired",
-        description: "Please log in again.",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 1000);
+    const errors = [propertiesError, transactionsError, vendorsError];
+    for (const error of errors) {
+      if (error && isUnauthorizedError(error)) {
+        toast({
+          title: "Session Expired",
+          description: "Please log in again.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 1000);
+        return;
+      }
     }
-  }, [error, toast]);
+  }, [propertiesError, transactionsError, vendorsError, toast]);
 
   if (isLoading) {
     return (
@@ -73,235 +87,323 @@ export default function Tax() {
     return null;
   }
 
+  // Calculate tax metrics
+  const expenseTransactions = transactions.filter((t: Transaction) => t.type === "Expense");
+  const uncategorizedExpenses = expenseTransactions.filter((t: Transaction) => !t.scheduleECategory);
+  const vendorsNeed1099 = vendors.filter((v: Vendor) => v.vendorType === "individual" && !v.w9OnFile);
+  
+  // Calculate total annual expenses by Schedule E category
+  const currentYear = new Date().getFullYear();
+  const currentYearExpenses = expenseTransactions.filter((t: Transaction) => 
+    new Date(t.date).getFullYear() === currentYear
+  );
+  
+  const totalExpenses = currentYearExpenses.reduce((sum: number, t: Transaction) => 
+    sum + parseFloat(t.amount), 0
+  );
+
+  // Prepare context for Mailla AI
+  const taxData: TaxData = {
+    properties,
+    transactions: currentYearExpenses,
+    vendors,
+    depreciationAssets
+  };
+
+  const contextInfo = `Tax Center Analysis - ${currentYear} Tax Year:
+- Total Properties: ${properties.length}
+- Current Year Expenses: ${currentYearExpenses.length} transactions totaling $${totalExpenses.toLocaleString()}
+- Uncategorized Expenses: ${uncategorizedExpenses.length} (${((uncategorizedExpenses.length / Math.max(expenseTransactions.length, 1)) * 100).toFixed(1)}%)
+- Schedule E Categories: ${new Set(currentYearExpenses.filter((t: Transaction) => t.scheduleECategory).map((t: Transaction) => t.scheduleECategory)).size} different categories used
+- 1099 Vendors: ${vendorsNeed1099.length} vendors need W-9 forms
+- Depreciation Assets: ${depreciationAssets.length} assets being tracked
+- Tax Readiness: ${uncategorizedExpenses.length === 0 ? 'Ready for Schedule E preparation' : 'Needs expense categorization'}`;
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-tax">
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Tax" />
+        <Header title="Tax Center" />
         
         <main className="flex-1 overflow-y-auto">
-          <div className="p-6">
-            <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold" data-testid="text-page-title">Tax</h1>
-        <p className="text-muted-foreground" data-testid="text-page-description">
-          Manage tax-related features, adjustments, and reporting for your properties.
-        </p>
-      </div>
-
-      {/* Current Year Tax Summary */}
-      {(() => {
-        const currentYear = new Date().getFullYear();
-        const deductibleExpenses = transactions.filter(t => t.taxDeductible);
-        
-        // Calculate current year deductions
-        const currentYearDeductions = deductibleExpenses.map(expense => {
-          const deduction = getExpenseDeductionForYear(expense, currentYear);
-          const amortizationStatus = getAmortizationStatus(expense, currentYear);
-          return {
-            expense,
-            deduction,
-            isAmortized: amortizationStatus.isAmortized,
-            yearsRemaining: amortizationStatus.yearsRemaining,
-            isCompleted: amortizationStatus.isCompleted
-          };
-        }).filter(item => item.deduction > 0);
-
-        const totalCurrentYearDeduction = currentYearDeductions.reduce((sum, item) => sum + item.deduction, 0);
-        const amortizedDeductions = currentYearDeductions.filter(item => item.isAmortized);
-        const nonAmortizedDeductions = currentYearDeductions.filter(item => !item.isAmortized);
-        const totalAmortizedAmount = amortizedDeductions.reduce((sum, item) => sum + item.deduction, 0);
-        const totalNonAmortizedAmount = nonAmortizedDeductions.reduce((sum, item) => sum + item.deduction, 0);
-
-        return (
-          <Card className="border-green-200 bg-green-50/50" data-testid="card-tax-summary">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-green-800">
-                <TrendingUp className="h-5 w-5" />
-                <span>{currentYear} Tax Deductions Summary</span>
-              </CardTitle>
-              <CardDescription className="text-green-700">
-                Current year deductible amounts including multi-year amortized expenses
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                
-                {/* Total Current Year Deductions */}
-                <div className="bg-white rounded-lg p-4 border border-green-200">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600" data-testid="text-total-deductions">
-                      ${totalCurrentYearDeduction.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-green-700 font-medium">Total {currentYear} Deductions</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {currentYearDeductions.length} deductible expense{currentYearDeductions.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Amortized Expenses */}
-                <div className="bg-white rounded-lg p-4 border border-blue-200">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600" data-testid="text-amortized-deductions">
-                      ${totalAmortizedAmount.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-blue-700 font-medium">From Amortized Expenses</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {amortizedDeductions.length} multi-year expense{amortizedDeductions.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Non-Amortized Expenses */}
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-600" data-testid="text-full-deductions">
-                      ${totalNonAmortizedAmount.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-gray-700 font-medium">Full Deductions</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {nonAmortizedDeductions.length} single-year expense{nonAmortizedDeductions.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                </div>
-
+          <div className="container mx-auto p-6 space-y-6">
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Tax Center</h1>
+                <p className="text-muted-foreground mt-1">
+                  Schedule E preparation, depreciation tracking, and 1099 reporting
+                </p>
               </div>
+              <div className="flex gap-2">
+                <Button variant="outline" data-testid="button-export-all">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export All
+                </Button>
+              </div>
+            </div>
 
-              {/* Amortization Details */}
-              {amortizedDeductions.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-green-200">
-                  <h4 className="font-semibold text-green-800 mb-3">Multi-Year Amortization Details</h4>
-                  <div className="space-y-2">
-                    {amortizedDeductions.slice(0, 5).map((item, index) => (
-                      <div key={index} className="flex justify-between items-center text-sm" data-testid={`amortization-detail-${index}`}>
-                        <div className="flex-1">
-                          <span className="font-medium">{item.expense.description}</span>
-                          <span className="text-blue-600 ml-2">
-                            {item.yearsRemaining > 0 
-                              ? `${item.yearsRemaining} years left`
-                              : item.isCompleted 
-                                ? "Complete" 
-                                : "Final year"}
-                          </span>
+            {/* Tax Metrics Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                  <Calculator className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${totalExpenses.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">{currentYear} tax year</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Uncategorized</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{uncategorizedExpenses.length}</div>
+                  <p className="text-xs text-muted-foreground">expenses need categories</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">1099 Vendors</CardTitle>
+                  <Users className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{vendorsNeed1099.length}</div>
+                  <p className="text-xs text-muted-foreground">need W-9 forms</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Assets</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{depreciationAssets.length}</div>
+                  <p className="text-xs text-muted-foreground">depreciation assets</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Mailla AI Assistant for Tax Analysis */}
+            <PropertyAssistant 
+              context={contextInfo}
+              exampleQuestions={[
+                "What Schedule E categories am I missing?",
+                "How much depreciation can I claim this year?", 
+                "Which vendors need 1099 forms?",
+                "Am I ready for tax season?"
+              ]}
+            />
+
+            {/* Main Tax Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="schedule-e" data-testid="tab-schedule-e">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Schedule E
+                </TabsTrigger>
+                <TabsTrigger value="depreciation" data-testid="tab-depreciation">
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Depreciation
+                </TabsTrigger>
+                <TabsTrigger value="1099" data-testid="tab-1099">
+                  <Users className="h-4 w-4 mr-2" />
+                  1099 Reports
+                </TabsTrigger>
+                <TabsTrigger value="exports" data-testid="tab-exports">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exports
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="schedule-e" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Schedule E - Rental Income & Expenses</CardTitle>
+                    <CardDescription>
+                      IRS Schedule E categorization for your rental properties
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {uncategorizedExpenses.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <h3 className="font-semibold text-amber-800">Action Required</h3>
                         </div>
-                        <div className="text-right">
-                          <div className="font-medium">${item.deduction.toLocaleString()}</div>
-                          <div className="text-xs text-muted-foreground">of ${Number(item.expense.amount).toLocaleString()} total</div>
-                        </div>
-                      </div>
-                    ))}
-                    {amortizedDeductions.length > 5 && (
-                      <div className="text-xs text-muted-foreground text-center pt-2">
-                        ... and {amortizedDeductions.length - 5} more amortized expenses
+                        <p className="text-amber-700 text-sm mb-3">
+                          You have {uncategorizedExpenses.length} uncategorized expenses that need Schedule E categories.
+                        </p>
+                        <Button size="sm" data-testid="button-categorize-expenses">
+                          Categorize Expenses
+                        </Button>
                       </div>
                     )}
-                  </div>
-                </div>
-              )}
 
-            </CardContent>
-          </Card>
-        );
-      })()}
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <h3 className="font-semibold mb-2">Schedule E Report</h3>
+                      <p className="text-sm">
+                        Detailed Schedule E report will be displayed here once categorization is complete.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-      {/* Tax Features Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        
-        {/* Mortgage Interest Adjustment */}
-        <Card className="hover:shadow-md transition-shadow" data-testid="card-mortgage-adjustment">
-          <CardHeader className="pb-3">
-            <div className="flex items-center space-x-2">
-              <Calculator className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Mortgage Adjustments</CardTitle>
-            </div>
-            <CardDescription>
-              Adjust interest allocation for mortgage payments based on actual interest paid.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Dialog open={showMortgageAdjustment} onOpenChange={setShowMortgageAdjustment}>
-              <DialogTrigger asChild>
-                <Button className="w-full" data-testid="button-mortgage-adjustments">
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Process Adjustments
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Year-End Mortgage Interest Adjustment</DialogTitle>
-                  <DialogDescription>
-                    Split mortgage payments into deductible interest and non-deductible principal based on actual interest paid.
-                  </DialogDescription>
-                </DialogHeader>
-                <MortgageAdjustmentForm
-                  properties={properties}
-                  onClose={() => setShowMortgageAdjustment(false)}
-                />
-              </DialogContent>
-            </Dialog>
-          </CardContent>
-        </Card>
+              <TabsContent value="depreciation" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Depreciation Assets</CardTitle>
+                    <CardDescription>
+                      Track building, improvement, and equipment depreciation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">Assets ({depreciationAssets.length})</h3>
+                      <Button data-testid="button-add-asset">Add Asset</Button>
+                    </div>
 
-        {/* Tax Reports */}
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" data-testid="card-tax-reports">
-          <CardHeader className="pb-3">
-            <div className="flex items-center space-x-2">
-              <FileText className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Tax Reports</CardTitle>
-            </div>
-            <CardDescription>
-              Generate tax reports and summaries for your rental properties.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" className="w-full" disabled data-testid="button-tax-reports">
-              <FileText className="h-4 w-4 mr-2" />
-              Coming Soon
-            </Button>
-          </CardContent>
-        </Card>
+                    {depreciationAssets.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <h3 className="font-semibold mb-2">No Depreciation Assets</h3>
+                        <p className="text-sm">
+                          Add your buildings, improvements, and equipment to start tracking depreciation.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {depreciationAssets.map((asset: any) => (
+                          <div key={asset.id} className="border rounded-lg p-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-semibold">{asset.name}</h4>
+                                <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                                  <span>Type: <Badge variant="outline">{asset.assetType}</Badge></span>
+                                  <span>Cost: ${parseFloat(asset.originalCost).toLocaleString()}</span>
+                                  <span>Recovery: {asset.recoveryPeriod} years</span>
+                                </div>
+                              </div>
+                              <Button variant="outline" size="sm">Edit</Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-        {/* Year-End Summary */}
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" data-testid="card-year-end-summary">
-          <CardHeader className="pb-3">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Year-End Summary</CardTitle>
-            </div>
-            <CardDescription>
-              View comprehensive year-end tax summary for all properties.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" className="w-full" disabled data-testid="button-year-end-summary">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Coming Soon
-            </Button>
-          </CardContent>
-        </Card>
+              <TabsContent value="1099" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>1099 Vendor Reports</CardTitle>
+                    <CardDescription>
+                      Track contractors and service providers for 1099-NEC reporting
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {vendorsNeed1099.length > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="h-4 w-4 text-blue-600" />
+                          <h3 className="font-semibold text-blue-800">W-9 Forms Needed</h3>
+                        </div>
+                        <p className="text-blue-700 text-sm mb-3">
+                          {vendorsNeed1099.length} vendors need W-9 forms on file before you can generate 1099s.
+                        </p>
+                        <Button size="sm" variant="outline" data-testid="button-manage-w9">
+                          Manage W-9 Forms
+                        </Button>
+                      </div>
+                    )}
 
-      </div>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <h3 className="font-semibold mb-2">1099 Report</h3>
+                      <p className="text-sm">
+                        1099-NEC report for vendors with payments over $600 will be displayed here.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-      {/* Information Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <FileText className="h-5 w-5" />
-            <span>Tax Management</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            This section consolidates all tax-related features for your rental properties. 
-            Use mortgage adjustments to accurately allocate interest vs. principal for tax reporting. 
-            Additional tax features will be added over time to support comprehensive rental property tax management.
-          </p>
-        </CardContent>
-      </Card>
-            </div>
+              <TabsContent value="exports" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Tax Data Exports</CardTitle>
+                    <CardDescription>
+                      Export tax data for TurboTax, TaxAct, and other tax software
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Schedule E Export</CardTitle>
+                          <CardDescription>CSV format compatible with tax software</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <Button className="w-full" data-testid="button-export-schedule-e">
+                            <Download className="h-4 w-4 mr-2" />
+                            Export Schedule E
+                          </Button>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">1099 Export</CardTitle>
+                          <CardDescription>Vendor payment summaries for 1099 preparation</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <Button className="w-full" data-testid="button-export-1099">
+                            <Download className="h-4 w-4 mr-2" />
+                            Export 1099 Data
+                          </Button>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Depreciation Export</CardTitle>
+                          <CardDescription>Asset depreciation schedules and calculations</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <Button className="w-full" data-testid="button-export-depreciation">
+                            <Download className="h-4 w-4 mr-2" />
+                            Export Depreciation
+                          </Button>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Complete Package</CardTitle>
+                          <CardDescription>All tax data in a ZIP file</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <Button className="w-full" variant="default" data-testid="button-export-package">
+                            <Download className="h-4 w-4 mr-2" />
+                            Export Tax Package
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>

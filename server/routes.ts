@@ -1228,6 +1228,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Depreciation assets routes
+  app.get('/api/depreciation-assets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // TODO: Implement storage.getDepreciationAssets(org.id) when ready
+      // For now, return empty array to prevent Tax Center query errors
+      const depreciationAssets = [];
+      res.json(depreciationAssets);
+    } catch (error) {
+      console.error("Error fetching depreciation assets:", error);
+      res.status(500).json({ message: "Failed to fetch depreciation assets" });
+    }
+  });
+
   // Transaction routes
   app.get('/api/transactions', isAuthenticated, async (req: any, res) => {
     try {
