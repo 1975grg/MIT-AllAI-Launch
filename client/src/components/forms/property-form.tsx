@@ -230,9 +230,10 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'propertyValue' && value.propertyValue && value.propertyValue !== 0) {
-        // Auto-fill if purchase price is empty, zero, or not yet set
+        // Auto-fill if purchase price is empty, zero, null, or not yet set
         const currentPurchasePrice = value.purchasePrice;
-        if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === undefined) {
+        if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === undefined || currentPurchasePrice === null || currentPurchasePrice === "") {
+          console.log("🏠 Auto-filling purchase price from property value change:", value.propertyValue);
           form.setValue('purchasePrice', Number(value.propertyValue));
         }
       }
@@ -242,8 +243,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
 
   // Auto-fill purchase price on initial load if editing existing property
   useEffect(() => {
-    if (initialData && initialData.propertyValue && !initialData.purchasePrice) {
-      form.setValue('purchasePrice', Number(initialData.propertyValue));
+    if (initialData && initialData.propertyValue) {
+      const currentPurchasePrice = initialData.purchasePrice;
+      // Auto-fill if purchase price is missing, zero, empty string, or null
+      if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === "" || currentPurchasePrice === null) {
+        console.log("🏠 Auto-filling purchase price from property value:", initialData.propertyValue);
+        form.setValue('purchasePrice', Number(initialData.propertyValue));
+      }
     }
   }, [initialData, form]);
 
