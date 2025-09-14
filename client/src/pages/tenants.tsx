@@ -621,6 +621,7 @@ export default function Tenants() {
                             className="flex-1 min-w-[110px]" 
                             onClick={() => {
                               setSelectedTenantGroup(group);
+                              setSelectedLease(activeLease);
                               setShowLeaseForm(true);
                             }}
                             data-testid={`button-view-lease-${index}`}
