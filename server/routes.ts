@@ -1326,7 +1326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertExpenseSchema.parse(cleanedData);
       
-      const expense = await storage.createTransaction(validatedData as any);
+      const expense = await storage.createExpense(validatedData as any);
       res.json(expense);
     } catch (error) {
       console.error("Error creating expense:", error);
@@ -1697,7 +1697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertRevenueSchema.parse(cleanedData);
       
-      const revenue = await storage.createTransaction(validatedData as any);
+      const revenue = await storage.createRevenue(validatedData as any);
       res.json(revenue);
     } catch (error) {
       console.error("Error creating revenue:", error);

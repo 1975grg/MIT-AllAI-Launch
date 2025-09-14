@@ -1268,7 +1268,7 @@ export class DatabaseStorage implements IStorage {
     
     // If this is a recurring expense, create future instances
     if (expense.isRecurring && expense.recurringFrequency) {
-      await this.createRecurringExpenses(newExpense);
+      await this.createRecurringTransactions(newExpense);
     }
     
     // Create line items if provided
@@ -1281,6 +1281,20 @@ export class DatabaseStorage implements IStorage {
     }
 
     return newExpense;
+  }
+
+  async createRevenue(revenue: InsertRevenue): Promise<Transaction> {
+    const [newRevenue] = await db.insert(transactions).values({
+      ...revenue,
+      recurringEndDate: revenue.recurringEndDate ? (typeof revenue.recurringEndDate === 'string' ? new Date(revenue.recurringEndDate) : revenue.recurringEndDate) : null,
+    }).returning();
+    
+    // If this is a recurring revenue, create future instances
+    if (revenue.isRecurring && revenue.recurringFrequency) {
+      await this.createRecurringTransactions(newRevenue);
+    }
+
+    return newRevenue;
   }
 
   async getTransactionsByEntity(entityId: string): Promise<Transaction[]> {
@@ -1306,18 +1320,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(transactionLineItems.transactionId, transactionId));
   }
 
-  private async createRecurringExpenses(originalExpense: Transaction): Promise<void> {
-    if (!originalExpense.isRecurring || !originalExpense.recurringFrequency) return;
+  private async createRecurringTransactions(originalTransaction: Transaction): Promise<void> {
+    if (!originalTransaction.isRecurring || !originalTransaction.recurringFrequency) return;
 
-    const frequency = originalExpense.recurringFrequency;
-    const interval = originalExpense.recurringInterval || 1;
-    const startDate = new Date(originalExpense.date);
-    const endDate = originalExpense.recurringEndDate ? new Date(originalExpense.recurringEndDate) : null;
+    const frequency = originalTransaction.recurringFrequency;
+    const interval = originalTransaction.recurringInterval || 1;
+    const startDate = new Date(originalTransaction.date);
+    const endDate = originalTransaction.recurringEndDate ? new Date(originalTransaction.recurringEndDate) : null;
     
     // Calculate how many instances to create (limit to 24 months for safety)
     const maxInstances = 24;
     let currentDate = new Date(startDate);
-    const instances: Array<InsertExpense> = [];
+    const instances: Array<any> = [];
 
     for (let i = 0; i < maxInstances; i++) {
       // Calculate next occurrence based on frequency and interval
@@ -1356,25 +1370,25 @@ export class DatabaseStorage implements IStorage {
       if (currentDate > new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000)) break;
 
       instances.push({
-        orgId: originalExpense.orgId,
-        propertyId: originalExpense.propertyId || undefined,
-        unitId: originalExpense.unitId || undefined,
-        entityId: originalExpense.entityId || undefined,
-        vendorId: originalExpense.vendorId || undefined,
-        type: "Expense" as const,
-        scope: (originalExpense.scope as "property" | "operational") || "property",
-        amount: originalExpense.amount,
-        description: originalExpense.description,
-        category: originalExpense.category || undefined,
+        orgId: originalTransaction.orgId,
+        propertyId: originalTransaction.propertyId || undefined,
+        unitId: originalTransaction.unitId || undefined,
+        entityId: originalTransaction.entityId || undefined,
+        vendorId: originalTransaction.vendorId || undefined,
+        type: originalTransaction.type, // Use the original transaction type (Expense or Income)
+        scope: (originalTransaction.scope as "property" | "operational") || "property",
+        amount: originalTransaction.amount,
+        description: originalTransaction.description,
+        category: originalTransaction.category || undefined,
         date: new Date(currentDate),
-        receiptUrl: originalExpense.receiptUrl || undefined,
-        notes: originalExpense.notes || undefined,
+        receiptUrl: originalTransaction.receiptUrl || undefined,
+        notes: originalTransaction.notes || undefined,
         isRecurring: false, // Future instances are not recurring themselves
         recurringFrequency: undefined,
         recurringInterval: 1,
         recurringEndDate: null,
-        taxDeductible: originalExpense.taxDeductible || true,
-        parentRecurringId: originalExpense.id,
+        taxDeductible: originalTransaction.taxDeductible || true,
+        parentRecurringId: originalTransaction.id,
         isBulkEntry: false,
       });
     }
