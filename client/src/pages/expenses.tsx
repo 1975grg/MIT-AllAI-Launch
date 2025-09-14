@@ -496,7 +496,7 @@ export default function Expenses() {
             </div>
           </div>
 
-          {/* Mortgage Split Tool - Smart Banner */}
+          {/* Mortgage Split Tool - Compact Banner */}
           {(() => {
             const allExpenses = expenses?.filter(t => t.type === "Expense") || [];
             const currentYear = new Date().getFullYear();
@@ -506,36 +506,30 @@ export default function Expenses() {
             
             if (mortgageExpenses.length > 0) {
               return (
-                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800 mb-6">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                          <GitCompare className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg text-blue-900 dark:text-blue-100">📊 Ready for tax season? Split your mortgage payments</CardTitle>
-                          <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                            {currentYear}: {mortgageExpenses.length} mortgage payments ready to split into interest (deductible) vs principal (non-deductible)
-                          </p>
-                        </div>
+                <div className="mb-4">
+                  <div 
+                    className="group relative inline-flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                    onClick={() => setShowMortgageAdjustment(true)}
+                    data-testid="button-mortgage-split-compact"
+                  >
+                    <GitCompare className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      💼 Year-End Mortgage Split ({mortgageExpenses.length})
+                    </span>
+                    
+                    {/* Hover Tooltip */}
+                    <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 w-64">
+                      <div className="space-y-1">
+                        <p className="font-semibold">Split mortgage payments into:</p>
+                        <p>• Interest (tax deductible)</p>
+                        <p>• Principal (non-deductible)</p>
+                        <p className="text-gray-300 dark:text-gray-600 pt-1">Do once per year after Form 1098</p>
                       </div>
-                      <Button 
-                        onClick={() => setShowMortgageAdjustment(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                        data-testid="button-mortgage-split-expenses"
-                      >
-                        Split Payments
-                      </Button>
+                      {/* Arrow */}
+                      <div className="absolute top-full left-4 w-2 h-2 bg-gray-900 dark:bg-gray-100 transform rotate-45"></div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="text-sm text-blue-600 dark:text-blue-300 bg-white dark:bg-gray-900 p-3 rounded border">
-                      <strong>💡 Tax Tip:</strong> Do this once per year after receiving your Form 1098. 
-                      Automatically categorizes interest as deductible and principal as non-deductible without manual work.
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             }
             return null;
