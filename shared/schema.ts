@@ -464,6 +464,12 @@ export const reminders = pgTable("reminders", {
   status: reminderStatusEnum("status").default("Pending"),
   sentAt: timestamp("sent_at"),
   completedAt: timestamp("completed_at"),
+  isRecurring: boolean("is_recurring").default(false),
+  recurringFrequency: varchar("recurring_frequency"), // "days", "weeks", "months", "years"
+  recurringInterval: integer("recurring_interval").default(1), // Every X (frequency)
+  recurringEndDate: timestamp("recurring_end_date"),
+  parentRecurringId: varchar("parent_recurring_id"), // Reference to the original reminder for recurring instances
+  isBulkEntry: boolean("is_bulk_entry").default(false), // For bulk reminder entries
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -655,8 +661,21 @@ export const insertAssetSchema = createInsertSchema(assets).omit({ id: true, cre
 export const insertSmartCaseSchema = createInsertSchema(smartCases).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
-export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true }).extend({
+export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true, parentRecurringId: true }).extend({
   dueAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  isRecurring: z.boolean().optional().default(false),
+  recurringFrequency: z.enum(["days", "weeks", "months", "years", "daily", "weekly", "monthly", "quarterly", "annually"]).optional(),
+  recurringInterval: z.number().min(1).optional().default(1),
+  recurringEndDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  isBulkEntry: z.boolean().optional().default(false),
+}).refine((data) => {
+  if (data.isRecurring && !data.recurringFrequency) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Recurring frequency is required for recurring reminders",
+  path: ["recurringFrequency"],
 });
 // Line Item schemas
 export const insertTransactionLineItemSchema = createInsertSchema(transactionLineItems).omit({ id: true, createdAt: true });
