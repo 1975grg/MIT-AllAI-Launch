@@ -1557,6 +1557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isRecurring: false,
             taxDeductible: true,
             isBulkEntry: false,
+            scheduleECategory: "mortgage_interest",
             notes: `Split from original mortgage payment of $${paymentAmount.toFixed(2)} - Interest: $${interestPortion.toFixed(2)}, Principal: $${principalPortion.toFixed(2)}`
           };
           await storage.createTransaction(interestExpenseData);
