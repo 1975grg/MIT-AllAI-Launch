@@ -240,9 +240,15 @@ export default function Tenants() {
     const propertyMatch = propertyFilter === "all" || group.propertyId === propertyFilter;
     
     // Filter by unit - only apply unit filter if some units are selected
-    const unitMatch = unitFilter.length === 0 || 
-      (group.unitId && unitFilter.includes(group.unitId)) || 
-      (unitFilter.includes("common") && !group.unitId);
+    const unitMatch = unitFilter.length === 0 || (() => {
+      // Find leases for this tenant group to get unitId(s)
+      const groupLeases = leases.filter(lease => lease.tenantGroupId === group.id);
+      const groupUnitIds = groupLeases.map(lease => lease.unitId);
+      
+      // Check if any of the group's units match the filter
+      return groupUnitIds.some(unitId => unitFilter.includes(unitId)) ||
+        (unitFilter.includes("common") && groupUnitIds.length === 0);
+    })();
     
     // Filter by entity (via property)
     if (entityFilter !== "all") {
