@@ -94,7 +94,14 @@ export default function LeaseForm({
 
   // Update form values when existingLease data loads
   useEffect(() => {
+    console.log("🔍 LeaseForm useEffect triggered:", { existingLease, hasUnits: units.length > 0 });
     if (existingLease) {
+      console.log("📝 Resetting form with lease data:", {
+        rent: existingLease.rent,
+        deposit: existingLease.deposit,
+        startDate: existingLease.startDate,
+        endDate: existingLease.endDate
+      });
       form.reset({
         unitId: existingLease.unitId || "",
         startDate: existingLease.startDate ? new Date(existingLease.startDate) : new Date(),
@@ -110,7 +117,10 @@ export default function LeaseForm({
       
       // Also update the selected unit
       const unit = units.find(u => u.id === existingLease.unitId);
+      console.log("🏠 Setting selected unit:", unit?.name);
       setSelectedUnit(unit);
+    } else {
+      console.log("❌ No existingLease data provided");
     }
   }, [existingLease, units, form]);
 

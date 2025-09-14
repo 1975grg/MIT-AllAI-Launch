@@ -498,7 +498,9 @@ export default function Tenants() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTenantGroups.map((group, index) => {
               const groupLeases = leases.filter(lease => lease.tenantGroupId === group.id);
-              const activeLease = groupLeases.find(lease => lease.status === "Active");
+              const activeLease = groupLeases
+                .filter(lease => lease.status === "Active")
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
               const isLeaseEndingSoon = (endDate: string | Date | null) => {
                 if (!endDate) return false;
                 const daysUntilEnd = Math.ceil((new Date(endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
