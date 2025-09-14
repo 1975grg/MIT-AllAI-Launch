@@ -4,11 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bot, Send, Lightbulb } from "lucide-react";
+import { Loader2, Bot, Send, Lightbulb, CheckCircle, Calendar, AlertCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { Separator } from "@/components/ui/separator";
 
 type AIResponse = {
-  answer: string;
+  answer: {
+    tldr: string;
+    bullets: string[];
+    actions: { label: string; due?: string; id?: string }[];
+    caveats?: string;
+  } | string; // fallback for plain text responses
   sources?: string[];
   confidence?: number;
 };
@@ -33,7 +39,12 @@ export default function PropertyAssistant({ context = "dashboard", exampleQuesti
   const [question, setQuestion] = useState("");
   const [conversation, setConversation] = useState<Array<{
     type: "user" | "ai";
-    content: string;
+    content: string | {
+      tldr: string;
+      bullets: string[];
+      actions: { label: string; due?: string; id?: string }[];
+      caveats?: string;
+    };
     timestamp: Date;
   }>>([]);
   const [isAsking, setIsAsking] = useState(false);
@@ -125,8 +136,68 @@ export default function PropertyAssistant({ context = "dashboard", exampleQuesti
                     ? "bg-primary text-primary-foreground ml-4" 
                     : "bg-background border mr-4"
                 }`} data-testid={`message-${message.type}-${index}`}>
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  <p className={`text-xs mt-1 ${
+                  {typeof message.content === 'string' ? (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* TL;DR Section */}
+                      <div className="text-sm font-medium text-primary" data-testid="text-tldr">
+                        {message.content.tldr}
+                      </div>
+                      
+                      {/* Key Facts Bullets */}
+                      {message.content.bullets.length > 0 && (
+                        <>
+                          <Separator className="my-2" />
+                          <ul className="space-y-1" data-testid="list-facts">
+                            {message.content.bullets.map((bullet, bulletIndex) => (
+                              <li key={bulletIndex} className="flex items-start space-x-2 text-sm">
+                                <CheckCircle className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                      
+                      {/* Action Items */}
+                      {message.content.actions.length > 0 && (
+                        <>
+                          <Separator className="my-2" />
+                          <div className="space-y-2" data-testid="list-actions">
+                            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              <span>Next Actions:</span>
+                            </div>
+                            {message.content.actions.map((action, actionIndex) => (
+                              <div key={actionIndex} className="flex items-start space-x-2 text-sm p-2 bg-muted/30 rounded border-l-2 border-primary">
+                                <div className="flex-1">
+                                  <span className="font-medium">{action.label}</span>
+                                  {action.due && (
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      Due: {action.due}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      
+                      {/* Caveats */}
+                      {message.content.caveats && (
+                        <>
+                          <Separator className="my-2" />
+                          <div className="flex items-start space-x-2 text-xs text-muted-foreground">
+                            <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                            <span>{message.content.caveats}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <p className={`text-xs mt-2 ${
                     message.type === "user" ? "text-primary-foreground/70" : "text-muted-foreground"
                   }`}>
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

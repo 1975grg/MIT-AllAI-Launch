@@ -1971,53 +1971,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      // Create context-aware AI prompt
+      // Create structured, context-aware AI prompt
       let contextualGuidance = "";
+      let fewShotExample = "";
       
       if (context === "reminders") {
         contextualGuidance = `
 
-REMINDERS FOCUS: When answering, prioritize information about:
-- Upcoming due dates and overdue items  
-- Task prioritization and urgency
-- Property-specific reminder patterns
-- Maintenance scheduling and lease renewals
-- Regulatory compliance deadlines`;
+REMINDERS FOCUS: Prioritize due/overdue counts, top 3 items with dates and urgency, owners/assignees, immediate actions. Use format "... and N more" for overflow.`;
+        
+        fewShotExample = `
+
+EXAMPLE OUTPUT for reminders question "What needs my attention?":
+{
+  "tldr": "3 overdue items, 2 due this week. Focus on Unit A rent collection and B2 maintenance.",
+  "bullets": [
+    "2 rent payments overdue (Unit A: 5 days, Unit C: 2 days)",
+    "Unit B2 HVAC repair due tomorrow",
+    "Lease renewal for Tenant Smith expires in 3 days"
+  ],
+  "actions": [
+    {"label": "Contact Unit A tenant for payment", "due": "Today"},
+    {"label": "Schedule HVAC repair", "due": "Tomorrow"},
+    {"label": "Send lease renewal docs to Smith", "due": "This week"}
+  ]
+}`;
       }
 
-      const prompt = `You are a helpful property management assistant. Answer questions about the user's property portfolio based on the provided data.
-${contextualGuidance}
+      const systemPrompt = `You are a concise property management assistant. Provide structured, scannable answers for busy part-time landlords.
+
+STRICT REQUIREMENTS:
+- Maximum 120 words visible content total
+- Maximum 5 bullet points
+- Maximum 3 action items
+- Use only provided data - if missing, say "Not available"
+- Quote exact numbers from data
+- No speculation or assumptions
+- Start with TL;DR, use bullets over paragraphs
+- No preamble, apologies, or filler${contextualGuidance}
+
+RESPONSE FORMAT (JSON):
+{
+  "tldr": "string (max 160 chars - key insight/summary)",
+  "bullets": ["string array (max 5 - key facts with numbers)"],
+  "actions": [{"label": "string", "due": "string", "id": "string (optional)"}],
+  "caveats": "string (optional - if data incomplete)"
+}${fewShotExample}
 
 PROPERTY DATA:
 ${JSON.stringify(aiData, null, 2)}
 
 USER QUESTION: ${question}
 
-Please provide a helpful, specific answer based on the actual data provided. Keep responses concise but informative. If you need data that isn't available, mention what additional information would be helpful.`;
+Respond with valid JSON only:`;
 
-      // Call OpenAI
+      // Call OpenAI with parameters optimized for concise, structured responses
       const completion = await openai.chat.completions.create({
         model: "gpt-5",
         messages: [
           {
-            role: "system",
-            content: "You are a knowledgeable property management assistant. Provide helpful, accurate answers based on the user's actual property data. Be concise but thorough."
-          },
-          {
-            role: "user", 
-            content: prompt
+            role: "user",
+            content: systemPrompt
           }
         ],
-        max_completion_tokens: 1500
+        max_completion_tokens: 300,
+        temperature: 0.2,
+        frequency_penalty: 0.3,
+        response_format: { type: "json_object" }
       });
 
-      const answer = completion.choices[0].message.content;
+      const aiResponse = completion.choices[0].message.content;
 
-      res.json({
-        answer: answer || "I'm sorry, I couldn't generate a response right now.",
-        sources: ["Property Database"],
-        confidence: 0.9
-      });
+      try {
+        // Parse the structured JSON response from AI
+        const structuredResponse = JSON.parse(aiResponse || "{}");
+        
+        res.json({
+          answer: structuredResponse,
+          sources: ["Property Database"],
+          confidence: 0.9
+        });
+      } catch (parseError) {
+        // Fallback to plain text response if JSON parsing fails
+        res.json({
+          answer: {
+            tldr: "Unable to parse AI response",
+            bullets: ["There was an issue processing your request"],
+            actions: [],
+            caveats: "Please try again"
+          },
+          sources: ["Property Database"],
+          confidence: 0.5
+        });
+      }
 
     } catch (error) {
       console.error("AI request failed:", error);
