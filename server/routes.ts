@@ -2044,8 +2044,7 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
           verbosity: "high"
         },
         reasoning: { effort: "low" }, // Reduce reasoning to focus on output
-        max_output_tokens: 500,
-        temperature: 0.3 // Lower temperature for more consistent JSON generation
+        max_output_tokens: 500
       });
 
       // Robust extraction for GPT-5 Responses API - handle all possible content locations
