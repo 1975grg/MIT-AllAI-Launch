@@ -251,15 +251,18 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       console.log("  - propertyValue:", initialData.propertyValue);
       console.log("  - currentPurchasePrice:", currentPurchasePrice);
       console.log("  - typeof currentPurchasePrice:", typeof currentPurchasePrice);
+      console.log("  - form field value:", form.getValues('purchasePrice'));
       
-      // Auto-fill if purchase price is missing, zero, empty string, null, or 1 (which shouldn't be there)
+      // Auto-fill if purchase price is missing, zero, empty string, null, or invalid
       if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === "" || currentPurchasePrice === null || currentPurchasePrice === 1) {
         console.log("🏠 Auto-filling purchase price from property value:", initialData.propertyValue);
-        setTimeout(() => {
-          form.setValue('purchasePrice', Number(initialData.propertyValue));
-        }, 100);
+        form.setValue('purchasePrice', Number(initialData.propertyValue));
       } else {
         console.log("⏹️ Not auto-filling because purchasePrice already has value:", currentPurchasePrice);
+        // Force set the correct value if it exists but form field is wrong
+        if (currentPurchasePrice && currentPurchasePrice !== 1) {
+          form.setValue('purchasePrice', Number(currentPurchasePrice));
+        }
       }
     }
   }, [initialData, form]);
@@ -1476,7 +1479,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`purchase-price-${(initialData as any)?.id || 'new'}`}
-                        value={field.value ? Number(field.value).toLocaleString() : ""}
+                        value={field.value && field.value !== 0 && !isNaN(Number(field.value)) ? Number(field.value).toLocaleString() : ""}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
