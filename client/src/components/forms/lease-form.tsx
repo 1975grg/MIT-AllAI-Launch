@@ -92,6 +92,28 @@ export default function LeaseForm({
     }
   }, [watchedUnitId, units]);
 
+  // Update form values when existingLease data loads
+  useEffect(() => {
+    if (existingLease) {
+      form.reset({
+        unitId: existingLease.unitId || "",
+        startDate: existingLease.startDate ? new Date(existingLease.startDate) : new Date(),
+        endDate: existingLease.endDate ? new Date(existingLease.endDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+        rent: existingLease.rent ? String(existingLease.rent) : "",
+        deposit: existingLease.deposit ? String(existingLease.deposit) : "",
+        dueDay: existingLease.dueDay || 1,
+        status: existingLease.status || "Active",
+        autoRenewEnabled: existingLease.autoRenewEnabled || false,
+        expirationReminderMonths: existingLease.expirationReminderMonths || 3,
+        renewalReminderEnabled: existingLease.renewalReminderEnabled || false,
+      });
+      
+      // Also update the selected unit
+      const unit = units.find(u => u.id === existingLease.unitId);
+      setSelectedUnit(unit);
+    }
+  }, [existingLease, units, form]);
+
   const handleSubmit = (data: LeaseFormData) => {
     const submitData = {
       ...data,
