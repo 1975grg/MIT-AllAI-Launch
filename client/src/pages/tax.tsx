@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calculator, FileText, Users, Download, AlertCircle, TrendingUp } from "lucide-react";
 import PropertyAssistant from "@/components/ai/property-assistant";
+import MortgageAdjustmentForm from "@/components/forms/mortgage-adjustment-form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Property, Transaction, Vendor } from "@shared/schema";
 
 interface TaxData {
@@ -24,6 +26,7 @@ export default function Tax() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("schedule-e");
+  const [showMortgageAdjustment, setShowMortgageAdjustment] = useState(false);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -247,6 +250,39 @@ export default function Tax() {
                       </div>
                     )}
 
+                    {/* Mortgage Interest Adjustment */}
+                    <Card className="bg-blue-50 dark:bg-blue-950/50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Calculator className="h-5 w-5" />
+                          Mortgage Interest Adjustment
+                        </CardTitle>
+                        <CardDescription>
+                          Split mortgage payments into deductible interest vs. non-deductible principal using your Form 1098
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <p className="text-sm text-muted-foreground">
+                            Enter your actual interest paid from your mortgage company's year-end statement (Form 1098) 
+                            to accurately split mortgage payments for tax reporting.
+                          </p>
+                          <div className="bg-white dark:bg-gray-900 p-3 rounded border text-xs">
+                            <strong>How it works:</strong> Finds all "Mortgage" expenses for the year and splits them 
+                            into "Interest" (Schedule E deductible) and "Principal" (non-deductible) based on your actual Form 1098 amounts.
+                            Handles partial year ownership automatically.
+                          </div>
+                          <Button 
+                            onClick={() => setShowMortgageAdjustment(true)}
+                            className="w-full"
+                            data-testid="button-mortgage-adjustment"
+                          >
+                            Adjust Mortgage Interest
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
                       <h3 className="font-semibold mb-2">Schedule E Report</h3>
@@ -406,6 +442,19 @@ export default function Tax() {
             </Tabs>
           </div>
         </main>
+
+        {/* Mortgage Adjustment Dialog */}
+        <Dialog open={showMortgageAdjustment} onOpenChange={setShowMortgageAdjustment}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Mortgage Interest Adjustment</DialogTitle>
+            </DialogHeader>
+            <MortgageAdjustmentForm 
+              properties={properties}
+              onClose={() => setShowMortgageAdjustment(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
