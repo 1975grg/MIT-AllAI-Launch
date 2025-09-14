@@ -2029,7 +2029,7 @@ Respond with valid JSON only:`;
       const response = await openai.responses.create({
         model: "gpt-5",
         input: systemPrompt,
-        text: { format: { type: "json" } },
+        text: { format: { type: "json_object" } },
         max_output_tokens: 300
       });
 
