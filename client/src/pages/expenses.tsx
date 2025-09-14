@@ -148,6 +148,39 @@ export default function Expenses() {
     },
   });
 
+  const bulkDeleteExpenseMutation = useMutation({
+    mutationFn: async (expenseId: string) => {
+      const response = await apiRequest("DELETE", `/api/expenses/${expenseId}/recurring`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      setDeleteExpenseId(null);
+      toast({
+        title: "Success",
+        description: "Recurring expense series deleted successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete recurring expense series",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -1354,26 +1387,88 @@ export default function Expenses() {
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteExpenseId} onOpenChange={() => setDeleteExpenseId(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Expense</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this expense? This action cannot be undone and will permanently remove the expense record.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteExpenseId) {
-                  deleteExpenseMutation.mutate(deleteExpenseId);
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteExpenseMutation.isPending}
-            >
-              {deleteExpenseMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          {(() => {
+            const expenseToDelete = expenses?.find(e => e.id === deleteExpenseId);
+            const isRecurring = expenseToDelete?.isRecurring || expenseToDelete?.parentRecurringId;
+            
+            if (isRecurring) {
+              return (
+                <>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Recurring Expense</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This is part of a recurring expense series. What would you like to delete?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-3">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-auto p-4"
+                        onClick={() => {
+                          if (deleteExpenseId) {
+                            deleteExpenseMutation.mutate(deleteExpenseId);
+                          }
+                        }}
+                        disabled={deleteExpenseMutation.isPending || bulkDeleteExpenseMutation.isPending}
+                        data-testid="button-delete-single"
+                      >
+                        <div className="text-left">
+                          <div className="font-semibold">Delete this payment only</div>
+                          <div className="text-sm text-muted-foreground">Remove just this single expense, keep future recurring payments</div>
+                        </div>
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-auto p-4 border-red-200 hover:bg-red-50"
+                        onClick={() => {
+                          if (deleteExpenseId) {
+                            bulkDeleteExpenseMutation.mutate(deleteExpenseId);
+                          }
+                        }}
+                        disabled={deleteExpenseMutation.isPending || bulkDeleteExpenseMutation.isPending}
+                        data-testid="button-delete-recurring"
+                      >
+                        <div className="text-left">
+                          <div className="font-semibold text-red-700">Delete this and all future payments</div>
+                          <div className="text-sm text-red-600">Stop the recurring series and remove all future expenses</div>
+                        </div>
+                      </Button>
+                    </div>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  </AlertDialogFooter>
+                </>
+              );
+            } else {
+              return (
+                <>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this expense? This action cannot be undone and will permanently remove the expense record.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        if (deleteExpenseId) {
+                          deleteExpenseMutation.mutate(deleteExpenseId);
+                        }
+                      }}
+                      className="bg-red-600 hover:bg-red-700"
+                      disabled={deleteExpenseMutation.isPending}
+                    >
+                      {deleteExpenseMutation.isPending ? "Deleting..." : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </>
+              );
+            }
+          })()}
         </AlertDialogContent>
       </AlertDialog>
 

@@ -1422,6 +1422,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete recurring expense series (current and all future)
+  app.delete("/api/expenses/:id/recurring", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      // Check if the expense exists and belongs to the user's organization
+      const expense = await storage.getTransactionById(req.params.id);
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+
+      if (expense.orgId !== org.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Verify this is actually a recurring transaction
+      if (!expense.isRecurring && !expense.parentRecurringId) {
+        return res.status(400).json({ message: "This is not a recurring expense" });
+      }
+
+      await storage.deleteRecurringTransaction(req.params.id);
+      res.json({ message: "Recurring expense series deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting recurring expense series:", error);
+      res.status(500).json({ message: "Failed to delete recurring expense series" });
+    }
+  });
+
   // Mortgage interest adjustment endpoint
   app.post("/api/expenses/mortgage-adjustment", isAuthenticated, async (req, res) => {
     try {
