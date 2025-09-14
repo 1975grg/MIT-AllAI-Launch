@@ -124,8 +124,8 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction>;
   deleteTransaction(id: string): Promise<void>;
-  deleteRecurringTransaction(id: string): Promise<void>;
-  updateRecurringTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<void>;
+  deleteRecurringTransaction(id: string, mode: "future" | "all"): Promise<void>;
+  updateRecurringTransaction(id: string, transaction: Partial<InsertTransaction>, mode: "future" | "all"): Promise<void>;
   updateTransactionPaymentStatus(id: string, paymentStatus: string): Promise<void>;
   createExpense(expense: InsertExpense): Promise<Transaction>;
   getTransactionLineItems(transactionId: string): Promise<TransactionLineItem[]>;
@@ -1113,7 +1113,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(transactions).where(eq(transactions.id, id));
   }
 
-  async deleteRecurringTransaction(id: string): Promise<void> {
+  async deleteRecurringTransaction(id: string, mode: "future" | "all"): Promise<void> {
     // Get the transaction to determine its recurring relationship
     const transaction = await this.getTransactionById(id);
     if (!transaction) {
@@ -1130,72 +1130,128 @@ export class DatabaseStorage implements IStorage {
 
     if (transaction.isRecurring && !transaction.parentRecurringId) {
       // Case 1: This is the original recurring transaction (parent)
-      // Delete the parent and all children from current date onwards
-      
-      // First, delete line items for the parent
-      await db.delete(transactionLineItems).where(eq(transactionLineItems.transactionId, id));
-      
-      // Delete line items for all child transactions
-      const childTransactionIds = await db
-        .select({ id: transactions.id })
-        .from(transactions)
-        .where(eq(transactions.parentRecurringId, id));
-      
-      if (childTransactionIds.length > 0) {
-        await db.delete(transactionLineItems).where(
-          or(...childTransactionIds.map(child => eq(transactionLineItems.transactionId, child.id)))
-        );
+      if (mode === "all") {
+        // Delete the parent and all children
+        
+        // First, delete line items for the parent
+        await db.delete(transactionLineItems).where(eq(transactionLineItems.transactionId, id));
+        
+        // Delete line items for all child transactions
+        const childTransactionIds = await db
+          .select({ id: transactions.id })
+          .from(transactions)
+          .where(eq(transactions.parentRecurringId, id));
+        
+        if (childTransactionIds.length > 0) {
+          await db.delete(transactionLineItems).where(
+            or(...childTransactionIds.map(child => eq(transactionLineItems.transactionId, child.id)))
+          );
+        }
+        
+        // Delete all child transactions
+        await db.delete(transactions).where(eq(transactions.parentRecurringId, id));
+        
+        // Delete the parent transaction itself
+        await db.delete(transactions).where(eq(transactions.id, id));
+      } else {
+        // mode === "future": Delete the parent and all children from current date onwards
+        
+        // First, delete line items for the parent
+        await db.delete(transactionLineItems).where(eq(transactionLineItems.transactionId, id));
+        
+        // Delete line items for future child transactions only
+        const futureChildTransactionIds = await db
+          .select({ id: transactions.id })
+          .from(transactions)
+          .where(and(
+            eq(transactions.parentRecurringId, id),
+            gte(transactions.date, currentDate)
+          ));
+        
+        if (futureChildTransactionIds.length > 0) {
+          await db.delete(transactionLineItems).where(
+            or(...futureChildTransactionIds.map(child => eq(transactionLineItems.transactionId, child.id)))
+          );
+        }
+        
+        // Delete future child transactions only
+        await db.delete(transactions).where(and(
+          eq(transactions.parentRecurringId, id),
+          gte(transactions.date, currentDate)
+        ));
+        
+        // Delete the parent transaction itself
+        await db.delete(transactions).where(eq(transactions.id, id));
       }
-      
-      // Delete all child transactions
-      await db.delete(transactions).where(eq(transactions.parentRecurringId, id));
-      
-      // Delete the parent transaction itself
-      await db.delete(transactions).where(eq(transactions.id, id));
       
     } else if (transaction.parentRecurringId) {
       // Case 2: This is a child recurring transaction
-      // Delete this child and all future children, update parent's end date
-      
       const parentRecurringId = transaction.parentRecurringId;
       
-      // Delete line items for this transaction and all future ones
-      const futureTransactionIds = await db
-        .select({ id: transactions.id })
-        .from(transactions)
-        .where(
+      if (mode === "all") {
+        // Delete all instances (parent and all children)
+        
+        // Delete line items for parent
+        await db.delete(transactionLineItems).where(eq(transactionLineItems.transactionId, parentRecurringId));
+        
+        // Delete line items for all child transactions
+        const allChildTransactionIds = await db
+          .select({ id: transactions.id })
+          .from(transactions)
+          .where(eq(transactions.parentRecurringId, parentRecurringId));
+        
+        if (allChildTransactionIds.length > 0) {
+          await db.delete(transactionLineItems).where(
+            or(...allChildTransactionIds.map(t => eq(transactionLineItems.transactionId, t.id)))
+          );
+        }
+        
+        // Delete all child transactions
+        await db.delete(transactions).where(eq(transactions.parentRecurringId, parentRecurringId));
+        
+        // Delete the parent transaction
+        await db.delete(transactions).where(eq(transactions.id, parentRecurringId));
+      } else {
+        // mode === "future": Delete this child and all future children, update parent's end date
+        
+        // Delete line items for this transaction and all future ones
+        const futureTransactionIds = await db
+          .select({ id: transactions.id })
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.parentRecurringId, parentRecurringId),
+              gte(transactions.date, currentDate)
+            )
+          );
+        
+        if (futureTransactionIds.length > 0) {
+          await db.delete(transactionLineItems).where(
+            or(...futureTransactionIds.map(t => eq(transactionLineItems.transactionId, t.id)))
+          );
+        }
+        
+        // Delete this transaction and all future recurring instances
+        await db.delete(transactions).where(
           and(
             eq(transactions.parentRecurringId, parentRecurringId),
             gte(transactions.date, currentDate)
           )
         );
-      
-      if (futureTransactionIds.length > 0) {
-        await db.delete(transactionLineItems).where(
-          or(...futureTransactionIds.map(t => eq(transactionLineItems.transactionId, t.id)))
-        );
+        
+        // Update the parent's recurring end date to the day before this transaction
+        const previousDay = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
+        await db
+          .update(transactions)
+          .set({ 
+            recurringEndDate: previousDay
+          })
+          .where(eq(transactions.id, parentRecurringId));
       }
-      
-      // Delete this transaction and all future recurring instances
-      await db.delete(transactions).where(
-        and(
-          eq(transactions.parentRecurringId, parentRecurringId),
-          gte(transactions.date, currentDate)
-        )
-      );
-      
-      // Update the parent's recurring end date to the day before this transaction
-      const previousDay = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
-      await db
-        .update(transactions)
-        .set({ 
-          recurringEndDate: previousDay
-        })
-        .where(eq(transactions.id, parentRecurringId));
     }
   }
 
-  async updateRecurringTransaction(id: string, updateData: Partial<InsertTransaction>): Promise<void> {
+  async updateRecurringTransaction(id: string, updateData: Partial<InsertTransaction>, mode: "future" | "all"): Promise<void> {
     // Get the transaction to determine its recurring relationship
     const transaction = await this.getTransactionById(id);
     if (!transaction) {
@@ -1212,41 +1268,67 @@ export class DatabaseStorage implements IStorage {
 
     if (transaction.isRecurring && !transaction.parentRecurringId) {
       // Case 1: This is the original recurring transaction (parent)
-      // Update the parent and all future children
-      
-      // Update the parent transaction
-      await db
-        .update(transactions)
-        .set(updateData)
-        .where(eq(transactions.id, id));
-      
-      // Update all future child transactions (from current date onwards)
-      await db
-        .update(transactions)
-        .set(updateData)
-        .where(
-          and(
-            eq(transactions.parentRecurringId, id),
-            gte(transactions.date, currentDate)
-          )
-        );
+      if (mode === "all") {
+        // Update the parent and all children
+        await db
+          .update(transactions)
+          .set(updateData)
+          .where(eq(transactions.id, id));
+        
+        await db
+          .update(transactions)
+          .set(updateData)
+          .where(eq(transactions.parentRecurringId, id));
+      } else {
+        // mode === "future": Update the parent and all future children
+        
+        // Update the parent transaction
+        await db
+          .update(transactions)
+          .set(updateData)
+          .where(eq(transactions.id, id));
+        
+        // Update all future child transactions (from current date onwards)
+        await db
+          .update(transactions)
+          .set(updateData)
+          .where(
+            and(
+              eq(transactions.parentRecurringId, id),
+              gte(transactions.date, currentDate)
+            )
+          );
+      }
       
     } else if (transaction.parentRecurringId) {
       // Case 2: This is a child recurring transaction
-      // Update this child and all future children
-      
       const parentRecurringId = transaction.parentRecurringId;
       
-      // Update this transaction and all future recurring instances
-      await db
-        .update(transactions)
-        .set(updateData)
-        .where(
-          and(
-            eq(transactions.parentRecurringId, parentRecurringId),
-            gte(transactions.date, currentDate)
-          )
-        );
+      if (mode === "all") {
+        // Update the parent and all children
+        await db
+          .update(transactions)
+          .set(updateData)
+          .where(eq(transactions.id, parentRecurringId));
+        
+        await db
+          .update(transactions)
+          .set(updateData)
+          .where(eq(transactions.parentRecurringId, parentRecurringId));
+      } else {
+        // mode === "future": Update this child and all future children
+        
+        // Update this transaction and all future recurring instances
+        await db
+          .update(transactions)
+          .set(updateData)
+          .where(
+            and(
+              eq(transactions.parentRecurringId, parentRecurringId),
+              gte(transactions.date, currentDate)
+            )
+          );
+      }
     }
   }
 

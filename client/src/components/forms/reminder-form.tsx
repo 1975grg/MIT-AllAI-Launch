@@ -586,7 +586,6 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                   </FormItem>
                 )}
               />
-              </div>
             </div>
           )}
         </div>

@@ -1434,60 +1434,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete recurring expense series (current and all future)
+  // Delete recurring expense series with mode support
   app.delete("/api/expenses/:id/recurring", isAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).user.claims.sub;
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
-
-      // Check if the expense exists and belongs to the user's organization
-      const expense = await storage.getTransactionById(req.params.id);
-      if (!expense) {
-        return res.status(404).json({ message: "Expense not found" });
+      
+      const { id } = req.params;
+      const mode = req.query.mode as string; // Get mode from query params
+      
+      // Validate mode parameter if provided
+      if (mode && !['future', 'all'].includes(mode)) {
+        return res.status(400).json({ message: "Invalid mode. Must be 'future' or 'all'" });
       }
+      
+      // Check if this is a recurring operation
+      if (mode && ['future', 'all'].includes(mode)) {
+        // Check if the expense exists and belongs to the user's organization
+        const expense = await storage.getTransactionById(id);
+        if (!expense) {
+          return res.status(404).json({ message: "Expense not found" });
+        }
 
-      if (expense.orgId !== org.id) {
-        return res.status(403).json({ message: "Access denied" });
+        if (expense.orgId !== org.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Verify this is actually a recurring transaction
+        if (!expense.isRecurring && !expense.parentRecurringId) {
+          return res.status(400).json({ message: "This is not a recurring expense" });
+        }
+
+        await storage.deleteRecurringTransaction(id, mode as "future" | "all");
+        res.json({ message: `Recurring expense series deleted successfully (mode: ${mode})` });
+      } else {
+        // Single expense deletion
+        const expense = await storage.getTransactionById(id);
+        if (!expense) {
+          return res.status(404).json({ message: "Expense not found" });
+        }
+        
+        if (expense.orgId !== org.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+        
+        await storage.deleteTransaction(id);
+        res.json({ message: "Expense deleted successfully" });
       }
-
-      // Verify this is actually a recurring transaction
-      if (!expense.isRecurring && !expense.parentRecurringId) {
-        return res.status(400).json({ message: "This is not a recurring expense" });
-      }
-
-      await storage.deleteRecurringTransaction(req.params.id);
-      res.json({ message: "Recurring expense series deleted successfully" });
     } catch (error) {
       console.error("Error deleting recurring expense series:", error);
       res.status(500).json({ message: "Failed to delete recurring expense series" });
     }
   });
 
-  // Update recurring expense series (current and all future)
+  // Update recurring expense series with mode support
   app.put("/api/expenses/:id/recurring", isAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).user.claims.sub;
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
-
-      // Check if the expense exists and belongs to the user's organization
-      const expense = await storage.getTransactionById(req.params.id);
-      if (!expense) {
-        return res.status(404).json({ message: "Expense not found" });
+      
+      const { id } = req.params;
+      const { mode, ...updateData } = req.body; // Extract mode from request body
+      const queryMode = req.query.mode as string; // Also check query params
+      const finalMode = mode || queryMode;
+      
+      // Validate mode parameter if provided
+      if (finalMode && !['future', 'all'].includes(finalMode)) {
+        return res.status(400).json({ message: "Invalid mode. Must be 'future' or 'all'" });
       }
+      
+      // Check if this is a recurring operation
+      if (finalMode && ['future', 'all'].includes(finalMode)) {
+        // Check if the expense exists and belongs to the user's organization
+        const expense = await storage.getTransactionById(id);
+        if (!expense) {
+          return res.status(404).json({ message: "Expense not found" });
+        }
 
-      if (expense.orgId !== org.id) {
-        return res.status(403).json({ message: "Access denied" });
+        if (expense.orgId !== org.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Verify this is actually a recurring transaction
+        if (!expense.isRecurring && !expense.parentRecurringId) {
+          return res.status(400).json({ message: "This is not a recurring expense" });
+        }
+
+        await storage.updateRecurringTransaction(id, updateData, finalMode as "future" | "all");
+        res.json({ message: `Recurring expense series updated successfully (mode: ${finalMode})` });
+      } else {
+        // Single expense update
+        const expense = await storage.getTransactionById(id);
+        if (!expense) {
+          return res.status(404).json({ message: "Expense not found" });
+        }
+        
+        if (expense.orgId !== org.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+        
+        const updated = await storage.updateTransaction(id, updateData);
+        res.json(updated);
       }
-
-      // Verify this is actually a recurring transaction
-      if (!expense.isRecurring && !expense.parentRecurringId) {
-        return res.status(400).json({ message: "This is not a recurring expense" });
-      }
-
-      await storage.updateRecurringTransaction(req.params.id, req.body);
-      res.json({ message: "Recurring expense series updated successfully" });
     } catch (error) {
       console.error("Error updating recurring expense series:", error);
       res.status(500).json({ message: "Failed to update recurring expense series" });
@@ -1782,60 +1832,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete recurring revenue series (current and all future)
+  // Delete recurring revenue series with mode support
   app.delete("/api/revenues/:id/recurring", isAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).user.claims.sub;
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
-
-      // Check if the revenue exists and belongs to the user's organization
-      const revenue = await storage.getTransactionById(req.params.id);
-      if (!revenue) {
-        return res.status(404).json({ message: "Revenue not found" });
+      
+      const { id } = req.params;
+      const mode = req.query.mode as string; // Get mode from query params
+      
+      // Validate mode parameter if provided
+      if (mode && !['future', 'all'].includes(mode)) {
+        return res.status(400).json({ message: "Invalid mode. Must be 'future' or 'all'" });
       }
+      
+      // Check if this is a recurring operation
+      if (mode && ['future', 'all'].includes(mode)) {
+        // Check if the revenue exists and belongs to the user's organization
+        const revenue = await storage.getTransactionById(id);
+        if (!revenue) {
+          return res.status(404).json({ message: "Revenue not found" });
+        }
 
-      if (revenue.orgId !== org.id) {
-        return res.status(403).json({ message: "Access denied" });
+        if (revenue.orgId !== org.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Verify this is actually a recurring transaction
+        if (!revenue.isRecurring && !revenue.parentRecurringId) {
+          return res.status(400).json({ message: "This is not a recurring revenue" });
+        }
+
+        await storage.deleteRecurringTransaction(id, mode as "future" | "all");
+        res.json({ message: `Recurring revenue series deleted successfully (mode: ${mode})` });
+      } else {
+        // Single revenue deletion
+        const revenue = await storage.getTransactionById(id);
+        if (!revenue) {
+          return res.status(404).json({ message: "Revenue not found" });
+        }
+        
+        if (revenue.orgId !== org.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+        
+        await storage.deleteTransaction(id);
+        res.json({ message: "Revenue deleted successfully" });
       }
-
-      // Verify this is actually a recurring transaction
-      if (!revenue.isRecurring && !revenue.parentRecurringId) {
-        return res.status(400).json({ message: "This is not a recurring revenue" });
-      }
-
-      await storage.deleteRecurringTransaction(req.params.id);
-      res.json({ message: "Recurring revenue series deleted successfully" });
     } catch (error) {
       console.error("Error deleting recurring revenue series:", error);
       res.status(500).json({ message: "Failed to delete recurring revenue series" });
     }
   });
 
-  // Update recurring revenue series (current and all future)
+  // Update recurring revenue series with mode support
   app.put("/api/revenues/:id/recurring", isAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).user.claims.sub;
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
-
-      // Check if the revenue exists and belongs to the user's organization
-      const revenue = await storage.getTransactionById(req.params.id);
-      if (!revenue) {
-        return res.status(404).json({ message: "Revenue not found" });
+      
+      const { id } = req.params;
+      const { mode, ...updateData } = req.body; // Extract mode from request body
+      const queryMode = req.query.mode as string; // Also check query params
+      const finalMode = mode || queryMode;
+      
+      // Validate mode parameter if provided
+      if (finalMode && !['future', 'all'].includes(finalMode)) {
+        return res.status(400).json({ message: "Invalid mode. Must be 'future' or 'all'" });
       }
+      
+      // Check if this is a recurring operation
+      if (finalMode && ['future', 'all'].includes(finalMode)) {
+        // Check if the revenue exists and belongs to the user's organization
+        const revenue = await storage.getTransactionById(id);
+        if (!revenue) {
+          return res.status(404).json({ message: "Revenue not found" });
+        }
 
-      if (revenue.orgId !== org.id) {
-        return res.status(403).json({ message: "Access denied" });
+        if (revenue.orgId !== org.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Verify this is actually a recurring transaction
+        if (!revenue.isRecurring && !revenue.parentRecurringId) {
+          return res.status(400).json({ message: "This is not a recurring revenue" });
+        }
+
+        await storage.updateRecurringTransaction(id, updateData, finalMode as "future" | "all");
+        res.json({ message: `Recurring revenue series updated successfully (mode: ${finalMode})` });
+      } else {
+        // Single revenue update
+        const revenue = await storage.getTransactionById(id);
+        if (!revenue) {
+          return res.status(404).json({ message: "Revenue not found" });
+        }
+        
+        if (revenue.orgId !== org.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+        
+        const updated = await storage.updateTransaction(id, updateData);
+        res.json(updated);
       }
-
-      // Verify this is actually a recurring transaction
-      if (!revenue.isRecurring && !revenue.parentRecurringId) {
-        return res.status(400).json({ message: "This is not a recurring revenue" });
-      }
-
-      await storage.updateRecurringTransaction(req.params.id, req.body);
-      res.json({ message: "Recurring revenue series updated successfully" });
     } catch (error) {
       console.error("Error updating recurring revenue series:", error);
       res.status(500).json({ message: "Failed to update recurring revenue series" });
