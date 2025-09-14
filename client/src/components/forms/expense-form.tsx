@@ -165,6 +165,7 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       isDateRange: expense.isDateRange || false,
       endDate: expense.endDate ? new Date(expense.endDate) : undefined,
       propertyId: expense.propertyId || undefined,
+      unitId: expense.unitId || undefined,
       vendorId: expense.vendorId || undefined,
       receiptUrl: expense.receiptUrl || undefined,
       notes: expense.notes || "",
