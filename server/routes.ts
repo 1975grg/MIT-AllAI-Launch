@@ -2035,23 +2035,36 @@ USER QUESTION: ${question}
 
 Provide helpful analysis based on the actual data. Respond with valid JSON only:`;
 
-      // Call OpenAI Responses API (GPT-5) with correct format  
+      // Call OpenAI Responses API (GPT-5) with parameters to ensure output generation
       const response = await openai.responses.create({
         model: "gpt-5",
         input: systemPrompt,
-        text: { format: { type: "json_object" } },
-        max_output_tokens: 500
+        text: { 
+          format: { type: "json_object" },
+          verbosity: "high"
+        },
+        reasoning: { effort: "low" }, // Reduce reasoning to focus on output
+        max_output_tokens: 500,
+        temperature: 0.3 // Lower temperature for more consistent JSON generation
       });
 
-      // Robust extraction for GPT-5 Responses API
+      // Robust extraction for GPT-5 Responses API - handle all possible content locations
       const aiResponse = response.output_text?.trim() ||
+        // Try extracting from response.output array
+        (response.output?.map(o => {
+          if (o.type === "text" && o.text) return o.text;
+          if (o.type === "content" && o.content) return o.content;
+          if (o.content && Array.isArray(o.content)) {
+            return o.content.map(c => c.text || c.content || '').join('');
+          }
+          return '';
+        }).join('')?.trim()) ||
+        // Try content array if it exists
         (response.content?.map(p => 
           (p.type === "output_text" && p.text) || 
           (p.type === "message" && p.content?.map(c => c.text).join("")) || ""
         ).join("")?.trim()) ||
-        (response.output?.flatMap(o => 
-          (o.content||[]).map(c => c.text||c?.["output_text"]||"")
-        ).join("")?.trim());
+        '';
       
       // Debug logging for GPT-5
       if (!aiResponse || aiResponse.trim().length === 0) {
