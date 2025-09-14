@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calculator, FileText, Users, Download, AlertCircle, TrendingUp } from "lucide-react";
+import { Calculator, FileText, Users, Download, AlertCircle, TrendingUp, Clock } from "lucide-react";
 import PropertyAssistant from "@/components/ai/property-assistant";
 import MortgageAdjustmentForm from "@/components/forms/mortgage-adjustment-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -146,6 +146,59 @@ export default function Tax() {
                 </Button>
               </div>
             </div>
+
+            {/* Mortgage Split Tool - Top Priority Banner */}
+            {(() => {
+              const mortgageExpenses = expenseTransactions.filter((t: Transaction) => 
+                t.category === "Mortgage" && new Date(t.date).getFullYear() === currentYear
+              );
+              
+              if (mortgageExpenses.length > 0) {
+                return (
+                  <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                            <Calculator className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-xl text-blue-900 dark:text-blue-100">🏠 Year-End Mortgage Interest Split</CardTitle>
+                            <CardDescription className="text-blue-700 dark:text-blue-300 mt-1">
+                              Ready for tax season? Split your {mortgageExpenses.length} mortgage payments into deductible interest vs non-deductible principal
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={() => setShowMortgageAdjustment(true)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                          data-testid="button-mortgage-split-top"
+                        >
+                          Split Mortgage Payments
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                          <FileText className="h-4 w-4" />
+                          <span><strong>When:</strong> After receiving Form 1098</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                          <TrendingUp className="h-4 w-4" />
+                          <span><strong>Result:</strong> Auto-categorizes interest as deductible</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                          <Clock className="h-4 w-4" />
+                          <span><strong>Saves:</strong> Manual categorization for each payment</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              return null;
+            })()}
 
             {/* Tax Metrics Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

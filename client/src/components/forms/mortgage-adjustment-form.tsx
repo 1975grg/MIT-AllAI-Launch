@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { FileText, Calculator } from "lucide-react";
 import type { Property } from "@shared/schema";
 
 interface MortgageAdjustmentFormProps {
@@ -220,20 +221,51 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
             )}
           </div>
 
+          {/* Form 1098 Guidance Section */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border border-green-200 dark:border-green-800 p-4 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <FileText className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">📄 Find Your Form 1098</h4>
+                <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                  Your mortgage company sends this form by January 31st each year. Look for:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                    <p className="font-medium text-green-900 dark:text-green-100">📧 Check Your Email</p>
+                    <p className="text-green-700 dark:text-green-300 text-xs">Search for "1098" or "tax statement"</p>
+                  </div>
+                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                    <p className="font-medium text-green-900 dark:text-green-100">🌐 Login to Lender Portal</p>
+                    <p className="text-green-700 dark:text-green-300 text-xs">Check your mortgage company's website</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div>
-            <Label htmlFor="actualInterestPaid">Actual Interest Paid</Label>
-            <Input
-              id="actualInterestPaid"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="12000.00"
-              {...form.register("actualInterestPaid", { valueAsNumber: true })}
-              data-testid="input-interest-paid"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Enter the total interest amount from your mortgage company's year-end statement (Form 1098)
-            </p>
+            <Label htmlFor="actualInterestPaid" className="text-base font-semibold">💰 Total Interest Paid (From Form 1098)</Label>
+            <div className="mt-2">
+              <Input
+                id="actualInterestPaid"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Enter amount from Box 1 of Form 1098"
+                {...form.register("actualInterestPaid", { valueAsNumber: true })}
+                data-testid="input-interest-paid"
+                className="text-lg font-semibold h-12"
+              />
+              <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>💡 Tip:</strong> Look for <strong>"Box 1: Mortgage interest received by the lender"</strong> on your Form 1098. 
+                  This is usually the largest number on the form.
+                </p>
+              </div>
+            </div>
             {form.formState.errors.actualInterestPaid && (
               <p className="text-sm text-destructive mt-1">{form.formState.errors.actualInterestPaid.message}</p>
             )}
@@ -241,14 +273,39 @@ export default function MortgageAdjustmentForm({ properties, onClose }: Mortgage
 
           <Separator />
 
-          <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
-            <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">How this works:</p>
-            <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-              <li>• Find all "Mortgage" category expenses for the selected year</li>
-              <li>• Split them into deductible "Interest" and non-deductible "Principal"</li>
-              <li>• Creates accurate records for tax reporting</li>
-              <li>• Based on days owned if partial year</li>
-            </ul>
+          <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Calculator className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">🔄 What happens next:</p>
+                <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">1.</span>
+                    <span>Finds all "Mortgage" category expenses for {form.watch("year") || new Date().getFullYear()}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">2.</span>
+                    <span>Splits each payment into <strong>Interest</strong> (tax deductible) and <strong>Principal</strong> (not deductible)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">3.</span>
+                    <span>Auto-categorizes interest for Schedule E tax reporting</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">4.</span>
+                    <span>Handles partial year ownership automatically</span>
+                  </li>
+                </ul>
+                <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded border">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    <strong>⚡ Time Saver:</strong> This eliminates manually categorizing each mortgage payment - 
+                    do this once per year and you're done!
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </>
       )}

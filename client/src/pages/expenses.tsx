@@ -496,6 +496,51 @@ export default function Expenses() {
             </div>
           </div>
 
+          {/* Mortgage Split Tool - Smart Banner */}
+          {(() => {
+            const allExpenses = expenses?.filter(t => t.type === "Expense") || [];
+            const currentYear = new Date().getFullYear();
+            const mortgageExpenses = allExpenses.filter((t: Transaction) => 
+              t.category === "Mortgage" && new Date(t.date).getFullYear() === currentYear
+            );
+            
+            if (mortgageExpenses.length > 0) {
+              return (
+                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800 mb-6">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                          <GitCompare className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg text-blue-900 dark:text-blue-100">📊 Ready for tax season? Split your mortgage payments</CardTitle>
+                          <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                            {currentYear}: {mortgageExpenses.length} mortgage payments ready to split into interest (deductible) vs principal (non-deductible)
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => setShowMortgageAdjustment(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        data-testid="button-mortgage-split-expenses"
+                      >
+                        Split Payments
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="text-sm text-blue-600 dark:text-blue-300 bg-white dark:bg-gray-900 p-3 rounded border">
+                      <strong>💡 Tax Tip:</strong> Do this once per year after receiving your Form 1098. 
+                      Automatically categorizes interest as deductible and principal as non-deductible without manual work.
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
+            return null;
+          })()}
+
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card data-testid="card-total-expenses">
