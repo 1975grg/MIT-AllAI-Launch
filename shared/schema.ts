@@ -60,6 +60,20 @@ export const organizationMembers = pgTable("organization_members", {
 // Ownership entities
 export const ownershipEntityTypeEnum = pgEnum("ownership_entity_type", ["LLC", "Individual"]);
 
+// Tax-related enums
+export const scheduleECategoryEnum = pgEnum("schedule_e_category", [
+  "advertising", "auto_travel", "cleaning_maintenance", "commissions", 
+  "insurance", "legal_professional", "management_fees", "mortgage_interest", 
+  "other_interest", "repairs", "supplies", "taxes", "utilities", "depreciation", 
+  "other_expenses", "capital_improvements"
+]);
+
+export const vendorTypeEnum = pgEnum("vendor_type", ["individual", "corporation", "partnership", "llc"]);
+
+export const depreciationMethodEnum = pgEnum("depreciation_method", ["straight_line", "accelerated"]);
+
+export const assetTypeEnum = pgEnum("asset_type", ["building", "improvement", "equipment", "furniture"]);
+
 export const ownershipEntities = pgTable("ownership_entities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orgId: varchar("org_id").notNull().references(() => organizations.id),
@@ -343,6 +357,10 @@ export const vendors = pgTable("vendors", {
   rating: decimal("rating", { precision: 3, scale: 2 }),
   notes: text("notes"),
   isPreferred: boolean("is_preferred").default(false),
+  // Tax-related fields for 1099 tracking
+  vendorType: vendorTypeEnum("vendor_type").default("individual"),
+  w9OnFile: boolean("w9_on_file").default(false),
+  taxExempt: boolean("tax_exempt").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -383,6 +401,11 @@ export const transactions = pgTable("transactions", {
   recurringInterval: integer("recurring_interval").default(1), // Every X (frequency)
   recurringEndDate: timestamp("recurring_end_date"),
   taxDeductible: boolean("tax_deductible").default(true),
+  // Tax-related fields for Schedule E categorization
+  scheduleECategory: scheduleECategoryEnum("schedule_e_category"),
+  isCapitalizable: boolean("is_capitalizable").default(false), // Whether expense should be capitalized vs deducted
+  depreciationAssetId: varchar("depreciation_asset_id").references(() => depreciationAssets.id), // Link to depreciation asset if capitalized
+  taxYear: integer("tax_year"), // Override tax year (for year-end adjustments)
   parentRecurringId: varchar("parent_recurring_id"), // Reference to the original transaction for recurring instances
   isBulkEntry: boolean("is_bulk_entry").default(false), // For bulk expense entries
   paymentStatus: paymentStatusEnum("payment_status").default("Paid"), // Payment tracking status
@@ -491,6 +514,47 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Depreciation Assets (for tax depreciation tracking)
+export const depreciationAssets = pgTable("depreciation_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  propertyId: varchar("property_id").references(() => properties.id),
+  assetType: assetTypeEnum("asset_type").notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  // Cost basis information
+  originalCost: decimal("original_cost", { precision: 12, scale: 2 }).notNull(),
+  adjustedBasis: decimal("adjusted_basis", { precision: 12, scale: 2 }).notNull(),
+  // Depreciation parameters
+  inServiceDate: timestamp("in_service_date").notNull(),
+  recoveryPeriod: decimal("recovery_period", { precision: 4, scale: 1 }).notNull(), // 27.5, 39, etc.
+  depreciationMethod: depreciationMethodEnum("depreciation_method").notNull().default("straight_line"),
+  convention: varchar("convention").notNull().default("mid_month"), // mid_month, half_year, etc.
+  bonusDepreciationPercent: decimal("bonus_depreciation_percent", { precision: 5, scale: 2 }).default("0"),
+  section179Taken: decimal("section179_taken", { precision: 10, scale: 2 }).default("0"),
+  // Status tracking
+  isActive: boolean("is_active").default(true),
+  disposalDate: timestamp("disposal_date"),
+  disposalAmount: decimal("disposal_amount", { precision: 12, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Depreciation Schedules (yearly depreciation calculations)
+export const depreciationSchedules = pgTable("depreciation_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assetId: varchar("asset_id").notNull().references(() => depreciationAssets.id),
+  taxYear: integer("tax_year").notNull(),
+  // Calculated depreciation amounts
+  currentYearDepreciation: decimal("current_year_depreciation", { precision: 10, scale: 2 }).notNull(),
+  accumulatedDepreciation: decimal("accumulated_depreciation", { precision: 12, scale: 2 }).notNull(),
+  remainingBasis: decimal("remaining_basis", { precision: 12, scale: 2 }).notNull(),
+  // Calculation metadata
+  calculationMethod: varchar("calculation_method").notNull(),
+  monthsInService: integer("months_in_service").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   organizations: many(organizations),
@@ -511,6 +575,7 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   transactions: many(transactions),
   reminders: many(reminders),
   threads: many(threads),
+  depreciationAssets: many(depreciationAssets),
 }));
 
 export const propertiesRelations = relations(properties, ({ one, many }) => ({
@@ -521,6 +586,7 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   smartCases: many(smartCases),
   transactions: many(transactions),
   camEntries: many(camEntries),
+  depreciationAssets: many(depreciationAssets),
 }));
 
 export const unitsRelations = relations(units, ({ one, many }) => ({
@@ -542,6 +608,27 @@ export const smartCasesRelations = relations(smartCases, ({ one, many }) => ({
   property: one(properties, { fields: [smartCases.propertyId], references: [properties.id] }),
   media: many(caseMedia),
   events: many(caseEvents),
+}));
+
+// Depreciation table relations
+export const depreciationAssetsRelations = relations(depreciationAssets, ({ one, many }) => ({
+  organization: one(organizations, { fields: [depreciationAssets.orgId], references: [organizations.id] }),
+  property: one(properties, { fields: [depreciationAssets.propertyId], references: [properties.id] }),
+  schedules: many(depreciationSchedules),
+  transactions: many(transactions),
+}));
+
+export const depreciationSchedulesRelations = relations(depreciationSchedules, ({ one }) => ({
+  asset: one(depreciationAssets, { fields: [depreciationSchedules.assetId], references: [depreciationAssets.id] }),
+}));
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  organization: one(organizations, { fields: [transactions.orgId], references: [organizations.id] }),
+  property: one(properties, { fields: [transactions.propertyId], references: [properties.id] }),
+  unit: one(units, { fields: [transactions.unitId], references: [units.id] }),
+  entity: one(ownershipEntities, { fields: [transactions.entityId], references: [ownershipEntities.id] }),
+  vendor: one(vendors, { fields: [transactions.vendorId], references: [vendors.id] }),
+  depreciationAsset: one(depreciationAssets, { fields: [transactions.depreciationAssetId], references: [depreciationAssets.id] }),
 }));
 
 // Insert schemas
@@ -586,6 +673,11 @@ export const insertExpenseSchema = insertTransactionSchema.extend({
   amortizationStartDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
   amortizationMethod: z.enum(["straight_line"]).default("straight_line"),
   taxDeductible: z.boolean().default(true),
+  // Tax categorization fields
+  scheduleECategory: z.enum(["advertising", "auto_travel", "cleaning_maintenance", "commissions", "insurance", "legal_professional", "management_fees", "mortgage_interest", "other_interest", "repairs", "supplies", "taxes", "utilities", "depreciation", "other_expenses", "capital_improvements"]).optional(),
+  isCapitalizable: z.boolean().default(false),
+  depreciationAssetId: z.string().optional(),
+  taxYear: z.number().int().optional(),
   parentRecurringId: z.string().optional(),
   scope: z.enum(["property", "operational"]).default("property"),
   entityId: z.string().optional(),
@@ -642,3 +734,24 @@ export type InsertReminder = z.infer<typeof insertReminderSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type RentPayment = typeof rentPayments.$inferSelect;
 export type InsertRentPayment = typeof rentPayments.$inferInsert;
+
+// Tax-related insert schemas
+export const insertDepreciationAssetSchema = createInsertSchema(depreciationAssets).omit({ id: true, createdAt: true }).extend({
+  inServiceDate: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  disposalDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  originalCost: z.string().refine((val) => !isNaN(Number(val)), "Must be a valid number"),
+  adjustedBasis: z.string().refine((val) => !isNaN(Number(val)), "Must be a valid number"),
+  recoveryPeriod: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Must be a positive number"),
+});
+
+export const insertDepreciationScheduleSchema = createInsertSchema(depreciationSchedules).omit({ id: true, createdAt: true }).extend({
+  currentYearDepreciation: z.string().refine((val) => !isNaN(Number(val)), "Must be a valid number"),
+  accumulatedDepreciation: z.string().refine((val) => !isNaN(Number(val)), "Must be a valid number"),
+  remainingBasis: z.string().refine((val) => !isNaN(Number(val)), "Must be a valid number"),
+});
+
+// Tax-related types
+export type DepreciationAsset = typeof depreciationAssets.$inferSelect;
+export type InsertDepreciationAsset = z.infer<typeof insertDepreciationAssetSchema>;
+export type DepreciationSchedule = typeof depreciationSchedules.$inferSelect;
+export type InsertDepreciationSchedule = z.infer<typeof insertDepreciationScheduleSchema>;
