@@ -136,9 +136,10 @@ interface ExpenseFormProps {
   onSubmit: (data: z.infer<typeof expenseSchema>) => void;
   onClose?: () => void;
   isLoading: boolean;
+  onTriggerMortgageAdjustment?: () => void;
 }
 
-export default function ExpenseForm({ properties, units, entities, expense, onSubmit, onClose, isLoading }: ExpenseFormProps) {
+export default function ExpenseForm({ properties, units, entities, expense, onSubmit, onClose, isLoading, onTriggerMortgageAdjustment }: ExpenseFormProps) {
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
   
@@ -489,6 +490,11 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                     form.setValue("scheduleECategory", cat?.scheduleEKey || "other_expenses");
                   } else {
                     form.setValue("scheduleECategory", undefined);
+                  }
+                  
+                  // Trigger mortgage adjustment dialog when "Mortgage Interest" is selected
+                  if (value === "Mortgage Interest" && onTriggerMortgageAdjustment) {
+                    onTriggerMortgageAdjustment();
                   }
                 }} defaultValue={field.value}>
                   <FormControl>

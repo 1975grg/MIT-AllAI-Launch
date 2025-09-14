@@ -7,6 +7,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import ExpenseForm from "@/components/forms/expense-form";
+import MortgageAdjustmentForm from "@/components/forms/mortgage-adjustment-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -25,6 +26,7 @@ export default function Expenses() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Transaction | null>(null);
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
+  const [showMortgageAdjustment, setShowMortgageAdjustment] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [unitFilter, setUnitFilter] = useState<string[]>([]);
@@ -471,6 +473,10 @@ export default function Expenses() {
                       setEditingExpense(null);
                     }}
                     isLoading={createExpenseMutation.isPending}
+                    onTriggerMortgageAdjustment={() => {
+                      setShowExpenseForm(false);
+                      setShowMortgageAdjustment(true);
+                    }}
                   />
                 </DialogContent>
               </Dialog>
@@ -1319,6 +1325,19 @@ export default function Expenses() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mortgage Adjustment Dialog */}
+      <Dialog open={showMortgageAdjustment} onOpenChange={setShowMortgageAdjustment}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Mortgage Interest Adjustment</DialogTitle>
+          </DialogHeader>
+          <MortgageAdjustmentForm 
+            properties={properties}
+            onClose={() => setShowMortgageAdjustment(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
