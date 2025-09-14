@@ -1319,6 +1319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amortizationYears: req.body.amortizationYears,
         amortizationStartDate: req.body.amortizationStartDate ? (typeof req.body.amortizationStartDate === 'string' ? new Date(req.body.amortizationStartDate) : req.body.amortizationStartDate) : undefined,
         amortizationMethod: req.body.amortizationMethod,
+        // Tax categorization fields
+        scheduleECategory: req.body.scheduleECategory,
       };
       
       const validatedData = insertExpenseSchema.parse(cleanedData);
@@ -1375,6 +1377,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amortizationYears: req.body.amortizationYears,
         amortizationStartDate: req.body.amortizationStartDate ? (typeof req.body.amortizationStartDate === 'string' ? new Date(req.body.amortizationStartDate) : req.body.amortizationStartDate) : undefined,
         amortizationMethod: req.body.amortizationMethod,
+        // Tax categorization fields
+        scheduleECategory: req.body.scheduleECategory,
       };
 
       console.log("DEBUG: Data being sent to storage.updateTransaction:", JSON.stringify(cleanedData, null, 2));

@@ -53,6 +53,13 @@ const expenseSchema = z.object({
   amortizationYears: z.number().min(2).max(40).optional(),
   amortizationStartDate: z.date().optional(),
   amortizationMethod: z.enum(["straight_line"]).default("straight_line"),
+  // Tax categorization field
+  scheduleECategory: z.enum([
+    "advertising", "auto_travel", "cleaning_maintenance", "commissions", 
+    "insurance", "legal_professional", "management_fees", "mortgage_interest", 
+    "other_interest", "repairs", "supplies", "taxes", "utilities", "depreciation", 
+    "other_expenses", "capital_improvements"
+  ]).optional(),
 }).refine((data) => {
   if (data.isRecurring && !data.recurringFrequency) {
     return false;
@@ -176,6 +183,8 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       amortizationYears: expense.amortizationYears || undefined,
       amortizationStartDate: expense.amortizationStartDate ? new Date(expense.amortizationStartDate) : undefined,
       amortizationMethod: expense.amortizationMethod || "straight_line",
+      // Tax categorization field
+      scheduleECategory: expense.scheduleECategory || undefined,
     } : {
       description: "",
       amount: undefined,
@@ -194,8 +203,30 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       amortizationYears: undefined,
       amortizationStartDate: undefined,
       amortizationMethod: "straight_line",
+      // Tax categorization field  
+      scheduleECategory: undefined,
     },
   });
+
+  // Schedule E categories for tax reporting
+  const scheduleECategories = [
+    { value: "advertising", label: "Advertising", description: "Property marketing costs, online ads, signs" },
+    { value: "auto_travel", label: "Auto & Travel", description: "Mileage, gas, parking, travel expenses" },
+    { value: "cleaning_maintenance", label: "Cleaning & Maintenance", description: "Cleaning services, supplies, maintenance work" },
+    { value: "commissions", label: "Commissions", description: "Real estate commissions, leasing fees" },
+    { value: "insurance", label: "Insurance", description: "Property insurance premiums" },
+    { value: "legal_professional", label: "Legal & Professional", description: "Attorney fees, accounting, property management" },
+    { value: "management_fees", label: "Management Fees", description: "Property management company fees" },
+    { value: "mortgage_interest", label: "Mortgage Interest", description: "Interest portion of mortgage payments" },
+    { value: "other_interest", label: "Other Interest", description: "Credit card interest for property expenses" },
+    { value: "repairs", label: "Repairs", description: "Repair costs to maintain property condition" },
+    { value: "supplies", label: "Supplies", description: "Materials, tools, office supplies" },
+    { value: "taxes", label: "Taxes", description: "Property taxes, business taxes" },
+    { value: "utilities", label: "Utilities", description: "Electric, gas, water, internet, phone" },
+    { value: "depreciation", label: "Depreciation", description: "Building and equipment depreciation" },
+    { value: "other_expenses", label: "Other Expenses", description: "Any other deductible property expenses" },
+    { value: "capital_improvements", label: "Capital Improvements", description: "Major improvements, additions, renovations" }
+  ];
 
   const expenseCategories = [
     // Tax-deductible categories first
@@ -629,6 +660,51 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                 )}
               />
             </div>
+          )}
+
+          {/* Schedule E Category for Tax Reporting */}
+          {form.watch("taxDeductible") && (
+            <FormField
+              control={form.control}
+              name="scheduleECategory"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center space-x-2">
+                    <Receipt className="h-4 w-4" />
+                    <FormLabel>Schedule E Category</FormLabel>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="max-w-xs">
+                          <p className="font-medium">Tax Reporting Category</p>
+                          <p className="text-sm text-muted-foreground">Select the IRS Schedule E category for this expense to match your tax return</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-schedule-e-category">
+                        <SelectValue placeholder="Select tax category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {scheduleECategories.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          <div className="flex flex-col">
+                            <span>{category.label}</span>
+                            <span className="text-xs text-muted-foreground">{category.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           )}
 
           {/* Override Toggle - Small and at Bottom */}
