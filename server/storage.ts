@@ -136,6 +136,8 @@ export interface IStorage {
   createReminder(reminder: InsertReminder): Promise<Reminder>;
   updateReminder(id: string, reminder: Partial<InsertReminder>): Promise<Reminder>;
   deleteReminder(id: string): Promise<void>;
+  deleteRecurringReminder(id: string, mode: "future" | "all"): Promise<void>;
+  updateRecurringReminder(id: string, data: Partial<InsertReminder>, mode: "future" | "all"): Promise<Reminder>;
   
   // Notification operations
   getUserNotifications(userId: string): Promise<Notification[]>;
@@ -1446,6 +1448,155 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReminder(id: string): Promise<void> {
     await db.delete(reminders).where(eq(reminders.id, id));
+  }
+
+  async deleteRecurringReminder(id: string, mode: "future" | "all"): Promise<void> {
+    // Get the reminder to determine its recurring relationship
+    const [reminder] = await db.select().from(reminders).where(eq(reminders.id, id));
+    if (!reminder) {
+      throw new Error("Reminder not found");
+    }
+
+    // If this is not a recurring reminder, just delete it normally
+    if (!reminder.isRecurring && !reminder.parentRecurringId) {
+      await this.deleteReminder(id);
+      return;
+    }
+
+    const currentDate = new Date(reminder.dueAt);
+
+    if (reminder.isRecurring && !reminder.parentRecurringId) {
+      // Case 1: This is the original recurring reminder (parent)
+      if (mode === "all") {
+        // Delete the parent and all children
+        await db.delete(reminders).where(eq(reminders.parentRecurringId, id));
+        await db.delete(reminders).where(eq(reminders.id, id));
+      } else {
+        // mode === "future": Delete from current date onwards
+        await db.delete(reminders).where(
+          and(
+            eq(reminders.parentRecurringId, id),
+            gte(reminders.dueAt, currentDate)
+          )
+        );
+        // Update the parent's recurring end date to the day before this reminder
+        const previousDay = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
+        await db
+          .update(reminders)
+          .set({ recurringEndDate: previousDay })
+          .where(eq(reminders.id, id));
+      }
+    } else if (reminder.parentRecurringId) {
+      // Case 2: This is a child recurring reminder
+      const parentRecurringId = reminder.parentRecurringId;
+      
+      if (mode === "all") {
+        // Delete the entire series (parent and all children)
+        await db.delete(reminders).where(eq(reminders.parentRecurringId, parentRecurringId));
+        await db.delete(reminders).where(eq(reminders.id, parentRecurringId));
+      } else {
+        // mode === "future": Delete this reminder and all future recurring instances
+        await db.delete(reminders).where(
+          and(
+            eq(reminders.parentRecurringId, parentRecurringId),
+            gte(reminders.dueAt, currentDate)
+          )
+        );
+        // Update the parent's recurring end date to the day before this reminder
+        const previousDay = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
+        await db
+          .update(reminders)
+          .set({ recurringEndDate: previousDay })
+          .where(eq(reminders.id, parentRecurringId));
+      }
+    }
+  }
+
+  async updateRecurringReminder(id: string, data: Partial<InsertReminder>, mode: "future" | "all"): Promise<Reminder> {
+    // Get the reminder to determine its recurring relationship
+    const [reminder] = await db.select().from(reminders).where(eq(reminders.id, id));
+    if (!reminder) {
+      throw new Error("Reminder not found");
+    }
+
+    // If this is not a recurring reminder, just update it normally
+    if (!reminder.isRecurring && !reminder.parentRecurringId) {
+      return await this.updateReminder(id, data);
+    }
+
+    const currentDate = new Date(reminder.dueAt);
+    let updatedReminder: Reminder;
+
+    if (reminder.isRecurring && !reminder.parentRecurringId) {
+      // Case 1: This is the original recurring reminder (parent)
+      if (mode === "all") {
+        // Update the parent and all children
+        const [updated] = await db
+          .update(reminders)
+          .set(data)
+          .where(eq(reminders.id, id))
+          .returning();
+        updatedReminder = updated;
+        
+        await db
+          .update(reminders)
+          .set(data)
+          .where(eq(reminders.parentRecurringId, id));
+      } else {
+        // mode === "future": Update the parent and all future children
+        const [updated] = await db
+          .update(reminders)
+          .set(data)
+          .where(eq(reminders.id, id))
+          .returning();
+        updatedReminder = updated;
+        
+        await db
+          .update(reminders)
+          .set(data)
+          .where(
+            and(
+              eq(reminders.parentRecurringId, id),
+              gte(reminders.dueAt, currentDate)
+            )
+          );
+      }
+    } else if (reminder.parentRecurringId) {
+      // Case 2: This is a child recurring reminder
+      const parentRecurringId = reminder.parentRecurringId;
+      
+      if (mode === "all") {
+        // Update the entire series (parent and all children)
+        await db
+          .update(reminders)
+          .set(data)
+          .where(eq(reminders.id, parentRecurringId));
+          
+        const [updated] = await db
+          .update(reminders)
+          .set(data)
+          .where(eq(reminders.parentRecurringId, parentRecurringId))
+          .returning();
+        updatedReminder = updated[0] || reminder;
+      } else {
+        // mode === "future": Update this reminder and all future recurring instances
+        const [updated] = await db
+          .update(reminders)
+          .set(data)
+          .where(
+            and(
+              eq(reminders.parentRecurringId, parentRecurringId),
+              gte(reminders.dueAt, currentDate)
+            )
+          )
+          .returning();
+        updatedReminder = updated[0] || reminder;
+      }
+    } else {
+      updatedReminder = reminder;
+    }
+
+    return updatedReminder;
   }
 
   private async createRecurringReminders(originalReminder: Reminder): Promise<void> {
