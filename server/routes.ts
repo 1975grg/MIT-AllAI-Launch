@@ -2025,20 +2025,22 @@ USER QUESTION: ${question}
 
 Respond with valid JSON only:`;
 
-      // Call OpenAI with parameters optimized for concise, structured responses
-      const completion = await openai.chat.completions.create({
+      // Call OpenAI Responses API (required for GPT-5)
+      const response = await openai.responses.create({
         model: "gpt-5",
-        messages: [
-          {
-            role: "user",
-            content: systemPrompt
-          }
-        ],
-        max_completion_tokens: 300,
-        response_format: { type: "json_object" }
+        input: systemPrompt,
+        response_format: { type: "json_object" },
+        max_output_tokens: 300
       });
 
-      const aiResponse = completion.choices[0].message.content;
+      // Extract response text correctly from Responses API
+      const aiResponse = response.output_text?.trim() ||
+        (response.output || [])
+          .map(o => (o.content || [])
+            .map(c => ('text' in c ? c.text : ''))
+            .join(''))
+          .join('')
+          .trim();
       
       console.log("🤖 Raw AI response:", aiResponse);
 
