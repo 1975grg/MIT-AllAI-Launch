@@ -155,7 +155,9 @@ export default function Expenses() {
   const filteredProperties = properties;
     
   const filteredExpenses = expenseTransactions.filter(expense => {
-    const categoryMatch = categoryFilter === "all" || expense.category === categoryFilter;
+    const categoryMatch = categoryFilter === "all" || 
+      (categoryFilter === "uncategorized" && !expense.category) ||
+      expense.category === categoryFilter;
     const propertyMatch = propertyFilter === "all" || expense.propertyId === propertyFilter;
     const entityMatch = entityFilter === "all" || expense.entityId === entityFilter;
     
@@ -445,6 +447,7 @@ export default function Expenses() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="uncategorized">Uncategorized</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category} value={category!}>{category}</SelectItem>
                   ))}
