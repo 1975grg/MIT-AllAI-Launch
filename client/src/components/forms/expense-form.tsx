@@ -208,111 +208,113 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
     },
   });
 
-  // Schedule E categories for tax reporting
-  const scheduleECategories = [
-    { value: "advertising", label: "Advertising", description: "Property marketing costs, online ads, signs" },
-    { value: "auto_travel", label: "Auto & Travel", description: "Mileage, gas, parking, travel expenses" },
-    { value: "cleaning_maintenance", label: "Cleaning & Maintenance", description: "Cleaning services, supplies, maintenance work" },
-    { value: "commissions", label: "Commissions", description: "Real estate commissions, leasing fees" },
-    { value: "insurance", label: "Insurance", description: "Property insurance premiums" },
-    { value: "legal_professional", label: "Legal & Professional", description: "Attorney fees, accounting, property management" },
-    { value: "management_fees", label: "Management Fees", description: "Property management company fees" },
-    { value: "mortgage_interest", label: "Mortgage Interest", description: "Interest portion of mortgage payments" },
-    { value: "other_interest", label: "Other Interest", description: "Credit card interest for property expenses" },
-    { value: "repairs", label: "Repairs", description: "Repair costs to maintain property condition" },
-    { value: "supplies", label: "Supplies", description: "Materials, tools, office supplies" },
-    { value: "taxes", label: "Taxes", description: "Property taxes, business taxes" },
-    { value: "utilities", label: "Utilities", description: "Electric, gas, water, internet, phone" },
-    { value: "depreciation", label: "Depreciation", description: "Building and equipment depreciation" },
-    { value: "other_expenses", label: "Other Expenses", description: "Any other deductible property expenses" },
-    { value: "capital_improvements", label: "Capital Improvements", description: "Major improvements, additions, renovations" }
-  ];
-
+  // Combined Schedule E categories - both for regular categorization AND tax reporting
   const expenseCategories = [
-    // Tax-deductible categories first
+    // Tax-deductible Schedule E categories
     {
       value: "Advertising",
       label: "Advertising",
       description: "Costs of marketing the property (online ads, signs, listings)",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "advertising"
     },
     {
       value: "Auto and Travel",
       label: "Auto and Travel",
       description: "Mileage, transportation, or travel directly related to managing or maintaining the rental",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "auto_travel"
     },
     {
       value: "Cleaning and Maintenance",
       label: "Cleaning and Maintenance",
       description: "Routine upkeep, landscaping, pest control, and minor repairs",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "cleaning_maintenance"
     },
     {
       value: "Commissions",
       label: "Commissions",
       description: "Leasing or property management commissions",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "commissions"
     },
     {
       value: "Depreciation Expense",
       label: "Depreciation Expense",
       description: "Deduction for wear-and-tear of the building and certain improvements",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "depreciation"
     },
     {
       value: "Insurance",
       label: "Insurance",
       description: "Property insurance, liability insurance, flood insurance, etc.",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "insurance"
     },
     {
       value: "Legal and Other Professional Fees",
       label: "Legal and Other Professional Fees",
       description: "Attorney fees, accounting, property management, and consulting",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "legal_professional"
     },
     {
       value: "Management Fees",
       label: "Management Fees",
       description: "Paid to property management companies",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "management_fees"
+    },
+    {
+      value: "Mortgage Interest",
+      label: "Mortgage Interest", 
+      description: "Interest portion of mortgage payments (tax-deductible)",
+      taxDeductible: true,
+      scheduleEKey: "mortgage_interest"
     },
     {
       value: "Other Interest",
       label: "Other Interest",
       description: "Interest on loans used for the rental business besides the mortgage",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "other_interest"
     },
     {
       value: "Other",
       label: "Other",
       description: "Any legitimate rental expense not fitting in the above (e.g., HOA fees, bank fees, safety inspections, software subscriptions)",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "other_expenses"
     },
     {
       value: "Repairs",
       label: "Repairs",
       description: "Costs to fix something broken or keep property in working order (not improvements)",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "repairs"
     },
     {
       value: "Supplies",
       label: "Supplies",
       description: "Items used for rental operations (light bulbs, locks, cleaning supplies)",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "supplies"
     },
     {
       value: "Taxes",
       label: "Taxes",
       description: "Property taxes, state/local taxes directly tied to the rental",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "taxes"
     },
     {
       value: "Utilities",
       label: "Utilities",
       description: "Water, electricity, gas, trash collection, etc., if paid by the landlord",
-      taxDeductible: true
+      taxDeductible: true,
+      scheduleEKey: "utilities"
     },
     // Non-tax deductible categories at bottom
     {
@@ -467,6 +469,12 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                   field.onChange(value);
                   const cat = expenseCategories.find(c => c.value === value);
                   form.setValue("taxDeductible", cat?.taxDeductible ?? true);
+                  // Auto-map to Schedule E category with default for tax-deductible expenses
+                  if (cat?.taxDeductible) {
+                    form.setValue("scheduleECategory", cat?.scheduleEKey || "other_expenses");
+                  } else {
+                    form.setValue("scheduleECategory", undefined);
+                  }
                 }} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-expense-category">
@@ -664,49 +672,11 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
             </div>
           )}
 
-          {/* Schedule E Category for Tax Reporting */}
+          {/* Auto Tax Category Display */}
           {form.watch("taxDeductible") && (
-            <FormField
-              control={form.control}
-              name="scheduleECategory"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center space-x-2">
-                    <Receipt className="h-4 w-4" />
-                    <FormLabel>Schedule E Category</FormLabel>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <div className="max-w-xs">
-                          <p className="font-medium">Tax Reporting Category</p>
-                          <p className="text-sm text-muted-foreground">Select the IRS Schedule E category for this expense to match your tax return</p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-schedule-e-category">
-                        <SelectValue placeholder="Select tax category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {scheduleECategories.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          <div className="flex flex-col">
-                            <span>{category.label}</span>
-                            <span className="text-xs text-muted-foreground">{category.description}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="text-sm text-muted-foreground">
+              Tax category: <strong>{selectedCategory?.scheduleEKey || 'Other expenses'}</strong> (auto-assigned)
+            </div>
           )}
 
           {/* Override Toggle - Small and at Bottom */}
@@ -726,10 +696,24 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
                     onCheckedChange={(checked) => {
                       if (checked) {
                         // User wants to override - toggle the automatic value
-                        field.onChange(!(selectedCategory?.taxDeductible ?? true));
+                        const newTaxDeductible = !(selectedCategory?.taxDeductible ?? true);
+                        field.onChange(newTaxDeductible);
+                        // Sync scheduleECategory with override
+                        if (newTaxDeductible) {
+                          form.setValue("scheduleECategory", selectedCategory?.scheduleEKey || "other_expenses");
+                        } else {
+                          form.setValue("scheduleECategory", undefined);
+                        }
                       } else {
                         // User wants to use automatic - set to category default
-                        field.onChange(selectedCategory?.taxDeductible ?? true);
+                        const categoryDefault = selectedCategory?.taxDeductible ?? true;
+                        field.onChange(categoryDefault);
+                        // Restore automatic Schedule E mapping
+                        if (categoryDefault) {
+                          form.setValue("scheduleECategory", selectedCategory?.scheduleEKey || "other_expenses");
+                        } else {
+                          form.setValue("scheduleECategory", undefined);
+                        }
                       }
                     }}
                     data-testid="switch-tax-deductible-override"
