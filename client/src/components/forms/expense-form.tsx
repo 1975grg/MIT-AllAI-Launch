@@ -340,6 +340,12 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       taxDeductible: false
     },
     {
+      value: "Mortgage Principal Payment",
+      label: "Mortgage Principal Payment",
+      description: "Principal portion of mortgage payments (non-deductible, does not reduce taxable income)",
+      taxDeductible: false
+    },
+    {
       value: "Capital Contribution",
       label: "Capital Contribution",
       description: "Money invested into the property or business (not tax deductible)",
