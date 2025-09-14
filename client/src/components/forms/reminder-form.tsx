@@ -8,25 +8,53 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { CalendarIcon, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Property, Reminder, OwnershipEntity, Unit } from "@shared/schema";
+import { insertReminderSchema } from "@shared/schema";
 
-const reminderSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  type: z.enum(["rent", "lease", "regulatory", "maintenance", "custom"]).optional(),
-  scope: z.enum(["entity", "property", "lease", "asset"]).optional(),
-  scopeId: z.string().optional(),
-  entityId: z.string().optional(),
+// Frontend-only fields that supplement the shared schema
+const frontendOnlyFields = z.object({
   propertyId: z.string().optional(),
   unitIds: z.array(z.string()).optional(),
-  dueAt: z.date(),
-  leadDays: z.number().min(0, "Lead days must be 0 or greater"),
-  channels: z.array(z.enum(["inapp", "email", "sms", "push"])).min(1, "At least one notification channel is required").default(["inapp"]),
+  channels: z.array(z.enum(["inapp", "email", "sms", "push"])).default(["inapp"]),
   saveAsDefault: z.boolean().optional(),
-  payloadJson: z.record(z.any()).optional(),
+  // User-friendly frequency field that maps to base units + intervals
+  displayFrequency: z.enum(["monthly", "quarterly", "annually", "weekly", "daily", "custom"]).optional(),
 });
+
+// Combine shared schema with frontend-only fields using intersection
+const reminderFormSchema = z.intersection(insertReminderSchema, frontendOnlyFields);
+
+// Helper functions for frequency mapping (matching expense form pattern)
+const mapDisplayFrequencyToBaseUnits = (displayFreq: string) => {
+  switch (displayFreq) {
+    case "daily":
+      return { recurringFrequency: "days" as const, recurringInterval: 1 };
+    case "weekly":
+      return { recurringFrequency: "weeks" as const, recurringInterval: 1 };
+    case "monthly":
+      return { recurringFrequency: "months" as const, recurringInterval: 1 };
+    case "quarterly":
+      return { recurringFrequency: "months" as const, recurringInterval: 3 };
+    case "annually":
+      return { recurringFrequency: "months" as const, recurringInterval: 12 };
+    default:
+      return { recurringFrequency: undefined, recurringInterval: 1 };
+  }
+};
+
+const mapBaseUnitsToDisplayFrequency = (frequency?: string, interval?: number) => {
+  if (!frequency) return "custom";
+  if (frequency === "days" && interval === 1) return "daily";
+  if (frequency === "weeks" && interval === 1) return "weekly";
+  if (frequency === "months" && interval === 1) return "monthly";
+  if (frequency === "months" && interval === 3) return "quarterly";
+  if (frequency === "months" && interval === 12) return "annually";
+  return "custom";
+};
 
 interface ReminderFormProps {
   properties: Property[];
@@ -34,14 +62,14 @@ interface ReminderFormProps {
   units?: Unit[];
   reminder?: Reminder;
   defaultType?: string;
-  onSubmit: (data: z.infer<typeof reminderSchema>) => void;
+  onSubmit: (data: z.infer<typeof reminderFormSchema>) => void;
   onCancel?: () => void;
   isLoading: boolean;
 }
 
 export default function ReminderForm({ properties, entities = [], units = [], reminder, defaultType, onSubmit, onCancel, isLoading }: ReminderFormProps) {
-  const form = useForm<z.infer<typeof reminderSchema>>({
-    resolver: zodResolver(reminderSchema),
+  const form = useForm<z.infer<typeof reminderFormSchema>>({
+    resolver: zodResolver(reminderFormSchema),
     defaultValues: reminder ? {
       title: reminder.title || "",
       type: reminder.type || undefined,
@@ -54,6 +82,11 @@ export default function ReminderForm({ properties, entities = [], units = [], re
       leadDays: reminder.leadDays || 0,
       channels: (reminder as any).channels || ["inapp"],
       saveAsDefault: false,
+      isRecurring: (reminder as any).isRecurring || false,
+      recurringFrequency: (reminder as any).recurringFrequency,
+      recurringInterval: (reminder as any).recurringInterval || 1,
+      recurringEndDate: (reminder as any).recurringEndDate ? new Date((reminder as any).recurringEndDate) : undefined,
+      displayFrequency: mapBaseUnitsToDisplayFrequency((reminder as any).recurringFrequency, (reminder as any).recurringInterval),
     } : {
       title: "",
       type: defaultType as any || undefined,
@@ -66,6 +99,11 @@ export default function ReminderForm({ properties, entities = [], units = [], re
       leadDays: 0,
       channels: ["inapp"],
       saveAsDefault: false,
+      isRecurring: false,
+      recurringFrequency: undefined,
+      recurringInterval: 1,
+      recurringEndDate: undefined,
+      displayFrequency: "monthly",
     },
   });
 
@@ -91,9 +129,20 @@ export default function ReminderForm({ properties, entities = [], units = [], re
     { value: "push", label: "Push Notification", icon: "🔔" },
   ];
 
+  const isRecurring = form.watch("isRecurring");
+  const displayFrequency = form.watch("displayFrequency");
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => {
+        // Map display frequency to base units + intervals
+        const frequencyMapping = data.isRecurring && data.displayFrequency !== "custom" 
+          ? mapDisplayFrequencyToBaseUnits(data.displayFrequency || "monthly")
+          : {
+              recurringFrequency: data.recurringFrequency,
+              recurringInterval: data.recurringInterval || 1
+            };
+
         // Ensure date is properly formatted and handle empty strings
         const formattedData = {
           ...data,
@@ -101,7 +150,23 @@ export default function ReminderForm({ properties, entities = [], units = [], re
           entityId: data.entityId && data.entityId !== "" ? data.entityId : undefined,
           propertyId: data.propertyId && data.propertyId !== "" ? data.propertyId : undefined,
           scopeId: data.scopeId && data.scopeId !== "" ? data.scopeId : undefined,
+          // Apply frequency mapping for backend
+          recurringFrequency: data.isRecurring ? frequencyMapping.recurringFrequency : undefined,
+          recurringInterval: data.isRecurring ? (frequencyMapping.recurringInterval || 1) : 1,
+          // Ensure required fields are present
+          isRecurring: data.isRecurring || false,
+          isBulkEntry: data.isBulkEntry || false,
+          // Remove frontend-only fields before sending to backend
+          displayFrequency: undefined,
         };
+        
+        // Remove undefined fields to keep payload clean
+        Object.keys(formattedData).forEach(key => {
+          if ((formattedData as any)[key] === undefined) {
+            delete (formattedData as any)[key];
+          }
+        });
+        
         onSubmit(formattedData);
       })} className="space-y-4">
         <FormField
@@ -192,7 +257,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
               const isBuilding = propertyUnits.length > 1;
               
               if (!isBuilding) {
-                return null;
+                return <div style={{ display: 'none' }} />;
               }
               
               return (
@@ -208,7 +273,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                           if (e.target.checked) {
                             field.onChange([...currentIds, "common"]);
                           } else {
-                            field.onChange(currentIds.filter(id => id !== "common"));
+                            field.onChange(currentIds.filter((id: string) => id !== "common"));
                           }
                         }}
                         className="rounded border-gray-300"
@@ -226,7 +291,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                             if (e.target.checked) {
                               field.onChange([...currentIds, unit.id]);
                             } else {
-                              field.onChange(currentIds.filter(id => id !== unit.id));
+                              field.onChange(currentIds.filter((id: string) => id !== unit.id));
                             }
                           }}
                           className="rounded border-gray-300"
@@ -323,8 +388,10 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                   <Input 
                     type="number" 
                     placeholder="0"
-                    {...field}
+                    value={field.value?.toString() || "0"}
                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    onBlur={field.onBlur}
+                    name={field.name}
                     data-testid="input-reminder-lead-days"
                   />
                 </FormControl>
@@ -353,7 +420,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
                         } else {
                           // Don't allow unchecking if it's the last channel
                           if (currentChannels.length > 1) {
-                            field.onChange(currentChannels.filter(c => c !== channel.value));
+                            field.onChange(currentChannels.filter((c: string) => c !== channel.value));
                           }
                         }
                       }}
@@ -369,6 +436,160 @@ export default function ReminderForm({ properties, entities = [], units = [], re
             </FormItem>
           )}
         />
+
+        {/* Recurring Reminder Options */}
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+          <FormField
+            control={form.control}
+            name="isRecurring"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                  <FormLabel className="flex items-center space-x-2">
+                    <Repeat className="h-4 w-4" />
+                    <span>Make this recurring</span>
+                  </FormLabel>
+                  <div className="text-sm text-muted-foreground">
+                    Set up automatic recurring reminders (e.g., monthly rent reminders, quarterly taxes)
+                  </div>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="switch-reminder-recurring"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {isRecurring && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="displayFrequency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Frequency</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-reminder-recurring-frequency">
+                            <SelectValue placeholder="How often?" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="quarterly">Quarterly (every 3 months)</SelectItem>
+                          <SelectItem value="annually">Annually (every 12 months)</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="custom">Custom interval...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {displayFrequency === "custom" && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="recurringInterval"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Every</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="1"
+                              placeholder="1" 
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                              data-testid="input-reminder-recurring-interval"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="recurringFrequency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Period</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-reminder-recurring-custom-frequency">
+                                <SelectValue placeholder="Period" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="days">Days</SelectItem>
+                              <SelectItem value="weeks">Weeks</SelectItem>
+                              <SelectItem value="months">Months</SelectItem>
+                              <SelectItem value="years">Years</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="recurringEndDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>End Date (Optional)</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-reminder-recurring-end-date"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>No end date</span>
+                            )}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date()
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              </div>
+            </div>
+          )}
+        </div>
 
         <FormField
           control={form.control}

@@ -10,10 +10,11 @@ import ReminderForm from "@/components/forms/reminder-form";
 import PropertyAssistant from "@/components/ai/property-assistant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Plus, Clock, CheckCircle, Calendar, AlertTriangle, DollarSign, FileText, Wrench, Shield, Edit, Trash2, CalendarDays } from "lucide-react";
+import { Bell, Plus, Clock, CheckCircle, Calendar, AlertTriangle, DollarSign, FileText, Wrench, Shield, Edit, Trash2, CalendarDays, Repeat } from "lucide-react";
 import type { Reminder, Property, OwnershipEntity, Lease, Unit, TenantGroup } from "@shared/schema";
 
 export default function Reminders() {
@@ -21,6 +22,10 @@ export default function Reminders() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+  const [pendingEditReminder, setPendingEditReminder] = useState<Reminder | null>(null);
+  const [isEditingSeries, setIsEditingSeries] = useState(false);
+  const [editMode, setEditMode] = useState<"future" | "all">("all"); // Proper state for bulk edit mode
+  const [deleteReminderId, setDeleteReminderId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("due");
   const [entityFilter, setEntityFilter] = useState<string>("all");
@@ -76,15 +81,30 @@ export default function Reminders() {
 
   const createReminderMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/reminders", data);
-      return response.json();
+      if (editingReminder) {
+        if (isEditingSeries) {
+          // Use bulk edit mutation with proper state-managed mode
+          const response = await apiRequest("PUT", `/api/reminders/${editingReminder.id}/recurring?mode=${editMode}`, data);
+          return response.json();
+        } else {
+          const response = await apiRequest("PATCH", `/api/reminders/${editingReminder.id}`, data);
+          return response.json();
+        }
+      } else {
+        const response = await apiRequest("POST", "/api/reminders", data);
+        return response.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
       setShowReminderForm(false);
+      setEditingReminder(null);
+      setPendingEditReminder(null);
+      setIsEditingSeries(false);
+      setEditMode("all"); // Reset edit mode
       toast({
         title: "Success",
-        description: "Reminder created successfully",
+        description: editingReminder ? (isEditingSeries ? "Recurring reminder series updated successfully" : "Reminder updated successfully") : "Reminder created successfully",
       });
     },
     onError: (error) => {
@@ -101,7 +121,7 @@ export default function Reminders() {
       }
       toast({
         title: "Error",
-        description: "Failed to create reminder",
+        description: editingReminder ? "Failed to update reminder" : "Failed to create reminder",
         variant: "destructive",
       });
     },
@@ -183,6 +203,7 @@ export default function Reminders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      setDeleteReminderId(null);
       toast({
         title: "Success",
         description: "Reminder deleted successfully",
@@ -203,6 +224,74 @@ export default function Reminders() {
       toast({
         title: "Error",
         description: "Failed to delete reminder",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDeleteReminderMutation = useMutation({
+    mutationFn: async ({ reminderId, mode }: { reminderId: string; mode: "future" | "all" }) => {
+      const response = await apiRequest("DELETE", `/api/reminders/${reminderId}/recurring?mode=${mode}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      setDeleteReminderId(null);
+      toast({
+        title: "Success",
+        description: "Recurring reminder series deleted successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete recurring reminder series",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkEditReminderMutation = useMutation({
+    mutationFn: async ({ reminderId, data, mode }: { reminderId: string; data: any; mode: "future" | "all" }) => {
+      const response = await apiRequest("PUT", `/api/reminders/${reminderId}/recurring?mode=${mode}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      setShowReminderForm(false);
+      setEditingReminder(null);
+      setPendingEditReminder(null);
+      toast({
+        title: "Success",
+        description: "Recurring reminder series updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update recurring reminder series",
         variant: "destructive",
       });
     },
@@ -537,13 +626,9 @@ export default function Reminders() {
                     properties={properties || []}
                     entities={entities || []}
                     units={units || []}
-                    initialData={editingReminder}
+                    reminder={editingReminder || undefined}
                     onSubmit={(data) => {
-                      if (editingReminder) {
-                        updateReminderMutation.mutate({ id: editingReminder.id, data });
-                      } else {
-                        createReminderMutation.mutate(data);
-                      }
+                      createReminderMutation.mutate(data);
                     }}
                     onCancel={() => {
                       setShowReminderForm(false);
@@ -555,6 +640,148 @@ export default function Reminders() {
               </Dialog>
             </div>
           </div>
+
+          {/* Bulk Edit Dialog for Recurring Reminders */}
+          <Dialog open={!!pendingEditReminder} onOpenChange={() => setPendingEditReminder(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Recurring Reminder</DialogTitle>
+                <DialogDescription>
+                  This reminder is part of a recurring series. How would you like to edit it?
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Button
+                  onClick={() => {
+                    setEditingReminder(pendingEditReminder);
+                    setIsEditingSeries(false);
+                    setShowReminderForm(true);
+                    setPendingEditReminder(null);
+                  }}
+                  className="w-full justify-start"
+                  variant="outline"
+                  data-testid="button-edit-single-reminder"
+                >
+                  Edit this reminder only
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEditingReminder(pendingEditReminder);
+                    setIsEditingSeries(true);
+                    setEditMode("future"); // Proper state management
+                    setShowReminderForm(true);
+                    setPendingEditReminder(null);
+                  }}
+                  className="w-full justify-start"
+                  variant="outline"
+                  data-testid="button-edit-future-reminders"
+                >
+                  Edit this and all future reminders
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEditingReminder(pendingEditReminder);
+                    setIsEditingSeries(true);
+                    setEditMode("all"); // Proper state management
+                    setShowReminderForm(true);
+                    setPendingEditReminder(null);
+                  }}
+                  className="w-full justify-start"
+                  variant="outline"
+                  data-testid="button-edit-series-reminder"
+                >
+                  Edit entire recurring series
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={!!deleteReminderId} onOpenChange={() => setDeleteReminderId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {(() => {
+                    const reminder = reminders?.find(r => r.id === deleteReminderId);
+                    const isRecurring = reminder?.isRecurring || reminder?.parentRecurringId;
+                    return isRecurring ? "Delete Recurring Reminder" : "Delete Reminder";
+                  })()}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {(() => {
+                    const reminder = reminders?.find(r => r.id === deleteReminderId);
+                    const isRecurring = reminder?.isRecurring || reminder?.parentRecurringId;
+                    if (isRecurring) {
+                      return "This reminder is part of a recurring series. How would you like to delete it?";
+                    } else {
+                      return "Are you sure you want to delete this reminder? This action cannot be undone.";
+                    }
+                  })()}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+                {(() => {
+                  const reminder = reminders?.find(r => r.id === deleteReminderId);
+                  const isRecurring = reminder?.isRecurring || reminder?.parentRecurringId;
+                  
+                  if (isRecurring) {
+                    return (
+                      <div className="flex flex-col space-y-2 w-full">
+                        <AlertDialogAction
+                          onClick={() => {
+                            if (deleteReminderId) {
+                              deleteReminderMutation.mutate(deleteReminderId);
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300 w-full"
+                          data-testid="button-delete-single-reminder"
+                        >
+                          Delete this reminder only
+                        </AlertDialogAction>
+                        <AlertDialogAction
+                          onClick={() => {
+                            if (deleteReminderId) {
+                              bulkDeleteReminderMutation.mutate({ reminderId: deleteReminderId, mode: "future" });
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300 w-full"
+                          data-testid="button-delete-future-reminders"
+                        >
+                          Delete this and all future reminders
+                        </AlertDialogAction>
+                        <AlertDialogAction
+                          onClick={() => {
+                            if (deleteReminderId) {
+                              bulkDeleteReminderMutation.mutate({ reminderId: deleteReminderId, mode: "all" });
+                            }
+                          }}
+                          className="bg-red-600 text-white hover:bg-red-700 w-full"
+                          data-testid="button-delete-series-reminder"
+                        >
+                          Delete entire recurring series
+                        </AlertDialogAction>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <AlertDialogAction
+                        onClick={() => {
+                          if (deleteReminderId) {
+                            deleteReminderMutation.mutate(deleteReminderId);
+                          }
+                        }}
+                        className="bg-red-600 text-white hover:bg-red-700"
+                        data-testid="button-confirm-delete"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    );
+                  }
+                })()}
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -683,6 +910,17 @@ export default function Reminders() {
                               Due {new Date(reminder.dueAt).toLocaleDateString()}
                             </span>
                             {getTypeBadge(reminder.type)}
+                            {reminder.isRecurring && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-600" data-testid={`badge-recurring-${index}`}>
+                                <Repeat className="h-3 w-3 mr-1" />
+                                {reminder.recurringFrequency}
+                              </Badge>
+                            )}
+                            {reminder.parentRecurringId && (
+                              <Badge variant="outline" className="text-purple-600 border-purple-600" data-testid={`badge-recurring-instance-${index}`}>
+                                Auto-generated
+                              </Badge>
+                            )}
                             {isOverdue(reminder.dueAt) && reminder.status === "Pending" && (
                               <Badge className="bg-red-100 text-red-800">Overdue</Badge>
                             )}
@@ -700,8 +938,13 @@ export default function Reminders() {
                             size="sm"
                             className="h-8 w-8 p-0 text-muted-foreground hover:text-blue-600"
                             onClick={() => {
-                              setEditingReminder(reminder);
-                              setShowReminderForm(true);
+                              const isRecurring = reminder.isRecurring || reminder.parentRecurringId;
+                              if (isRecurring) {
+                                setPendingEditReminder(reminder);
+                              } else {
+                                setEditingReminder(reminder);
+                                setShowReminderForm(true);
+                              }
                             }}
                             data-testid={`button-edit-reminder-${index}`}
                           >
@@ -711,11 +954,7 @@ export default function Reminders() {
                             variant="ghost" 
                             size="sm"
                             className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this reminder?")) {
-                                deleteReminderMutation.mutate(reminder.id);
-                              }
-                            }}
+                            onClick={() => setDeleteReminderId(reminder.id)}
                             data-testid={`button-delete-reminder-${index}`}
                           >
                             <Trash2 className="h-4 w-4" />

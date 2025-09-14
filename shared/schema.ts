@@ -664,7 +664,7 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({ i
 export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true, parentRecurringId: true }).extend({
   dueAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
   isRecurring: z.boolean().optional().default(false),
-  recurringFrequency: z.enum(["days", "weeks", "months", "years", "daily", "weekly", "monthly", "quarterly", "annually"]).optional(),
+  recurringFrequency: z.enum(["days", "weeks", "months", "years"]).optional(),
   recurringInterval: z.number().min(1).optional().default(1),
   recurringEndDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
   isBulkEntry: z.boolean().optional().default(false),
