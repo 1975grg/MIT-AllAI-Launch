@@ -1991,9 +1991,7 @@ Please provide a helpful, specific answer based on the actual data provided. Kee
         max_completion_tokens: 1500
       });
 
-      console.log("OpenAI completion:", JSON.stringify(completion, null, 2));
       const answer = completion.choices[0].message.content;
-      console.log("Extracted answer:", answer);
 
       res.json({
         answer: answer || "I'm sorry, I couldn't generate a response right now.",
