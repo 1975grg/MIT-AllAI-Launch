@@ -1422,7 +1422,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createReminder(reminder: InsertReminder): Promise<Reminder> {
-    const [newReminder] = await db.insert(reminders).values(reminder).returning();
+    const [newReminder] = await db.insert(reminders).values({
+      ...reminder,
+      recurringEndDate: reminder.recurringEndDate ? (typeof reminder.recurringEndDate === 'string' ? new Date(reminder.recurringEndDate) : reminder.recurringEndDate) : null,
+    }).returning();
+    
+    // If this is a recurring reminder, create future instances
+    if (reminder.isRecurring && reminder.recurringFrequency) {
+      await this.createRecurringReminders(newReminder);
+    }
+    
     return newReminder;
   }
 
@@ -1437,6 +1446,82 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReminder(id: string): Promise<void> {
     await db.delete(reminders).where(eq(reminders.id, id));
+  }
+
+  private async createRecurringReminders(originalReminder: Reminder): Promise<void> {
+    if (!originalReminder.isRecurring || !originalReminder.recurringFrequency) return;
+
+    const frequency = originalReminder.recurringFrequency;
+    const interval = originalReminder.recurringInterval || 1;
+    const startDate = new Date(originalReminder.dueAt);
+    const endDate = originalReminder.recurringEndDate ? new Date(originalReminder.recurringEndDate) : null;
+    
+    // Calculate how many instances to create (limit to 24 months for safety)
+    const maxInstances = 24;
+    let currentDate = new Date(startDate);
+    const instances: Array<any> = [];
+
+    for (let i = 0; i < maxInstances; i++) {
+      // Calculate next occurrence based on frequency and interval
+      switch (frequency) {
+        case "days":
+          currentDate.setDate(currentDate.getDate() + interval);
+          break;
+        case "weeks":
+          currentDate.setDate(currentDate.getDate() + (interval * 7));
+          break;
+        case "months":
+          currentDate.setMonth(currentDate.getMonth() + interval);
+          break;
+        case "years":
+          currentDate.setFullYear(currentDate.getFullYear() + interval);
+          break;
+        // Legacy support for old format
+        case "monthly":
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          break;
+        case "quarterly":
+          currentDate.setMonth(currentDate.getMonth() + 3);
+          break;
+        case "biannually":
+          currentDate.setMonth(currentDate.getMonth() + 6);
+          break;
+        case "annually":
+          currentDate.setFullYear(currentDate.getFullYear() + 1);
+          break;
+      }
+
+      // Stop if we've reached the end date
+      if (endDate && currentDate > endDate) break;
+
+      // Stop if we're more than 2 years out
+      if (currentDate > new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000)) break;
+
+      instances.push({
+        orgId: originalReminder.orgId,
+        scope: originalReminder.scope,
+        scopeId: originalReminder.scopeId || undefined,
+        entityId: originalReminder.entityId || undefined,
+        title: originalReminder.title,
+        type: originalReminder.type,
+        dueAt: new Date(currentDate),
+        leadDays: originalReminder.leadDays || 0,
+        channels: originalReminder.channels || ["inapp"],
+        payloadJson: originalReminder.payloadJson || undefined,
+        status: "Pending" as const,
+        isRecurring: false, // Future instances are not recurring themselves
+        recurringFrequency: undefined,
+        recurringInterval: 1,
+        recurringEndDate: null,
+        parentRecurringId: originalReminder.id,
+        isBulkEntry: false,
+      });
+    }
+
+    // Insert all future instances
+    if (instances.length > 0) {
+      await db.insert(reminders).values(instances);
+    }
   }
 
   // Create lease end reminders (similar to entity renewal reminders)
