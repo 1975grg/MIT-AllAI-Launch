@@ -1368,7 +1368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recurringInterval: req.body.recurringInterval || 1,
         recurringEndDate: req.body.recurringEndDate,
         propertyId: scope === "property" ? req.body.propertyId : undefined,
-        unitId: req.body.unitId,
+        unitId: req.body.unitId === "none" || req.body.unitId === "" ? undefined : req.body.unitId,
         entityId: scope === "operational" ? req.body.entityId : undefined,
         vendorId: req.body.vendorId,
         userId: (req.user as any).claims.sub,
