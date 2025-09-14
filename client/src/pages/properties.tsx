@@ -208,13 +208,19 @@ export default function Properties() {
       mortgageStartDate2: property.mortgageStartDate2 ? new Date(property.mortgageStartDate2) : undefined,
     };
     
-    setEditingProperty(propertyForEditing);
-    
-    // Fetch the property's units to get appliance data
+    // Fetch the property's units to get appliance data and determine numberOfUnits
     try {
       const unitsResponse = await apiRequest("GET", `/api/units`);
       const units: Unit[] = await unitsResponse.json();
       const propertyUnits = units.filter(unit => unit.propertyId === property.id);
+      
+      // Add units-related fields based on actual units
+      propertyForEditing.numberOfUnits = propertyUnits.length || 1;
+      propertyForEditing.hasMultipleUnits = propertyUnits.length > 1;
+      propertyForEditing.createDefaultUnit = propertyUnits.length > 0;
+      
+      console.log("🔧 Setting numberOfUnits to:", propertyUnits.length);
+      console.log("🔧 Setting hasMultipleUnits to:", propertyUnits.length > 1);
       
       // Add the first unit as defaultUnit to the editing property
       if (propertyUnits.length > 0) {
