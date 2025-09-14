@@ -2065,10 +2065,6 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
         ).join("")?.trim()) ||
         '';
       
-      // Debug logging for GPT-5
-      if (!aiResponse || aiResponse.trim().length === 0) {
-        console.log("🔍 GPT-5 Full response for debugging:", JSON.stringify(response, null, 2));
-      }
       
       console.log("🤖 Raw AI response:", aiResponse);
 
