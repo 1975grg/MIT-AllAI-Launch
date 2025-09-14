@@ -1977,7 +1977,7 @@ Please provide a helpful, specific answer based on the actual data provided. Kee
 
       // Call OpenAI
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "system",
