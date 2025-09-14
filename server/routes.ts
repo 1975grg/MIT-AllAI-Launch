@@ -1988,7 +1988,7 @@ Please provide a helpful, specific answer based on the actual data provided. Kee
             content: prompt
           }
         ],
-        max_completion_tokens: 500
+        max_completion_tokens: 1500
       });
 
       console.log("OpenAI completion:", JSON.stringify(completion, null, 2));
