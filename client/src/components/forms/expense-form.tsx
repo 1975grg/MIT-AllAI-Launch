@@ -155,6 +155,19 @@ export default function ExpenseForm({ properties, units, entities, expense, onSu
       setSelectedPropertyId("");
     }
   }, [expense]);
+
+  // Set unitId after property and units are loaded
+  useEffect(() => {
+    if (expense?.unitId && selectedPropertyId && selectedPropertyUnits.length > 0) {
+      // Check if the expense unitId exists in the current property's units
+      const unitExists = selectedPropertyUnits.find(unit => unit.id === expense.unitId);
+      if (unitExists) {
+        form.setValue("unitId", expense.unitId);
+      } else if (expense.unitId === "common") {
+        form.setValue("unitId", "common");
+      }
+    }
+  }, [expense, selectedPropertyId, selectedPropertyUnits, form]);
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
     defaultValues: expense ? {
