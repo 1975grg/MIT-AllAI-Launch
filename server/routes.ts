@@ -2035,22 +2035,30 @@ USER QUESTION: ${question}
 
 Provide helpful analysis based on the actual data. Respond with valid JSON only:`;
 
-      // Call OpenAI Responses API (GPT-5)
+      // Call OpenAI Responses API (GPT-5) with correct format
       const response = await openai.responses.create({
         model: "gpt-5",
-        input: systemPrompt,
-        text: { format: { type: "json_object" } },
-        max_output_tokens: 300
+        messages: [
+          { role: "user", content: systemPrompt }
+        ],
+        response_format: { type: "json_object" },
+        max_output_tokens: 500
       });
 
-      // Extract response text correctly from Responses API
+      // Robust extraction for GPT-5 Responses API
       const aiResponse = response.output_text?.trim() ||
-        (response.output || [])
-          .map(o => (o.content || [])
-            .map(c => ('text' in c ? c.text : ''))
-            .join(''))
-          .join('')
-          .trim();
+        (response.content?.map(p => 
+          (p.type === "output_text" && p.text) || 
+          (p.type === "message" && p.content?.map(c => c.text).join("")) || ""
+        ).join("")?.trim()) ||
+        (response.output?.flatMap(o => 
+          (o.content||[]).map(c => c.text||c?.["output_text"]||"")
+        ).join("")?.trim());
+      
+      // Debug logging for GPT-5
+      if (!aiResponse || aiResponse.trim().length === 0) {
+        console.log("🔍 GPT-5 Full response for debugging:", JSON.stringify(response, null, 2));
+      }
       
       console.log("🤖 Raw AI response:", aiResponse);
 
