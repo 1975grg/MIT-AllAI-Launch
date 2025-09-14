@@ -32,7 +32,7 @@ const expenseSchema = z.object({
   customCategory: z.string().optional(),
   date: z.date(),
   isDateRange: z.boolean().default(false),
-  endDate: z.date().optional(),
+  endDate: z.coerce.date().optional(),
   propertyId: z.string().optional(),
   unitId: z.string().optional(),
   vendorId: z.string().optional(),
@@ -41,7 +41,7 @@ const expenseSchema = z.object({
   isRecurring: z.boolean().default(false),
   recurringFrequency: z.enum(["days", "weeks", "months", "years", "monthly", "quarterly", "biannually", "annually"]).optional(),
   recurringInterval: z.number().min(1).default(1),
-  recurringEndDate: z.date().optional(),
+  recurringEndDate: z.coerce.date().optional(),
   taxDeductible: z.boolean().default(true),
   isSplitExpense: z.boolean().default(false),
   lineItems: z.array(lineItemSchema).optional(),
@@ -51,7 +51,7 @@ const expenseSchema = z.object({
   // Multi-year amortization fields
   isAmortized: z.boolean().default(false),
   amortizationYears: z.number().min(2).max(40).optional(),
-  amortizationStartDate: z.date().optional(),
+  amortizationStartDate: z.coerce.date().optional(),
   amortizationMethod: z.enum(["straight_line"]).default("straight_line"),
   // Tax categorization field
   scheduleECategory: z.enum([
