@@ -118,6 +118,7 @@ export interface IStorage {
   
   // Transaction operations
   getTransactions(orgId: string, type?: "Income" | "Expense"): Promise<Transaction[]>;
+  getTransactionById(id: string): Promise<Transaction | undefined>;
   getTransactionsByEntity(entityId: string): Promise<Transaction[]>;
   getTransactionsByProperty(propertyId: string): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
@@ -1074,6 +1075,16 @@ export class DatabaseStorage implements IStorage {
       .from(transactions)
       .where(eq(transactions.orgId, orgId))
       .orderBy(desc(transactions.date));
+  }
+
+  async getTransactionById(id: string): Promise<Transaction | undefined> {
+    const result = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id))
+      .limit(1);
+    
+    return result[0];
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
