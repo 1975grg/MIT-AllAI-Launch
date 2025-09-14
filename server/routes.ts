@@ -1299,7 +1299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orgId: org.id,
         type: "Expense" as const,
         propertyId: req.body.propertyId === "none" ? undefined : req.body.propertyId,
-        unitId: req.body.unitId,
+        unitId: req.body.unitId === "none" || req.body.unitId === "" ? undefined : req.body.unitId,
         entityId: req.body.entityId || undefined,
         scope: req.body.scope || "property",
         amount: (req.body.amount !== undefined && req.body.amount !== null && req.body.amount !== "") ? String(req.body.amount) : "0",
