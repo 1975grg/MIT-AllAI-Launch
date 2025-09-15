@@ -350,60 +350,7 @@ export default function Properties() {
                   onSubmit={handleFormSubmit}
                   onCancel={handleCloseForm}
                   isLoading={createPropertyMutation.isPending || updatePropertyMutation.isPending}
-                  initialData={editingProperty ? {
-                    name: editingProperty.name,
-                    type: editingProperty.type,
-                    street: editingProperty.street,
-                    city: editingProperty.city,
-                    state: editingProperty.state,
-                    zipCode: editingProperty.zipCode,
-                    yearBuilt: editingProperty.yearBuilt || undefined,
-                    sqft: editingProperty.sqft || undefined,
-                    hoaName: editingProperty.hoaName || "",
-                    hoaContact: editingProperty.hoaContact || "",
-                    notes: editingProperty.notes || "",
-                    // Add missing financial data
-                    propertyValue: editingProperty.propertyValue,
-                    autoAppreciation: editingProperty.autoAppreciation || false,
-                    appreciationRate: editingProperty.appreciationRate,
-                    // Add ALL mortgage fields
-                    monthlyMortgage: editingProperty.monthlyMortgage,
-                    interestRate: editingProperty.interestRate,
-                    purchasePrice: editingProperty.purchasePrice,
-                    downPayment: editingProperty.downPayment,
-                    acquisitionDate: editingProperty.acquisitionDate,
-                    mortgageStartDate: editingProperty.mortgageStartDate,
-                    mortgageStartDate2: editingProperty.mortgageStartDate2,
-                    salePrice: editingProperty.salePrice,
-                    saleDate: editingProperty.saleDate,
-                    ownerships: editingProperty.ownerships?.map(o => ({
-                      entityId: o.entityId,
-                      percent: o.percent
-                    })) || [],
-                    createDefaultUnit: (editingProperty as any).hasExistingUnit || (editingProperty as any).defaultUnit ? true : false,
-                    hasMultipleUnits: false,
-                    defaultUnit: (editingProperty as any).defaultUnit || {
-                      label: "",
-                      bedrooms: undefined,
-                      bathrooms: undefined,
-                      sqft: undefined,
-                      rentAmount: "",
-                      deposit: "",
-                      notes: "",
-                      hvacBrand: "",
-                      hvacModel: "",
-                      hvacYear: undefined,
-                      hvacLifetime: undefined,
-                      hvacReminder: false,
-                      waterHeaterBrand: "",
-                      waterHeaterModel: "",
-                      waterHeaterYear: undefined,
-                      waterHeaterLifetime: undefined,
-                      waterHeaterReminder: false,
-                      applianceNotes: "",
-                      appliances: [],
-                    }
-                  } : undefined}
+                  initialData={editingProperty || undefined}
                 />
               </DialogContent>
             </Dialog>
