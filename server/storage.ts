@@ -56,7 +56,7 @@ import {
   type Notification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, asc, sql, gte, lte, count } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lte, count, like } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -74,6 +74,7 @@ export interface IStorage {
   deleteOwnershipEntity(id: string): Promise<void>;
   getEntityPerformance(entityId: string, orgId: string): Promise<any>;
   getEntityPropertyCount(entityId: string, orgId: string): Promise<{ count: number; properties: Array<{id: string, name: string}> }>;
+  getTenantRelationshipCount(tenantId: string, orgId: string): Promise<{ count: number; relationships: Array<{type: string, description: string}> }>;
   
   // Property operations
   getProperties(orgId: string): Promise<Property[]>;
@@ -381,7 +382,7 @@ export class DatabaseStorage implements IStorage {
     count: number; 
     relationships: Array<{type: string, description: string}>
   }> {
-    const relationships = [];
+    const relationships: Array<{type: string, description: string}> = [];
 
     // Check for active leases through tenant group
     const tenant = await db

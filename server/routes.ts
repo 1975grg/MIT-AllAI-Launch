@@ -1236,6 +1236,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Individual Tenant Archive/Unarchive endpoints (separate from tenant groups)
+  // Archive a tenant (set status to "Archived")
+  app.patch('/api/tenants/:id/archive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // SECURITY: Check if tenant exists and belongs to organization
+      const tenants = await storage.getTenants(org.id);
+      const tenant = tenants.find(t => t.id === req.params.id);
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+      
+      const archivedTenant = await storage.updateTenant(req.params.id, { status: "Archived" });
+      res.json({ message: "Tenant archived successfully", tenant: archivedTenant });
+    } catch (error) {
+      console.error("Error archiving tenant:", error);
+      res.status(500).json({ message: "Failed to archive tenant" });
+    }
+  });
+
+  // Unarchive a tenant (set status to "Active")
+  app.patch('/api/tenants/:id/unarchive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // SECURITY: Check if tenant exists and belongs to organization
+      const tenants = await storage.getTenants(org.id);
+      const tenant = tenants.find(t => t.id === req.params.id);
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+      
+      const unarchivedTenant = await storage.updateTenant(req.params.id, { status: "Active" });
+      res.json({ message: "Tenant unarchived successfully", tenant: unarchivedTenant });
+    } catch (error) {
+      console.error("Error unarchiving tenant:", error);
+      res.status(500).json({ message: "Failed to unarchive tenant" });
+    }
+  });
+
+  // Get tenant relationship count for delete safety check
+  app.get('/api/tenants/:id/relationship-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const count = await storage.getTenantRelationshipCount(req.params.id, org.id);
+      res.json(count);
+    } catch (error) {
+      console.error("Error getting tenant relationship count:", error);
+      res.status(500).json({ message: "Failed to get tenant relationships" });
+    }
+  });
+
+  // Permanently delete a tenant (only if no relationships)
+  app.delete('/api/tenants/:id/permanent', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // SECURITY: Check if tenant exists and belongs to organization
+      const tenants = await storage.getTenants(org.id);
+      const tenant = tenants.find(t => t.id === req.params.id);
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      // DELETE PREVENTION: Check if tenant has any relationships
+      const relationshipCheck = await storage.getTenantRelationshipCount(req.params.id, org.id);
+      if (relationshipCheck.count > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete tenant - has relationships",
+          error: "TENANT_HAS_RELATIONSHIPS",
+          count: relationshipCheck.count,
+          relationships: relationshipCheck.relationships,
+          details: `${tenant.firstName} ${tenant.lastName} has ${relationshipCheck.count} relationship${relationshipCheck.count === 1 ? '' : 's'}. Please archive instead of deleting.`
+        });
+      }
+      
+      await storage.deleteTenant(req.params.id);
+      res.json({ message: "Tenant deleted permanently" });
+    } catch (error) {
+      console.error("Error deleting tenant:", error);
+      res.status(500).json({ message: "Failed to delete tenant" });
+    }
+  });
+
   // Lease routes
   app.get('/api/leases', isAuthenticated, async (req: any, res) => {
     try {
