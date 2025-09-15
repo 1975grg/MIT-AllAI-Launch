@@ -137,6 +137,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       city: "",
       state: "",
       zipCode: "",
+      hoaName: "",
+      hoaContact: "",
+      notes: "",
       propertyValue: undefined,
       autoAppreciation: false,
       appreciationRate: undefined,
@@ -198,6 +201,10 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         saleDate: initialData.saleDate ? new Date(initialData.saleDate) : undefined,
         mortgageStartDate: initialData.mortgageStartDate ? new Date(initialData.mortgageStartDate) : undefined,
         mortgageStartDate2: initialData.mortgageStartDate2 ? new Date(initialData.mortgageStartDate2) : undefined,
+        // Normalize optional string fields (convert null to empty string)
+        hoaName: initialData.hoaName ?? "",
+        hoaContact: initialData.hoaContact ?? "",
+        notes: initialData.notes ?? "",
       };
       
       form.reset(resetData);
