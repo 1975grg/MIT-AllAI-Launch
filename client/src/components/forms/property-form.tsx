@@ -210,21 +210,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
     }
   }, [initialData, form]);
 
-  // Auto-fill purchase price for NEW properties (when user enters property value)
-  React.useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      // Only for NEW properties (no initialData)
-      if (!initialData && name === 'propertyValue' && value.propertyValue) {
-        const currentPurchasePrice = form.getValues('purchasePrice');
-        // Auto-fill if purchase price is empty
-        if (!currentPurchasePrice) {
-          console.log("🏠 Auto-filling purchase price for new property:", value.propertyValue);
-          form.setValue('purchasePrice', Number(value.propertyValue));
-        }
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form, initialData]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -1078,6 +1063,12 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                             field.onChange(numericValue);
                             if (numericValue) {
                               e.target.value = numericValue.toLocaleString();
+                            }
+                            
+                            // Auto-fill purchase price for NEW properties only
+                            if (!initialData && numericValue && !form.getValues('purchasePrice')) {
+                              console.log("🏠 Auto-filling purchase price on blur:", numericValue);
+                              form.setValue('purchasePrice', numericValue, { shouldDirty: true });
                             }
                           }
                         }}
