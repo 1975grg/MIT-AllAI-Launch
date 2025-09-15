@@ -187,51 +187,26 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       
       const resetData = {
         ...initialData,
+        // Normalize numbers
         propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
         monthlyMortgage: initialData.monthlyMortgage ? Number(initialData.monthlyMortgage) : undefined,
         interestRate: initialData.interestRate ? Number(initialData.interestRate) : undefined,
         purchasePrice: initialData.purchasePrice ? Number(initialData.purchasePrice) : undefined,
         downPayment: initialData.downPayment ? Number(initialData.downPayment) : undefined,
         salePrice: initialData.salePrice ? Number(initialData.salePrice) : undefined,
+        numberOfUnits: Number(initialData.numberOfUnits ?? 1),
+        // Normalize dates
         acquisitionDate: initialData.acquisitionDate ? new Date(initialData.acquisitionDate) : undefined,
         saleDate: initialData.saleDate ? new Date(initialData.saleDate) : undefined,
         mortgageStartDate: initialData.mortgageStartDate ? new Date(initialData.mortgageStartDate) : undefined,
         mortgageStartDate2: initialData.mortgageStartDate2 ? new Date(initialData.mortgageStartDate2) : undefined,
       };
       
-      form.reset(resetData);
+      console.log("🔧 Normalized numberOfUnits:", resetData.numberOfUnits);
+      console.log("🔧 Normalized purchasePrice:", resetData.purchasePrice);
       
-      // Force set numeric values specifically
-      if (initialData.propertyValue) {
-        form.setValue('propertyValue', Number(initialData.propertyValue));
-      }
-      if (initialData.monthlyMortgage) {
-        form.setValue('monthlyMortgage', Number(initialData.monthlyMortgage));
-      }
-      if (initialData.interestRate) {
-        form.setValue('interestRate', Number(initialData.interestRate));
-      }
-      if (initialData.purchasePrice) {
-        form.setValue('purchasePrice', Number(initialData.purchasePrice));
-      }
-      if (initialData.downPayment) {
-        form.setValue('downPayment', Number(initialData.downPayment));
-      }
-      if (initialData.salePrice) {
-        form.setValue('salePrice', Number(initialData.salePrice));
-      }
-      if (initialData.acquisitionDate) {
-        form.setValue('acquisitionDate', new Date(initialData.acquisitionDate));
-      }
-      if (initialData.saleDate) {
-        form.setValue('saleDate', new Date(initialData.saleDate));
-      }
-      if (initialData.mortgageStartDate) {
-        form.setValue('mortgageStartDate', new Date(initialData.mortgageStartDate));
-      }
-      if (initialData.mortgageStartDate2) {
-        form.setValue('mortgageStartDate2', new Date(initialData.mortgageStartDate2));
-      }
+      // Single reset with normalized data
+      form.reset(resetData);
     }
   }, [initialData, form]);
 
@@ -250,31 +225,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Auto-fill purchase price on initial load if editing existing property
+  // Auto-fill purchase price for NEW properties only (not editing)
   useEffect(() => {
-    if (initialData && initialData.propertyValue) {
-      const currentPurchasePrice = initialData.purchasePrice;
-      console.log("🔍 Checking auto-fill conditions:");
-      console.log("  - propertyValue:", initialData.propertyValue);
-      console.log("  - currentPurchasePrice:", currentPurchasePrice);
-      console.log("  - typeof currentPurchasePrice:", typeof currentPurchasePrice);
-      
-      // Auto-fill if purchase price is missing, zero, empty string, null, or invalid
-      if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === "" || currentPurchasePrice === null || currentPurchasePrice === 1) {
-        console.log("🏠 Auto-filling purchase price from property value:", initialData.propertyValue);
-        // Use setTimeout to ensure form is fully initialized
-        setTimeout(() => {
-          form.setValue('purchasePrice', Number(initialData.propertyValue));
-        }, 50);
-      } else {
-        console.log("⏹️ Not auto-filling because purchasePrice already has value:", currentPurchasePrice);
-        // Force set the correct value immediately for valid values
-        setTimeout(() => {
-          form.setValue('purchasePrice', Number(currentPurchasePrice));
-        }, 50);
-      }
+    if (!initialData && form.getValues('propertyValue') && !form.getValues('purchasePrice')) {
+      console.log("🏠 Auto-filling purchase price for new property");
+      form.setValue('purchasePrice', form.getValues('propertyValue'));
     }
-  }, [initialData, form]);
+  }, [form.watch('propertyValue'), initialData, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
