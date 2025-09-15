@@ -338,20 +338,23 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
               <FormLabel>Property Type</FormLabel>
               <Select onValueChange={(value) => {
                 field.onChange(value);
-                // Automatically enable multiple units for building types
-                if (value === "Residential Building" || value === "Commercial Building") {
-                  form.setValue("createDefaultUnit", true); // Buildings always have units
-                  form.setValue("hasMultipleUnits", true);
-                  // Initialize with 2 units by default
-                  const currentCount = form.getValues("numberOfUnits") || 2;
-                  form.setValue("numberOfUnits", Math.max(currentCount, 2));
-                  generateUnits(Math.max(currentCount, 2));
-                } else {
-                  // For single-unit properties, reset to default state
-                  form.setValue("createDefaultUnit", false);
-                  form.setValue("hasMultipleUnits", false);
-                  form.setValue("numberOfUnits", 1);
-                  form.setValue("units", []);
+                // Only run this logic for user-initiated changes, not during form initialization
+                if (!initialData) {
+                  // Automatically enable multiple units for building types
+                  if (value === "Residential Building" || value === "Commercial Building") {
+                    form.setValue("createDefaultUnit", true); // Buildings always have units
+                    form.setValue("hasMultipleUnits", true);
+                    // Initialize with 2 units by default
+                    const currentCount = form.getValues("numberOfUnits") || 2;
+                    form.setValue("numberOfUnits", Math.max(currentCount, 2));
+                    generateUnits(Math.max(currentCount, 2));
+                  } else {
+                    // For single-unit properties, reset to default state
+                    form.setValue("createDefaultUnit", false);
+                    form.setValue("hasMultipleUnits", false);
+                    form.setValue("numberOfUnits", 1);
+                    form.setValue("units", []);
+                  }
                 }
               }} defaultValue={field.value}>
                 <FormControl>
