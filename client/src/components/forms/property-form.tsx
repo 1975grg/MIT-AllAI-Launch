@@ -167,6 +167,12 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       ownerships: [{ entityId: "", percent: 100 }],
       // Then override with actual data
       ...initialData,
+      // Force correct numeric values for critical fields
+      ...(initialData && {
+        purchasePrice: initialData.purchasePrice ? Number(initialData.purchasePrice) : undefined,
+        numberOfUnits: initialData.numberOfUnits ? Number(initialData.numberOfUnits) : 1,
+        propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
+      }),
     },
   });
 
@@ -1482,15 +1488,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`purchase-price-${(initialData as any)?.id || 'new'}`}
-                        value={(() => {
-                          console.log("💰 Purchase price field.value:", field.value, "type:", typeof field.value);
-                          if (field.value && field.value !== 0 && !isNaN(Number(field.value))) {
-                            const formatted = Number(field.value).toLocaleString();
-                            console.log("💰 Formatted value:", formatted);
-                            return formatted;
-                          }
-                          return "";
-                        })()}
+                                        value={field.value && field.value !== 0 && !isNaN(Number(field.value)) ? Number(field.value).toLocaleString() : ""}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
