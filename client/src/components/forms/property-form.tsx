@@ -180,10 +180,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
     if (initialData) {
-      console.log("🔍 Form reset - initialData:", initialData);
-      console.log("🔍 Purchase price from data:", initialData.purchasePrice);
-      console.log("🔍 Property value from data:", initialData.propertyValue);
-      
       const resetData = {
         ...initialData,
         // Normalize numbers
@@ -203,8 +199,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         mortgageStartDate: initialData.mortgageStartDate ? new Date(initialData.mortgageStartDate) : undefined,
         mortgageStartDate2: initialData.mortgageStartDate2 ? new Date(initialData.mortgageStartDate2) : undefined,
       };
-      
-      console.log("🔧 Normalized purchase price:", resetData.purchasePrice);
       
       form.reset(resetData);
     }
@@ -1067,7 +1061,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                             
                             // Auto-fill purchase price for NEW properties only
                             if (!initialData && numericValue && !form.getValues('purchasePrice')) {
-                              console.log("🏠 Auto-filling purchase price on blur:", numericValue);
                               form.setValue('purchasePrice', numericValue, { shouldDirty: true });
                             }
                           }
