@@ -195,6 +195,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         downPayment: initialData.downPayment ? Number(initialData.downPayment) : undefined,
         salePrice: initialData.salePrice ? Number(initialData.salePrice) : undefined,
         numberOfUnits: Number(initialData.numberOfUnits ?? 1),
+        // Normalize other fields that might be null
+        sqft: initialData.sqft ? Number(initialData.sqft) : undefined,
+        yearBuilt: initialData.yearBuilt ? Number(initialData.yearBuilt) : undefined,
         // Normalize dates
         acquisitionDate: initialData.acquisitionDate ? new Date(initialData.acquisitionDate) : undefined,
         saleDate: initialData.saleDate ? new Date(initialData.saleDate) : undefined,
