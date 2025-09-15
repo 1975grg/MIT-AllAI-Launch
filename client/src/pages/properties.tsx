@@ -20,6 +20,7 @@ import type { Property, OwnershipEntity, Unit } from "@shared/schema";
 
 // Extended property type that includes ownership information  
 type PropertyWithOwnerships = Property & {
+  status?: "Active" | "Archived"; // Add status with default
   ownerships?: Array<{
     entityId: string;
     percent: number;
@@ -887,7 +888,7 @@ export default function Properties() {
                       </div>
                     )}
                     
-                    <div className="flex space-x-2 mt-4">
+                    <div className="flex gap-2 mt-4 px-1">
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -924,7 +925,7 @@ export default function Properties() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="px-3" 
+                          className="w-10 justify-center" 
                           onClick={() => setShowArchiveConfirm(property.id)}
                           data-testid={`button-archive-property-${index}`}
                           disabled={archivePropertyMutation.isPending}
@@ -935,7 +936,7 @@ export default function Properties() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" 
+                        className="w-10 justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" 
                         onClick={() => setShowDeleteConfirm(property.id)}
                         data-testid={`button-delete-property-${index}`}
                       >

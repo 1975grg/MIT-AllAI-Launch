@@ -89,6 +89,8 @@ export const ownershipEntities = pgTable("ownership_entities", {
 
 // Properties
 export const propertyTypeEnum = pgEnum("property_type", ["Single Family", "Condo", "Townhome", "Residential Building", "Commercial Unit", "Commercial Building"]);
+// Remove enum temporarily to avoid migration complexity
+// export const propertyStatusEnum = pgEnum("property_status", ["Active", "Archived"]);
 
 export const properties = pgTable("properties", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -140,6 +142,8 @@ export const properties = pgTable("properties", {
   // Property sale tracking
   saleDate: timestamp("sale_date"), // Date property was sold (ends mortgage calculations)
   salePrice: decimal("sale_price", { precision: 12, scale: 2 }), // Sale price of the property
+  // Archive status
+  status: varchar("status").default("Active").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
