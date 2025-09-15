@@ -110,6 +110,7 @@ export interface IStorage {
   
   // Lease operations
   getLeases(orgId: string): Promise<Lease[]>;
+  getLease(id: string): Promise<Lease | undefined>;
   getActiveLease(unitId: string): Promise<Lease | undefined>;
   createLease(lease: InsertLease): Promise<Lease>;
   updateLease(id: string, lease: Partial<InsertLease>): Promise<Lease>;
@@ -1190,6 +1191,11 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async getLease(id: string): Promise<Lease | undefined> {
+    const [lease] = await db.select().from(leases).where(eq(leases.id, id));
+    return lease;
+  }
+
   async getLeasesByTenantGroup(tenantGroupId: string): Promise<Lease[]> {
     return await db
       .select()
@@ -1198,7 +1204,111 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(leases.startDate));
   }
 
-  // Terminate all leases associated with a tenant group
+  // Helper function to cancel recurring rent revenue for a specific lease
+  async cancelLeaseRecurringRevenue(leaseId: string): Promise<void> {
+    try {
+      // Get the lease details to identify related transactions
+      const lease = await this.getLease(leaseId);
+      if (!lease) {
+        console.warn(`⚠️ Lease ${leaseId} not found when trying to cancel recurring revenue`);
+        return;
+      }
+
+      // Find recurring rent transactions for this lease (by unitId and type)
+      // Rent revenue transactions are created with:
+      // - type: "Income", category: "Rental Income", unitId: lease.unitId
+      // - isRecurring: true, notes containing lease ID
+      const recurringRentTransactions = await db
+        .select()
+        .from(transactions)
+        .where(and(
+          eq(transactions.unitId, lease.unitId),
+          eq(transactions.type, "Income"),
+          eq(transactions.category, "Rental Income"),
+          eq(transactions.isRecurring, true),
+          like(transactions.notes, `%lease ${leaseId}%`)
+        ));
+
+      if (recurringRentTransactions.length === 0) {
+        console.log(`📊 No recurring rent revenue found for lease ${leaseId}`);
+        return;
+      }
+
+      const currentDate = new Date();
+      let canceledCount = 0;
+
+      for (const transaction of recurringRentTransactions) {
+        // End the recurring transaction by setting recurringEndDate to yesterday
+        // This prevents future instances from being generated
+        const endDate = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
+        
+        await db
+          .update(transactions)
+          .set({ 
+            recurringEndDate: endDate,
+            notes: `${transaction.notes || ""} [TERMINATED: Lease ended on ${currentDate.toDateString()}]`
+          })
+          .where(eq(transactions.id, transaction.id));
+
+        // Cancel future pending rent payments (transactions with dates >= today)
+        await db
+          .delete(transactions)
+          .where(and(
+            eq(transactions.parentRecurringId, transaction.id),
+            gte(transactions.date, currentDate),
+            eq(transactions.paymentStatus, "Pending")
+          ));
+
+        canceledCount++;
+        console.log(`💰 Canceled recurring rent revenue for lease ${leaseId}: $${transaction.amount}/month`);
+      }
+
+      console.log(`✅ Successfully canceled ${canceledCount} recurring rent revenue stream(s) for lease ${leaseId}`);
+      
+    } catch (error) {
+      console.error(`❌ Error canceling recurring revenue for lease ${leaseId}:`, error);
+    }
+  }
+
+  // Helper function to cancel lease-related reminders
+  async cancelLeaseReminders(leaseId: string): Promise<void> {
+    try {
+      // Find all reminders scoped to this lease
+      const leaseReminders = await db
+        .select()
+        .from(reminders)
+        .where(and(
+          eq(reminders.scope, "lease"),
+          eq(reminders.scopeId, leaseId),
+          eq(reminders.status, "Pending") // Only cancel pending reminders
+        ));
+
+      if (leaseReminders.length === 0) {
+        console.log(`🔔 No pending reminders found for lease ${leaseId}`);
+        return;
+      }
+
+      // Cancel all pending lease reminders
+      await db
+        .update(reminders)
+        .set({ 
+          status: "Completed",
+          notes: `Auto-completed due to lease termination on ${new Date().toDateString()}`
+        })
+        .where(and(
+          eq(reminders.scope, "lease"),
+          eq(reminders.scopeId, leaseId),
+          eq(reminders.status, "Pending")
+        ));
+
+      console.log(`✅ Canceled ${leaseReminders.length} pending reminder(s) for lease ${leaseId}`);
+      
+    } catch (error) {
+      console.error(`❌ Error canceling reminders for lease ${leaseId}:`, error);
+    }
+  }
+
+  // Terminate all leases associated with a tenant group with comprehensive financial cleanup
   async terminateLeasesByTenantGroup(tenantGroupId: string): Promise<void> {
     // Get all active leases for this tenant group
     const activeLeases = await db
@@ -1209,17 +1319,37 @@ export class DatabaseStorage implements IStorage {
         eq(leases.status, "Active")
       ));
 
-    // Terminate each active lease
+    // Terminate each active lease with full financial cleanup
     if (activeLeases.length > 0) {
       console.log(`🏠 Automatically terminating ${activeLeases.length} lease(s) for archived tenant group ${tenantGroupId}`);
       
-      await db
-        .update(leases)
-        .set({ status: "Terminated" })
-        .where(and(
-          eq(leases.tenantGroupId, tenantGroupId),
-          eq(leases.status, "Active")
-        ));
+      const terminationDate = new Date();
+      
+      for (const lease of activeLeases) {
+        console.log(`🔄 Processing lease termination: ${lease.id}`);
+        
+        // 1. Cancel recurring rent revenue
+        await this.cancelLeaseRecurringRevenue(lease.id);
+        
+        // 2. Cancel lease reminders
+        await this.cancelLeaseReminders(lease.id);
+        
+        // 3. Update lease status and set proper end date
+        await db
+          .update(leases)
+          .set({ 
+            status: "Terminated",
+            // Set end date to current date if lease was supposed to run longer
+            endDate: terminationDate < new Date(lease.endDate) ? terminationDate : new Date(lease.endDate)
+          })
+          .where(eq(leases.id, lease.id));
+        
+        console.log(`✅ Lease ${lease.id} fully terminated with financial cleanup`);
+      }
+      
+      console.log(`🎯 Successfully terminated ${activeLeases.length} lease(s) with complete financial side-effects cleanup`);
+    } else {
+      console.log(`ℹ️ No active leases found for tenant group ${tenantGroupId}`);
     }
   }
 

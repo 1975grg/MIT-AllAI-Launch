@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -142,6 +143,63 @@ export default function TenantForm({ onSubmit, onCancel, isLoading, initialData 
     form.setValue("tenantGroup.propertyId", propertyId);
     form.setValue("tenantGroup.unitId", ""); // Clear unit selection when property changes
   };
+
+  // Smart default tenant group name generation
+  useEffect(() => {
+    const currentName = form.getValues("tenantGroup.name");
+    const selectedPropertyId = form.getValues("tenantGroup.propertyId");
+    const selectedUnitId = form.getValues("tenantGroup.unitId");
+    const firstTenant = form.getValues("tenants")[0];
+    
+    // Only auto-generate if name is empty or still a generated name
+    const isDefaultName = !currentName || currentName.includes("Tenants at") || currentName.includes(" - Unit ");
+    
+    if (selectedPropertyId && selectedProperty && isDefaultName) {
+      let defaultName = "";
+      const propertyName = selectedProperty.name || `${selectedProperty.street}, ${selectedProperty.city}`;
+      
+      // If we have a first tenant name, use it
+      if (firstTenant.firstName && firstTenant.lastName) {
+        const tenantName = `${firstTenant.firstName} ${firstTenant.lastName}`;
+        
+        if (isSelectedPropertyBuilding && selectedUnitId) {
+          // For buildings with units: "John Smith - Unit 2A"
+          const selectedUnit = availableUnits.find(u => u.id === selectedUnitId);
+          const unitLabel = selectedUnit?.label || "Unit";
+          defaultName = `${tenantName} - ${unitLabel}`;
+        } else if (isSelectedPropertyBuilding && selectedUnitId === "common") {
+          // For common areas: "John Smith - Common Area"
+          defaultName = `${tenantName} - Common Area`;
+        } else {
+          // For single properties: "John Smith at Property Name"
+          defaultName = `${tenantName} at ${propertyName}`;
+        }
+      } else {
+        // No tenant name yet, use property-based default
+        if (isSelectedPropertyBuilding && selectedUnitId) {
+          const selectedUnit = availableUnits.find(u => u.id === selectedUnitId);
+          const unitLabel = selectedUnit?.label || "Unit";
+          defaultName = `Tenants at ${propertyName} - ${unitLabel}`;
+        } else if (isSelectedPropertyBuilding && selectedUnitId === "common") {
+          defaultName = `Tenants at ${propertyName} - Common Area`;
+        } else {
+          defaultName = `Tenants at ${propertyName}`;
+        }
+      }
+      
+      if (defaultName !== currentName) {
+        form.setValue("tenantGroup.name", defaultName);
+      }
+    }
+  }, [
+    form.watch("tenantGroup.propertyId"),
+    form.watch("tenantGroup.unitId"), 
+    form.watch("tenants.0.firstName"),
+    form.watch("tenants.0.lastName"),
+    selectedProperty,
+    isSelectedPropertyBuilding,
+    availableUnits
+  ]);
 
   return (
     <Form {...form}>
