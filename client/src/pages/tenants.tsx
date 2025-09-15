@@ -13,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Plus, Mail, Phone, User, FileText, DollarSign, Calendar, AlertTriangle, Archive, Edit } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Users, Plus, Mail, Phone, User, FileText, DollarSign, Calendar, AlertTriangle, Archive, Edit, RotateCcw, Trash2 } from "lucide-react";
 import type { TenantGroup, Property, OwnershipEntity, Lease, Unit, InsertLease } from "@shared/schema";
 
 export default function Tenants() {
@@ -30,6 +32,10 @@ export default function Tenants() {
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [unitFilter, setUnitFilter] = useState<string[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState<string | null>(null);
+  const [showUnarchiveConfirm, setShowUnarchiveConfirm] = useState<string | null>(null);
+  const [showPermanentDeleteConfirm, setShowPermanentDeleteConfirm] = useState<string | null>(null);
 
   // Helper function to determine tenant status
   const getTenantStatus = (group: TenantGroup, groupLeases: Lease[]) => {
@@ -190,6 +196,116 @@ export default function Tenants() {
     },
   });
 
+  const archiveIndividualTenantMutation = useMutation({
+    mutationFn: async (tenantId: string) => {
+      const response = await apiRequest("PATCH", `/api/tenants/${tenantId}/archive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+      setShowArchiveConfirm(null);
+      toast({
+        title: "Success",
+        description: "Tenant archived successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to archive tenant",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unarchiveIndividualTenantMutation = useMutation({
+    mutationFn: async (tenantId: string) => {
+      const response = await apiRequest("PATCH", `/api/tenants/${tenantId}/unarchive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+      setShowUnarchiveConfirm(null);
+      toast({
+        title: "Success",
+        description: "Tenant unarchived successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to unarchive tenant",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const permanentDeleteTenantMutation = useMutation({
+    mutationFn: async (tenantId: string) => {
+      const response = await apiRequest("DELETE", `/api/tenants/${tenantId}/permanent`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leases"] });
+      setShowPermanentDeleteConfirm(null);
+      toast({
+        title: "Success",
+        description: "Tenant deleted permanently",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      // Check if this is a relationship error
+      const errorText = error?.toString() || '';
+      if (errorText.includes('has relationships')) {
+        toast({
+          title: "Cannot Delete Tenant",
+          description: "This tenant has lease or transaction history. Please archive instead of deleting.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete tenant",
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
   const createLeaseMutation = useMutation({
     mutationFn: async (data: InsertLease) => {
       const response = await apiRequest("POST", "/api/leases", data);
@@ -236,13 +352,17 @@ export default function Tenants() {
   const filteredProperties = properties || [];
   
   const filteredTenantGroups = tenantGroups?.filter(group => {
+    // Filter by archive status
+    const groupLeases = leases.filter(lease => lease.tenantGroupId === group.id);
+    const tenantStatus = getTenantStatus(group, groupLeases);
+    const archiveMatch = showArchived ? tenantStatus === "Archived" : tenantStatus !== "Archived";
+    
     // Filter by property
     const propertyMatch = propertyFilter === "all" || group.propertyId === propertyFilter;
     
     // Filter by unit - only apply unit filter if some units are selected
     const unitMatch = unitFilter.length === 0 || (() => {
-      // Find leases for this tenant group to get unitId(s)
-      const groupLeases = leases.filter(lease => lease.tenantGroupId === group.id);
+      // Use already filtered groupLeases
       const groupUnitIds = groupLeases.map(lease => lease.unitId);
       
       // Check if any of the group's units match the filter
@@ -257,7 +377,7 @@ export default function Tenants() {
       // This will be enhanced when we have the full property ownership data
     }
     
-    return propertyMatch && unitMatch;
+    return archiveMatch && propertyMatch && unitMatch;
   }) || [];
 
   return (
@@ -275,6 +395,19 @@ export default function Tenants() {
             </div>
             
             <div className="flex items-center space-x-3">
+              {/* Archive Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="show-archived-tenants"
+                  checked={showArchived}
+                  onCheckedChange={setShowArchived}
+                  data-testid="toggle-view-archived-tenants"
+                />
+                <Label htmlFor="show-archived-tenants" className="text-sm">
+                  View Archived ({showArchived ? 'Shown' : 'Hidden'})
+                </Label>
+              </div>
+
               {/* Entity Filter */}
               <Select value={entityFilter} onValueChange={(value) => {
                 setEntityFilter(value);
@@ -477,6 +610,149 @@ export default function Tenants() {
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* Individual Tenant Archive Confirmation Dialog */}
+              <Dialog open={!!showArchiveConfirm} onOpenChange={() => setShowArchiveConfirm(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Archive Tenant</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Archive this tenant? This will:
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                      <li>Mark tenant as "Archived" - they won't show in active lists</li>
+                      <li>Preserve all lease and transaction history</li>
+                      <li>Allow you to view their information in archived tenant reports</li>
+                    </ul>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        💡 <strong>Tip:</strong> Use this when tenants move out to keep historical records while cleaning up your active tenant list.
+                      </p>
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowArchiveConfirm(null)}
+                        disabled={archiveIndividualTenantMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        onClick={() => {
+                          if (showArchiveConfirm) {
+                            archiveIndividualTenantMutation.mutate(showArchiveConfirm);
+                          }
+                        }}
+                        disabled={archiveIndividualTenantMutation.isPending}
+                        data-testid="button-confirm-archive-tenant"
+                      >
+                        <Archive className="h-4 w-4 mr-2" />
+                        {archiveIndividualTenantMutation.isPending ? "Archiving..." : "Archive Tenant"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Individual Tenant Unarchive Confirmation Dialog */}
+              <Dialog open={!!showUnarchiveConfirm} onOpenChange={() => setShowUnarchiveConfirm(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Unarchive Tenant</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Unarchive this tenant? This will:
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                      <li>Mark tenant as "Active" - they will show in active tenant lists</li>
+                      <li>Restore access to all lease management features</li>
+                      <li>Include them in active tenant reports and dashboards</li>
+                    </ul>
+                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                      <p className="text-sm text-green-800 dark:text-green-200">
+                        ✅ <strong>Tip:</strong> Use this to reactivate a tenant you want to manage again.
+                      </p>
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowUnarchiveConfirm(null)}
+                        disabled={unarchiveIndividualTenantMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="default" 
+                        onClick={() => {
+                          if (showUnarchiveConfirm) {
+                            unarchiveIndividualTenantMutation.mutate(showUnarchiveConfirm);
+                          }
+                        }}
+                        disabled={unarchiveIndividualTenantMutation.isPending}
+                        data-testid="button-confirm-unarchive-tenant"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        {unarchiveIndividualTenantMutation.isPending ? "Unarchiving..." : "Unarchive Tenant"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Individual Tenant Permanent Delete Confirmation Dialog */}
+              <Dialog open={!!showPermanentDeleteConfirm} onOpenChange={() => setShowPermanentDeleteConfirm(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Permanently Delete Tenant</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                      <p className="text-sm text-red-800 dark:text-red-200">
+                        ⚠️ <strong>Warning:</strong> This permanently deletes the tenant and cannot be undone.
+                      </p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      This will permanently remove the tenant if they have no:
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                      <li>Active or historical leases</li>
+                      <li>Associated transaction records</li>
+                      <li>Any financial or legal history</li>
+                    </ul>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        💡 <strong>Recommended:</strong> Use "Archive" instead to preserve historical records while hiding from active lists.
+                      </p>
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowPermanentDeleteConfirm(null)}
+                        disabled={permanentDeleteTenantMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => {
+                          if (showPermanentDeleteConfirm) {
+                            permanentDeleteTenantMutation.mutate(showPermanentDeleteConfirm);
+                          }
+                        }}
+                        disabled={permanentDeleteTenantMutation.isPending}
+                        data-testid="button-confirm-delete-tenant"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {permanentDeleteTenantMutation.isPending ? "Deleting..." : "Delete Permanently"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -500,7 +776,7 @@ export default function Tenants() {
               const groupLeases = leases.filter(lease => lease.tenantGroupId === group.id);
               const activeLease = groupLeases
                 .filter(lease => lease.status === "Active")
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+                .sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime())[0];
               const isLeaseEndingSoon = (endDate: string | Date | null) => {
                 if (!endDate) return false;
                 const daysUntilEnd = Math.ceil((new Date(endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
@@ -600,20 +876,42 @@ export default function Tenants() {
                     
                     <div className="flex flex-wrap gap-2 mt-4">
                       {group.status === "Archived" ? (
-                        // For archived tenants, only show edit option
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1 min-w-0" 
-                          onClick={() => {
-                            setEditingTenant(group);
-                            setShowTenantForm(true);
-                          }}
-                          data-testid={`button-edit-archived-tenant-${index}`}
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          View/Edit
-                        </Button>
+                        // For archived tenants: show edit, unarchive, and delete options
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 min-w-0" 
+                            onClick={() => {
+                              setEditingTenant(group);
+                              setShowTenantForm(true);
+                            }}
+                            data-testid={`button-edit-archived-tenant-${index}`}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            View/Edit
+                          </Button>
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="px-3" 
+                            onClick={() => setShowUnarchiveConfirm(group.id)}
+                            data-testid={`button-unarchive-tenant-${index}`}
+                            disabled={unarchiveIndividualTenantMutation.isPending}
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="px-3" 
+                            onClick={() => setShowPermanentDeleteConfirm(group.id)}
+                            data-testid={`button-delete-tenant-${index}`}
+                            disabled={permanentDeleteTenantMutation.isPending}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </>
                       ) : activeLease ? (
                         // For tenants with active leases
                         <>
@@ -695,8 +993,9 @@ export default function Tenants() {
                             variant="outline" 
                             size="sm" 
                             className="flex-1 min-w-[80px]" 
-                            onClick={() => setShowDeleteConfirm(group.id)}
+                            onClick={() => setShowArchiveConfirm(group.id)}
                             data-testid={`button-archive-tenant-${index}`}
+                            disabled={archiveIndividualTenantMutation.isPending}
                           >
                             <Archive className="h-3 w-3 mr-1" />
                             Archive
@@ -767,8 +1066,9 @@ export default function Tenants() {
                             variant="outline" 
                             size="sm" 
                             className="flex-1 min-w-[80px]" 
-                            onClick={() => setShowDeleteConfirm(group.id)}
+                            onClick={() => setShowArchiveConfirm(group.id)}
                             data-testid={`button-archive-tenant-${index}`}
+                            disabled={archiveIndividualTenantMutation.isPending}
                           >
                             <Archive className="h-3 w-3 mr-1" />
                             Archive

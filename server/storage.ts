@@ -103,6 +103,9 @@ export interface IStorage {
   deleteTenant(id: string): Promise<void>;
   deleteTenantGroup(id: string): Promise<void>;
   getTenantsInGroup(groupId: string): Promise<Tenant[]>;
+  archiveTenant(id: string): Promise<Tenant>;
+  unarchiveTenant(id: string): Promise<Tenant>;
+  permanentDeleteTenant(id: string): Promise<void>;
   
   // Lease operations
   getLeases(orgId: string): Promise<Lease[]>;
@@ -1087,6 +1090,28 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(tenants)
       .where(eq(tenants.groupId, groupId));
+  }
+
+  async archiveTenant(id: string): Promise<Tenant> {
+    const [updated] = await db
+      .update(tenants)
+      .set({ status: "Archived" })
+      .where(eq(tenants.id, id))
+      .returning();
+    return updated;
+  }
+
+  async unarchiveTenant(id: string): Promise<Tenant> {
+    const [updated] = await db
+      .update(tenants)
+      .set({ status: "Active" })
+      .where(eq(tenants.id, id))
+      .returning();
+    return updated;
+  }
+
+  async permanentDeleteTenant(id: string): Promise<void> {
+    await db.delete(tenants).where(eq(tenants.id, id));
   }
 
   // Lease operations
