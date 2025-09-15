@@ -152,7 +152,7 @@ async function createMortgageExpense({
       propertyId: property.id,
       scope: "property" as const,
       amount: monthlyMortgage,
-      description: `${mortgageType} mortgage payment for ${property.name || `${property.street}, ${property.city}`}`,
+      description: `${mortgageType === "Secondary" ? "Secondary " : ""}Mortgage payment for ${property.name || `${property.street}, ${property.city}`}`,
       category: "Mortgage",
       date: firstPaymentDate,
       isRecurring: true,
@@ -2594,6 +2594,22 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
         message: "Failed to process AI request",
         error: error.message 
       });
+    }
+  });
+
+  // Manual trigger for recurring transactions (for testing)
+  app.post('/api/admin/generate-recurring', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      console.log(`🔄 Manually triggering recurring transaction generation for org: ${org.id}...`);
+      await storage.generateRecurringTransactions();
+      res.json({ message: "Recurring transactions generated successfully" });
+    } catch (error) {
+      console.error("Error generating recurring transactions:", error);
+      res.status(500).json({ message: "Failed to generate recurring transactions" });
     }
   });
 
