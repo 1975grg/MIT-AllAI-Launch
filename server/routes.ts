@@ -1244,15 +1244,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      // SECURITY: Check if tenant exists and belongs to organization  
-      const tenantGroups = await storage.getTenantGroups(org.id);
-      let tenant = null;
-      for (const group of tenantGroups) {
-        const groupTenants = await storage.getTenantsInGroup(group.id);
-        tenant = groupTenants.find(t => t.id === req.params.id);
-        if (tenant) break;
-      }
-      if (!tenant) {
+      // SECURITY: Verify tenant exists and belongs to organization by checking relationships
+      // This also validates the tenant exists and belongs to the org
+      try {
+        await storage.getTenantRelationshipCount(req.params.id, org.id);
+      } catch (error) {
         return res.status(404).json({ message: "Tenant not found" });
       }
       
@@ -1271,15 +1267,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      // SECURITY: Check if tenant exists and belongs to organization  
-      const tenantGroups = await storage.getTenantGroups(org.id);
-      let tenant = null;
-      for (const group of tenantGroups) {
-        const groupTenants = await storage.getTenantsInGroup(group.id);
-        tenant = groupTenants.find(t => t.id === req.params.id);
-        if (tenant) break;
-      }
-      if (!tenant) {
+      // SECURITY: Verify tenant exists and belongs to organization by checking relationships
+      // This also validates the tenant exists and belongs to the org
+      try {
+        await storage.getTenantRelationshipCount(req.params.id, org.id);
+      } catch (error) {
         return res.status(404).json({ message: "Tenant not found" });
       }
       
@@ -1313,19 +1305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      // SECURITY: Check if tenant exists and belongs to organization  
-      const tenantGroups = await storage.getTenantGroups(org.id);
-      let tenant = null;
-      for (const group of tenantGroups) {
-        const groupTenants = await storage.getTenantsInGroup(group.id);
-        tenant = groupTenants.find(t => t.id === req.params.id);
-        if (tenant) break;
-      }
-      if (!tenant) {
-        return res.status(404).json({ message: "Tenant not found" });
-      }
-
-      // DELETE PREVENTION: Check if tenant has any relationships
+      // DELETE PREVENTION: Check if tenant has any relationships (also validates tenant exists and belongs to org)
       const relationshipCheck = await storage.getTenantRelationshipCount(req.params.id, org.id);
       if (relationshipCheck.count > 0) {
         return res.status(400).json({ 
@@ -1333,11 +1313,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "TENANT_HAS_RELATIONSHIPS",
           count: relationshipCheck.count,
           relationships: relationshipCheck.relationships,
-          details: `${tenant.firstName} ${tenant.lastName} has ${relationshipCheck.count} relationship${relationshipCheck.count === 1 ? '' : 's'}. Please archive instead of deleting.`
+          details: `Tenant has ${relationshipCheck.count} relationship${relationshipCheck.count === 1 ? '' : 's'}. Please archive instead of deleting.`
         });
       }
       
-      await storage.deleteTenant(req.params.id);
+      await storage.permanentDeleteTenant(req.params.id);
       res.json({ message: "Tenant deleted permanently" });
     } catch (error) {
       console.error("Error deleting tenant:", error);
