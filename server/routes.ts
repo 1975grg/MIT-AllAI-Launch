@@ -1244,14 +1244,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      // SECURITY: Check if tenant exists and belongs to organization
-      const tenants = await storage.getTenants(org.id);
-      const tenant = tenants.find(t => t.id === req.params.id);
+      // SECURITY: Check if tenant exists and belongs to organization  
+      const tenantGroups = await storage.getTenantGroups(org.id);
+      let tenant = null;
+      for (const group of tenantGroups) {
+        const groupTenants = await storage.getTenantsInGroup(group.id);
+        tenant = groupTenants.find(t => t.id === req.params.id);
+        if (tenant) break;
+      }
       if (!tenant) {
         return res.status(404).json({ message: "Tenant not found" });
       }
       
-      const archivedTenant = await storage.updateTenant(req.params.id, { status: "Archived" });
+      const archivedTenant = await storage.archiveTenant(req.params.id);
       res.json({ message: "Tenant archived successfully", tenant: archivedTenant });
     } catch (error) {
       console.error("Error archiving tenant:", error);
@@ -1266,14 +1271,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      // SECURITY: Check if tenant exists and belongs to organization
-      const tenants = await storage.getTenants(org.id);
-      const tenant = tenants.find(t => t.id === req.params.id);
+      // SECURITY: Check if tenant exists and belongs to organization  
+      const tenantGroups = await storage.getTenantGroups(org.id);
+      let tenant = null;
+      for (const group of tenantGroups) {
+        const groupTenants = await storage.getTenantsInGroup(group.id);
+        tenant = groupTenants.find(t => t.id === req.params.id);
+        if (tenant) break;
+      }
       if (!tenant) {
         return res.status(404).json({ message: "Tenant not found" });
       }
       
-      const unarchivedTenant = await storage.updateTenant(req.params.id, { status: "Active" });
+      const unarchivedTenant = await storage.unarchiveTenant(req.params.id);
       res.json({ message: "Tenant unarchived successfully", tenant: unarchivedTenant });
     } catch (error) {
       console.error("Error unarchiving tenant:", error);
@@ -1303,9 +1313,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      // SECURITY: Check if tenant exists and belongs to organization
-      const tenants = await storage.getTenants(org.id);
-      const tenant = tenants.find(t => t.id === req.params.id);
+      // SECURITY: Check if tenant exists and belongs to organization  
+      const tenantGroups = await storage.getTenantGroups(org.id);
+      let tenant = null;
+      for (const group of tenantGroups) {
+        const groupTenants = await storage.getTenantsInGroup(group.id);
+        tenant = groupTenants.find(t => t.id === req.params.id);
+        if (tenant) break;
+      }
       if (!tenant) {
         return res.status(404).json({ message: "Tenant not found" });
       }
