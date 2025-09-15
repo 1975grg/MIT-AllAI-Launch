@@ -219,6 +219,8 @@ export const tenants = pgTable("tenants", {
   emergencyContact: varchar("emergency_contact"),
   emergencyPhone: varchar("emergency_phone"),
   notes: text("notes"),
+  // Archive status
+  status: varchar("status").default("Active").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
