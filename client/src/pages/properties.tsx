@@ -214,10 +214,10 @@ export default function Properties() {
       const units: Unit[] = await unitsResponse.json();
       const propertyUnits = units.filter(unit => unit.propertyId === property.id);
       
-      // Add units-related fields based on actual units
-      propertyForEditing.numberOfUnits = propertyUnits.length || 1;
-      propertyForEditing.hasMultipleUnits = propertyUnits.length > 1;
-      propertyForEditing.createDefaultUnit = propertyUnits.length > 0;
+      // Add units-related fields based on actual units (using type casting)
+      (propertyForEditing as any).numberOfUnits = propertyUnits.length || 1;
+      (propertyForEditing as any).hasMultipleUnits = propertyUnits.length > 1;
+      (propertyForEditing as any).createDefaultUnit = propertyUnits.length > 0;
       
       console.log("🔧 Setting numberOfUnits to:", propertyUnits.length);
       console.log("🔧 Setting hasMultipleUnits to:", propertyUnits.length > 1);
@@ -263,8 +263,8 @@ export default function Properties() {
       // Continue with editing even if unit data fails to load
     }
     
-    // Update the editing property with unit data
-    setEditingProperty(propertyForEditing);
+    // Update the editing property with unit data (cast to expected type)
+    setEditingProperty(propertyForEditing as any);
     setShowPropertyForm(true);
   };
 
