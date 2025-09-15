@@ -12,8 +12,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign, Settings, Bell, Archive } from "lucide-react";
+import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign, Settings, Bell, Archive, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { Property, OwnershipEntity, Unit } from "@shared/schema";
 
 // Extended property type that includes ownership information  
@@ -35,6 +37,8 @@ export default function Properties() {
   const [editingProperty, setEditingProperty] = useState<PropertyWithOwnerships | null>(null);
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
   const [showArchiveConfirm, setShowArchiveConfirm] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -144,11 +148,13 @@ export default function Properties() {
 
   const archivePropertyMutation = useMutation({
     mutationFn: async (propertyId: string) => {
-      const response = await apiRequest("PATCH", `/api/properties/${propertyId}`, { status: "Archived" });
+      const response = await apiRequest("PATCH", `/api/properties/${propertyId}/archive`);
+      if (response.status === 204) return null;
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       setShowArchiveConfirm(null);
       toast({
         title: "Success",
@@ -175,6 +181,42 @@ export default function Properties() {
     },
   });
 
+  const deletePropertyMutation = useMutation({
+    mutationFn: async (propertyId: string) => {
+      const response = await apiRequest("DELETE", `/api/properties/${propertyId}/permanent`);
+      if (response.status === 204) return null;
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leases"] });
+      setShowDeleteConfirm(null);
+      toast({
+        title: "Success",
+        description: "Property deleted permanently",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete property",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -183,10 +225,16 @@ export default function Properties() {
     return null;
   }
 
-  // Filter properties by selected ownership entity
+  // Filter properties by selected ownership entity and archive status
   const filteredProperties = properties?.filter((property) => {
-    if (selectedEntity === "all") return true;
-    return property.ownerships?.some((ownership: any) => ownership.entityId === selectedEntity);
+    // Filter by entity
+    const entityMatch = selectedEntity === "all" || property.ownerships?.some((ownership: any) => ownership.entityId === selectedEntity);
+    
+    // Filter by archive status
+    const isArchived = property.status === "Archived";
+    const statusMatch = showArchived ? isArchived : !isArchived;
+    
+    return entityMatch && statusMatch;
   }) || [];
 
   const handleEditProperty = async (property: PropertyWithOwnerships) => {
@@ -333,6 +381,18 @@ export default function Properties() {
                     ))}
                   </SelectContent>
                 </Select>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="show-archived"
+                    checked={showArchived}
+                    onCheckedChange={setShowArchived}
+                    data-testid="toggle-view-archived"
+                  />
+                  <Label htmlFor="show-archived" className="text-sm">
+                    View Archived ({showArchived ? filteredProperties.length : 'Hidden'})
+                  </Label>
+                </div>
               </div>
               
               <Button onClick={() => setShowPropertyForm(true)} data-testid="button-add-property">
@@ -399,6 +459,52 @@ export default function Properties() {
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={!!showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="text-destructive">⚠️ Permanently Delete Property</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-destructive">This action cannot be undone.</strong> Permanently delete this property will:
+                  </p>
+                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                    <li className="text-destructive">Completely remove the property and all related data</li>
+                    <li className="text-destructive">Delete all units, leases, and tenant information</li>
+                    <li className="text-destructive">Remove all transaction history and financial records</li>
+                    <li className="text-destructive">Delete all reminders and maintenance records</li>
+                  </ul>
+                  <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                    <p className="text-sm text-red-800">
+                      🚨 <strong>Warning:</strong> Use this only for properties created by mistake. For properties you no longer manage, use <strong>Archive</strong> instead to preserve records.
+                    </p>
+                  </div>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowDeleteConfirm(null)}
+                      disabled={deletePropertyMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => {
+                        if (showDeleteConfirm) {
+                          deletePropertyMutation.mutate(showDeleteConfirm);
+                        }
+                      }}
+                      disabled={deletePropertyMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {deletePropertyMutation.isPending ? "Deleting..." : "Delete Permanently"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             </div>
           </div>
 
@@ -419,7 +525,7 @@ export default function Properties() {
           ) : (filteredProperties && filteredProperties.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProperties.map((property, index) => (
-                <Card key={property.id} className="hover:shadow-md transition-shadow" data-testid={`card-property-${index}`}>
+                <Card key={property.id} className={`hover:shadow-md transition-shadow ${property.status === "Archived" ? "border-orange-300 bg-orange-50/30 opacity-80" : ""}`} data-testid={`card-property-${index}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
@@ -430,6 +536,11 @@ export default function Properties() {
                           <CardTitle className="text-lg" data-testid={`text-property-name-${index}`}>{property.name}</CardTitle>
                           <div className="flex items-center space-x-2 mt-1">
                             <Badge variant="secondary" data-testid={`badge-property-type-${index}`}>{property.type}</Badge>
+                            {property.status === "Archived" && (
+                              <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50" data-testid={`badge-archived-${index}`}>
+                                Archived
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -809,14 +920,26 @@ export default function Properties() {
                       >
                         Edit
                       </Button>
+                      {property.status !== "Archived" && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="px-3" 
+                          onClick={() => setShowArchiveConfirm(property.id)}
+                          data-testid={`button-archive-property-${index}`}
+                          disabled={archivePropertyMutation.isPending}
+                        >
+                          <Archive className="h-3 w-3" />
+                        </Button>
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="px-3" 
-                        onClick={() => setShowArchiveConfirm(property.id)}
-                        data-testid={`button-archive-property-${index}`}
+                        className="px-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" 
+                        onClick={() => setShowDeleteConfirm(property.id)}
+                        data-testid={`button-delete-property-${index}`}
                       >
-                        <Archive className="h-3 w-3" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </CardContent>
