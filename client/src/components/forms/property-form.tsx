@@ -1468,6 +1468,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                       <Input
                         type="text"
                         inputMode="decimal"
+                        pattern="[0-9,\.]*"
                         placeholder="500,000"
                         className="pl-9"
                         value={purchasePriceDisplay}
