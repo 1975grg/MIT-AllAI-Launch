@@ -10,20 +10,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Plus, Calendar, FileText, Globe, Bell, Archive } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Building2, Plus, Calendar, FileText, Globe, Bell, Archive, RotateCcw, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import type { OwnershipEntity, Property, Unit } from "@shared/schema";
 import EntityForm from "@/components/forms/entity-form";
 import ReminderForm from "@/components/forms/reminder-form";
 import { useEntityPropertyCount } from "@/hooks/useEntityPropertyCount";
 
+// Extended entity type that includes status information  
+type EntityWithStatus = OwnershipEntity & {
+  status?: "Active" | "Archived"; // Add status with default
+};
+
 export default function Entities() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showEntityForm, setShowEntityForm] = useState(false);
-  const [editingEntity, setEditingEntity] = useState<OwnershipEntity | null>(null);
+  const [editingEntity, setEditingEntity] = useState<EntityWithStatus | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState<string | null>(null);
+  const [showUnarchiveConfirm, setShowUnarchiveConfirm] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showReminderForm, setShowReminderForm] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [, setLocation] = useLocation();
 
   // Get property count for the entity being archived
@@ -44,7 +54,7 @@ export default function Entities() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: entities, isLoading: entitiesLoading, error } = useQuery<OwnershipEntity[]>({
+  const { data: entities, isLoading: entitiesLoading, error } = useQuery<EntityWithStatus[]>({
     queryKey: ["/api/entities"],
     retry: false,
   });
@@ -179,6 +189,39 @@ export default function Entities() {
     },
   });
 
+  const unarchiveEntityMutation = useMutation({
+    mutationFn: async (entityId: string) => {
+      const response = await apiRequest("PATCH", `/api/entities/${entityId}/unarchive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/entities"] });
+      setShowUnarchiveConfirm(null);
+      toast({
+        title: "Success",
+        description: "Entity unarchived successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to unarchive entity",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createReminderMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/reminders", data);
@@ -220,7 +263,7 @@ export default function Entities() {
     return null;
   }
 
-  const handleEditEntity = (entity: OwnershipEntity) => {
+  const handleEditEntity = (entity: EntityWithStatus) => {
     setEditingEntity(entity);
     setShowEntityForm(true);
   };
@@ -256,6 +299,15 @@ export default function Entities() {
     }
   };
 
+  // Filter entities based on archive status
+  const filteredEntities = entities?.filter((entity) => {
+    // Filter by archive status
+    const isArchived = entity.status === "Archived";
+    const statusMatch = showArchived ? isArchived : !isArchived;
+    
+    return statusMatch;
+  }) || [];
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-entities">
       <Sidebar />
@@ -270,7 +322,20 @@ export default function Entities() {
               <p className="text-muted-foreground">Manage your LLCs, partnerships, and individual ownership</p>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="show-archived-entities"
+                  checked={showArchived}
+                  onCheckedChange={setShowArchived}
+                  data-testid="toggle-view-archived-entities"
+                />
+                <Label htmlFor="show-archived-entities" className="text-sm">
+                  View Archived ({showArchived ? filteredEntities.length : 'Hidden'})
+                </Label>
+              </div>
+              
+              <div className="flex gap-2">
               <Button 
                 variant="outline"
                 onClick={() => setShowReminderForm(true)}
@@ -307,8 +372,11 @@ export default function Entities() {
                 />
               </DialogContent>
             </Dialog>
+              </div>
+            </div>
+          </div>
 
-            {/* Archive Confirmation Dialog */}
+          {/* Archive Confirmation Dialog */}
             <Dialog open={!!showArchiveConfirm} onOpenChange={() => setShowArchiveConfirm(null)}>
               <DialogContent>
                 <DialogHeader>
@@ -387,6 +455,52 @@ export default function Entities() {
               </DialogContent>
             </Dialog>
 
+            {/* Unarchive Confirmation Dialog */}
+            <Dialog open={!!showUnarchiveConfirm} onOpenChange={() => setShowUnarchiveConfirm(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Unarchive Entity</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Unarchive this entity? This will:
+                  </p>
+                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                    <li>Mark entity as "Active" - it will show in active entity lists</li>
+                    <li>Restore access to all property ownership features</li>
+                    <li>Include it in active entity reports and dashboards</li>
+                  </ul>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                    <p className="text-sm text-green-800 dark:text-green-200">
+                      ✅ <strong>Tip:</strong> Use this to reactivate an entity you want to use for property ownership again.
+                    </p>
+                  </div>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowUnarchiveConfirm(null)}
+                      disabled={unarchiveEntityMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      onClick={() => {
+                        if (showUnarchiveConfirm) {
+                          unarchiveEntityMutation.mutate(showUnarchiveConfirm);
+                        }
+                      }}
+                      disabled={unarchiveEntityMutation.isPending}
+                      data-testid="button-unarchive-entity"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      {unarchiveEntityMutation.isPending ? "Unarchiving..." : "Unarchive Entity"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {/* Reminder Dialog */}
             <Dialog open={showReminderForm} onOpenChange={setShowReminderForm}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -403,8 +517,6 @@ export default function Entities() {
                 />
               </DialogContent>
             </Dialog>
-            </div>
-          </div>
 
           {entitiesLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -422,7 +534,7 @@ export default function Entities() {
             </div>
           ) : (entities && entities.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {entities.map((entity, index) => (
+              {filteredEntities.map((entity, index) => (
                 <Card key={entity.id} className="hover:shadow-md transition-shadow" data-testid={`card-entity-${index}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -495,15 +607,29 @@ export default function Entities() {
                       >
                         Edit
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="px-3" 
-                        onClick={() => setShowArchiveConfirm(entity.id)}
-                        data-testid={`button-archive-entity-${index}`}
-                      >
-                        <Archive className="h-3 w-3" />
-                      </Button>
+                      {entity.status === "Archived" ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="px-3" 
+                          onClick={() => setShowUnarchiveConfirm(entity.id)}
+                          data-testid={`button-unarchive-entity-${index}`}
+                          disabled={unarchiveEntityMutation.isPending}
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="px-3" 
+                          onClick={() => setShowArchiveConfirm(entity.id)}
+                          data-testid={`button-archive-entity-${index}`}
+                          disabled={archiveEntityMutation.isPending}
+                        >
+                          <Archive className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
