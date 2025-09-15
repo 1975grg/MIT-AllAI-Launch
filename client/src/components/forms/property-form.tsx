@@ -187,6 +187,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   React.useLayoutEffect(() => {
     const currentId = (initialData as any)?.id;
     
+    console.log("🔍 useLayoutEffect triggered. initialData:", !!initialData, "currentId:", currentId, "hasInitialized:", hasInitializedRef.current);
+    
     // Only reset when ID actually changes (prevents multiple resets during async data enrichment)
     if (initialData && currentId && hasInitializedRef.current !== currentId) {
       console.log("🏠 Property form initializing for ID:", currentId);
