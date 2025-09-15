@@ -1419,6 +1419,232 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update existing lease
+  app.put('/api/leases/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const leaseId = req.params.id;
+      
+      // Get existing lease for comparison
+      const existingLease = await storage.getLease(leaseId);
+      if (!existingLease) {
+        return res.status(404).json({ message: "Lease not found" });
+      }
+      
+      // Verify existing lease belongs to user's organization
+      const existingUnit = await storage.getUnit(existingLease.unitId);
+      if (!existingUnit) {
+        return res.status(404).json({ message: "Unit not found for lease" });
+      }
+      const existingProperty = await storage.getProperty(existingUnit.propertyId);
+      if (!existingProperty || existingProperty.orgId !== org.id) {
+        return res.status(403).json({ message: "Access denied to existing lease" });
+      }
+      
+      // SECURITY: Validate new unitId belongs to same organization if provided
+      if (req.body.unitId && req.body.unitId !== existingLease.unitId) {
+        const newUnit = await storage.getUnit(req.body.unitId);
+        if (!newUnit) {
+          return res.status(400).json({ message: "New unit not found" });
+        }
+        const newProperty = await storage.getProperty(newUnit.propertyId);
+        if (!newProperty || newProperty.orgId !== org.id) {
+          console.warn(`🚨 SECURITY: User ${userId} attempted to move lease ${leaseId} to unit ${req.body.unitId} from different organization`);
+          return res.status(403).json({ message: "Access denied - new unit belongs to different organization" });
+        }
+      }
+      
+      // SECURITY: Validate new tenantGroupId belongs to same organization if provided
+      if (req.body.tenantGroupId && req.body.tenantGroupId !== existingLease.tenantGroupId) {
+        const tenantGroups = await storage.getTenantGroups(org.id);
+        const newTenantGroup = tenantGroups.find(tg => tg.id === req.body.tenantGroupId);
+        if (!newTenantGroup) {
+          console.warn(`🚨 SECURITY: User ${userId} attempted to move lease ${leaseId} to tenant group ${req.body.tenantGroupId} from different organization`);
+          return res.status(403).json({ message: "Access denied - tenant group belongs to different organization" });
+        }
+      }
+      
+      // Convert date strings to Date objects before validation - only when present
+      const requestData = { ...req.body };
+      
+      // Only convert startDate if provided and validate it
+      if (req.body.startDate) {
+        requestData.startDate = new Date(req.body.startDate);
+        if (isNaN(requestData.startDate.getTime())) {
+          return res.status(400).json({ message: "Invalid start date format" });
+        }
+      }
+      
+      // Only convert endDate if provided and validate it
+      if (req.body.endDate) {
+        requestData.endDate = new Date(req.body.endDate);
+        if (isNaN(requestData.endDate.getTime())) {
+          return res.status(400).json({ message: "Invalid end date format" });
+        }
+      }
+      
+      // SECURITY: Override orgId from request body with validated org.id to prevent tampering
+      delete requestData.orgId;
+      
+      // Use partial validation schema for updates instead of full insert schema
+      const partialLeaseSchema = insertLeaseSchema.partial();
+      const validatedData = partialLeaseSchema.parse(requestData);
+      
+      // Update the lease
+      const updatedLease = await storage.updateLease(leaseId, validatedData);
+      
+      // Handle side effects of lease modifications
+      await handleLeaseModificationSideEffects(org.id, existingLease, updatedLease);
+      
+      console.log(`✅ SECURITY: User ${userId} successfully updated lease ${leaseId} in org ${org.id}`);
+      res.json(updatedLease);
+    } catch (error) {
+      console.error("Error updating lease:", error);
+      res.status(500).json({ message: "Failed to update lease" });
+    }
+  });
+
+  // Helper function to handle side effects when lease is modified
+  async function handleLeaseModificationSideEffects(orgId: string, oldLease: any, newLease: any) {
+    try {
+      // 1. Handle rent changes - update recurring revenue
+      if (oldLease.rent !== newLease.rent || 
+          oldLease.dueDay !== newLease.dueDay ||
+          new Date(oldLease.endDate).getTime() !== new Date(newLease.endDate).getTime()) {
+        
+        console.log(`🔄 Lease modification detected - updating recurring revenue for lease ${newLease.id}`);
+        await updateLeaseRecurringRevenue(orgId, oldLease, newLease);
+      }
+      
+      // 2. Handle reminder changes - update lease reminders
+      if (oldLease.expirationReminderMonths !== newLease.expirationReminderMonths ||
+          oldLease.renewalReminderEnabled !== newLease.renewalReminderEnabled ||
+          new Date(oldLease.endDate).getTime() !== new Date(newLease.endDate).getTime()) {
+        
+        console.log(`🔔 Lease dates/reminder settings changed - updating reminders for lease ${newLease.id}`);
+        await updateLeaseReminders(orgId, oldLease, newLease);
+      }
+      
+    } catch (error) {
+      console.error("Error handling lease modification side effects:", error);
+      // Don't fail the lease update if side effects fail
+    }
+  }
+
+  // Helper function to update recurring revenue when lease is modified
+  async function updateLeaseRecurringRevenue(orgId: string, oldLease: any, newLease: any) {
+    try {
+      // Find existing recurring revenue transactions for this lease using robust matching
+      const transactions = await storage.getTransactions(orgId);
+      
+      // Use multiple criteria to find lease-related transactions more reliably
+      const existingRentTransactions = transactions.filter(t => {
+        // Primary matching criteria
+        const basicMatch = t.type === "Income" && 
+                           t.category === "Rental Income" && 
+                           t.isRecurring;
+        
+        // Enhanced matching with multiple patterns for robustness
+        const leaseIdPatterns = [
+          `lease ${newLease.id}`,  // Current format
+          `lease ${oldLease.id}`,  // In case ID changed (shouldn't happen but safer)
+          `leaseId: ${newLease.id}`, // Alternative format
+          `lease-${newLease.id}`,   // Alternative format
+        ];
+        
+        const notesMatch = leaseIdPatterns.some(pattern => 
+          t.notes?.toLowerCase().includes(pattern.toLowerCase())
+        );
+        
+        // Additional validation criteria
+        const unitMatch = t.unitId === newLease.unitId || t.unitId === oldLease.unitId;
+        const amountMatch = Math.abs(parseFloat(t.amount) - parseFloat(oldLease.rent)) < 0.01; // Allow for rounding differences
+        
+        return basicMatch && (notesMatch || (unitMatch && amountMatch));
+      });
+      
+      // Log matching results for debugging
+      console.log(`🔍 Found ${existingRentTransactions.length} existing rent transactions for lease ${newLease.id}`);
+      if (existingRentTransactions.length > 1) {
+        console.warn(`⚠️ Multiple recurring rent transactions found for lease ${newLease.id}. Using the first one.`);
+      }
+      
+      // Update or recreate recurring revenue based on changes
+      if (existingRentTransactions.length > 0) {
+        const primaryTransaction = existingRentTransactions[0];
+        
+        // Calculate new first rent date if due day changed
+        const startDate = new Date(newLease.startDate);
+        const dueDay = Math.min(newLease.dueDay || 1, 28);
+        const firstRentDate = new Date(startDate.getFullYear(), startDate.getMonth(), dueDay);
+        
+        if (firstRentDate < startDate) {
+          firstRentDate.setMonth(firstRentDate.getMonth() + 1);
+        }
+        
+        // Update the primary recurring transaction
+        const updatedTransactionData = {
+          amount: newLease.rent.toString(),
+          date: firstRentDate,
+          recurringEndDate: new Date(newLease.endDate),
+          notes: `Recurring rent for lease ${newLease.id} (updated ${new Date().toLocaleDateString()})`,
+        };
+        
+        await storage.updateTransaction(primaryTransaction.id, updatedTransactionData);
+        console.log(`✅ Updated recurring rent revenue for lease ${newLease.id}: $${newLease.rent}/month`);
+        
+        // Update future transactions in the series if rent amount changed
+        if (oldLease.rent !== newLease.rent) {
+          const futureTransactions = existingRentTransactions.filter(t => 
+            t.id !== primaryTransaction.id && 
+            new Date(t.date) > new Date()
+          );
+          
+          for (const transaction of futureTransactions) {
+            await storage.updateTransaction(transaction.id, {
+              amount: newLease.rent.toString()
+            });
+          }
+          console.log(`✅ Updated ${futureTransactions.length} future rent transactions with new amount`);
+        }
+      } else {
+        // No existing recurring revenue found, create it
+        console.log(`🆕 No existing recurring revenue found, creating new one for lease ${newLease.id}`);
+        await createLeaseRentRevenue(orgId, newLease);
+      }
+      
+    } catch (error) {
+      console.error("Error updating lease recurring revenue:", error);
+    }
+  }
+
+  // Helper function to update lease reminders when lease is modified
+  async function updateLeaseReminders(orgId: string, oldLease: any, newLease: any) {
+    try {
+      // Get all existing reminders for this lease
+      const reminders = await storage.getReminders(orgId);
+      const existingLeaseReminders = reminders.filter(r => 
+        r.scope === "lease" && 
+        r.scopeId === newLease.id
+      );
+      
+      // Remove old reminders
+      for (const reminder of existingLeaseReminders) {
+        await storage.deleteReminder(reminder.id);
+      }
+      
+      // Create new reminders with updated lease data
+      await createLeaseReminders(orgId, newLease);
+      console.log(`✅ Updated lease reminders for lease ${newLease.id}`);
+      
+    } catch (error) {
+      console.error("Error updating lease reminders:", error);
+    }
+  }
+
   // Helper function to create lease reminders
   async function createLeaseReminders(orgId: string, lease: any) {
     const reminders = [];

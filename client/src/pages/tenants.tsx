@@ -328,6 +328,8 @@ export default function Tenants() {
       queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
       setShowLeaseForm(false);
       setSelectedTenantGroup(null);
+      setSelectedLease(null);
+      setIsRenewalMode(false);
       toast({
         title: "Success",
         description: "Lease created successfully",
@@ -348,6 +350,44 @@ export default function Tenants() {
       toast({
         title: "Error",
         description: "Failed to create lease",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateLeaseMutation = useMutation({
+    mutationFn: async ({ leaseId, data }: { leaseId: string; data: Partial<InsertLease> }) => {
+      const response = await apiRequest("PUT", `/api/leases/${leaseId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }); // Invalidate for rent changes
+      setShowLeaseForm(false);
+      setSelectedTenantGroup(null);
+      setSelectedLease(null);
+      setIsRenewalMode(false);
+      toast({
+        title: "Success",
+        description: "Lease updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update lease",
         variant: "destructive",
       });
     },
@@ -562,7 +602,14 @@ export default function Tenants() {
                             startDate: selectedLease?.endDate ? new Date(new Date(selectedLease.endDate).getTime() + 24 * 60 * 60 * 1000) : data.startDate,
                           };
                           createLeaseMutation.mutate(renewalData);
+                        } else if (selectedLease && !isRenewalMode) {
+                          // For editing existing lease, use PUT request
+                          updateLeaseMutation.mutate({
+                            leaseId: selectedLease.id,
+                            data: data
+                          });
                         } else {
+                          // For creating new lease, use POST request
                           createLeaseMutation.mutate(data);
                         }
                       }}
@@ -572,7 +619,7 @@ export default function Tenants() {
                         setSelectedLease(null);
                         setIsRenewalMode(false);
                       }}
-                      isLoading={createLeaseMutation.isPending}
+                      isLoading={createLeaseMutation.isPending || updateLeaseMutation.isPending}
                     />
                   )}
                 </DialogContent>
