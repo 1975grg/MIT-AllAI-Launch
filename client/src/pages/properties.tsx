@@ -888,7 +888,7 @@ export default function Properties() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2 mt-4 px-1">
+                    <div className="flex gap-2 mt-4 px-2">
                       <Button 
                         variant="outline" 
                         size="sm" 

@@ -577,7 +577,7 @@ export class DatabaseStorage implements IStorage {
           acquisitionDate: row.acquisitionDate,
           saleDate: row.saleDate,
           salePrice: row.salePrice ? Number(row.salePrice) : undefined,
-          status: row.status || "Active", // Add status field for archive functionality
+          status: (row as any).status || "Active", // Add status field for archive functionality
           ownerships: []
         });
       }
