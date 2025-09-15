@@ -900,9 +900,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Property not found" });
       }
       
-      // Use saleDate as archive marker - set to current date for archived properties
-      const archivedProperty = await storage.updateProperty(req.params.id, { saleDate: new Date() });
-      res.status(204).send();
+      const archivedProperty = await storage.updateProperty(req.params.id, { status: "Archived" });
+      res.json({ message: "Property archived successfully", property: archivedProperty });
     } catch (error) {
       console.error("Error archiving property:", error);
       res.status(500).json({ message: "Failed to archive property" });
