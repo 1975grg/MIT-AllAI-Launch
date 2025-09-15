@@ -417,6 +417,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Entity not found" });
       }
       
+      // ARCHIVE PREVENTION: Check if entity owns any properties
+      const propertyCheck = await storage.getEntityPropertyCount(req.params.id, org.id);
+      if (propertyCheck.count > 0) {
+        return res.status(400).json({ 
+          message: "Cannot archive entity - owns properties",
+          error: "ENTITY_OWNS_PROPERTIES",
+          count: propertyCheck.count,
+          properties: propertyCheck.properties,
+          details: `${entity.name} owns ${propertyCheck.count} propert${propertyCheck.count === 1 ? 'y' : 'ies'}. Please reassign ownership before archiving.`
+        });
+      }
+      
       const archivedEntity = await storage.updateOwnershipEntity(req.params.id, { status: "Archived" });
       res.json({ message: "Entity archived successfully", entity: archivedEntity });
     } catch (error) {
