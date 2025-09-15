@@ -117,7 +117,7 @@ export default function LeaseForm({
       
       // Also update the selected unit
       const unit = units.find(u => u.id === existingLease.unitId);
-      console.log("🏠 Setting selected unit:", unit?.name);
+      console.log("🏠 Setting selected unit:", unit?.label);
       setSelectedUnit(unit);
     } else {
       console.log("❌ No existingLease data provided");
