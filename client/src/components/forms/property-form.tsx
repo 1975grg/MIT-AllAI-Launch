@@ -1,7 +1,7 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,6 +129,9 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Refs for form initialization timing control
   const hasInitializedRef = useRef<string | null>(null);
   const isInitializingRef = useRef(false);
+  
+  // Local state for purchase price display formatting
+  const [purchasePriceDisplay, setPurchasePriceDisplay] = useState("");
 
 
   const form = useForm<z.infer<typeof propertySchema>>({
@@ -217,20 +220,28 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       // Single reset with normalized data
       form.reset(resetData);
       
+      // Initialize purchase price display value
+      setPurchasePriceDisplay(resetData.purchasePrice ? Number(resetData.purchasePrice).toLocaleString() : "");
+      
       // Mark initialization complete
       isInitializingRef.current = false;
     }
   }, [(initialData as any)?.id, form]);
 
-  // Auto-fill purchase price with property value when property value changes
+  // Auto-fill purchase price with property value when property value changes (guarded during initialization)
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
+      // Skip auto-fill during initialization to prevent conflicts
+      if (isInitializingRef.current) return;
+      
       if (name === 'propertyValue' && value.propertyValue && value.propertyValue !== 0) {
         // Auto-fill if purchase price is empty, zero, null, or not yet set
         const currentPurchasePrice = value.purchasePrice;
-        if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === undefined || currentPurchasePrice === null || currentPurchasePrice === "") {
+        if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === undefined || currentPurchasePrice === null) {
           console.log("🏠 Auto-filling purchase price from property value change:", value.propertyValue);
-          form.setValue('purchasePrice', Number(value.propertyValue));
+          const newValue = Number(value.propertyValue);
+          form.setValue('purchasePrice', newValue);
+          setPurchasePriceDisplay(newValue.toLocaleString());
         }
       }
     });
@@ -1459,21 +1470,25 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         inputMode="decimal"
                         placeholder="500,000"
                         className="pl-9"
-                        key={`purchase-price-${(initialData as any)?.id || 'new'}`}
-                        value={field.value ? Number(field.value).toLocaleString() : ""}
+                        value={purchasePriceDisplay}
+                        onFocus={() => {
+                          // Remove formatting for editing
+                          const unformatted = purchasePriceDisplay.replace(/,/g, '');
+                          setPurchasePriceDisplay(unformatted);
+                        }}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
+                          setPurchasePriceDisplay(e.target.value);
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
                           field.onChange(numericValue);
                         }}
-                        onBlur={(e) => {
-                          const rawValue = e.target.value.replace(/,/g, '');
-                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
-                          if (!isNaN(numericValue || 0)) {
-                            field.onChange(numericValue);
-                            if (numericValue) {
-                              e.target.value = numericValue.toLocaleString();
-                            }
+                        onBlur={() => {
+                          // Re-apply formatting on blur
+                          const currentValue = field.value;
+                          if (currentValue && !isNaN(Number(currentValue))) {
+                            setPurchasePriceDisplay(Number(currentValue).toLocaleString());
+                          } else {
+                            setPurchasePriceDisplay("");
                           }
                         }}
                         data-testid="input-purchase-price"
