@@ -73,6 +73,7 @@ export interface IStorage {
   updateOwnershipEntity(id: string, entity: Partial<InsertOwnershipEntity>): Promise<OwnershipEntity>;
   deleteOwnershipEntity(id: string): Promise<void>;
   getEntityPerformance(entityId: string, orgId: string): Promise<any>;
+  getEntityPropertyCount(entityId: string, orgId: string): Promise<{ count: number; properties: Array<{id: string, name: string}> }>;
   
   // Property operations
   getProperties(orgId: string): Promise<Property[]>;
@@ -352,6 +353,27 @@ export class DatabaseStorage implements IStorage {
         netCashFlow: Math.round(netCashFlow),
         totalOwnershipValue: Math.round(totalOwnershipValue),
       },
+    };
+  }
+
+  async getEntityPropertyCount(entityId: string, orgId: string): Promise<{ count: number; properties: Array<{id: string, name: string}> }> {
+    // Get properties owned by this entity
+    const propertiesResult = await db
+      .select({
+        id: properties.id,
+        name: properties.name,
+      })
+      .from(properties)
+      .innerJoin(propertyOwnerships, eq(properties.id, propertyOwnerships.propertyId))
+      .where(and(
+        eq(propertyOwnerships.entityId, entityId),
+        eq(properties.orgId, orgId)
+      ))
+      .orderBy(asc(properties.name));
+
+    return {
+      count: propertiesResult.length,
+      properties: propertiesResult
     };
   }
 
