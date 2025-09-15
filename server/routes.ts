@@ -1692,8 +1692,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const property = await storage.getProperty(propertyId);
       if (!property) return res.status(404).json({ message: "Property not found" });
       
-      if (!property.monthlyMortgage || !property.acquisitionDate) {
-        return res.status(400).json({ message: "Property must have mortgage details (monthly payment and acquisition date)" });
+      if (!property.monthlyMortgage || (!property.acquisitionDate && !property.mortgageStartDate)) {
+        return res.status(400).json({ message: "Property must have mortgage details (monthly payment and acquisition or mortgage start date)" });
       }
 
       // Find all "Mortgage" category expenses for this property in the specified year
