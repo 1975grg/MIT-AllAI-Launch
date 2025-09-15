@@ -285,6 +285,10 @@ export default function LeaseForm({
                           captionLayout="dropdown-buttons"
                           fromYear={new Date().getFullYear() - 10}
                           toYear={new Date().getFullYear() + 10}
+                          classNames={{
+                            caption_label: "hidden", // Hide redundant month/year display
+                            nav: "hidden" // Hide redundant navigation arrows since we have dropdowns
+                          }}
                         />
                       </PopoverContent>
                     </Popover>
@@ -322,6 +326,10 @@ export default function LeaseForm({
                           captionLayout="dropdown-buttons"
                           fromYear={new Date().getFullYear() - 10}
                           toYear={new Date().getFullYear() + 10}
+                          classNames={{
+                            caption_label: "hidden", // Hide redundant month/year display
+                            nav: "hidden" // Hide redundant navigation arrows since we have dropdowns
+                          }}
                         />
                       </PopoverContent>
                     </Popover>
