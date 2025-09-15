@@ -377,6 +377,71 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getTenantRelationshipCount(tenantId: string, orgId: string): Promise<{ 
+    count: number; 
+    relationships: Array<{type: string, description: string}>
+  }> {
+    const relationships = [];
+
+    // Check for active leases through tenant group
+    const tenant = await db
+      .select({ groupId: tenants.groupId })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    
+    if (tenant[0]?.groupId) {
+      const leasesResult = await db
+        .select({
+          id: leases.id,
+          rent: leases.rent,
+          startDate: leases.startDate,
+          endDate: leases.endDate,
+          status: leases.status
+        })
+        .from(leases)
+        .where(eq(leases.tenantGroupId, tenant[0].groupId));
+
+      leasesResult.forEach(lease => {
+        relationships.push({
+          type: 'lease',
+          description: `${lease.status} lease: $${lease.rent}/month (${lease.startDate?.toLocaleDateString()} - ${lease.endDate?.toLocaleDateString()})`
+        });
+      });
+    }
+
+    // Check for transactions related to the tenant (through tenant scope or description)
+    const transactionsResult = await db
+      .select({
+        id: transactions.id,
+        type: transactions.type,
+        amount: transactions.amount,
+        description: transactions.description,
+        date: transactions.date
+      })
+      .from(transactions)
+      .where(and(
+        eq(transactions.orgId, orgId),
+        // Check if transaction mentions this tenant ID in scope or description
+        or(
+          like(transactions.scope, `%${tenantId}%`),
+          like(transactions.description, `%${tenantId}%`)
+        )
+      ));
+
+    transactionsResult.forEach(transaction => {
+      relationships.push({
+        type: 'transaction',
+        description: `${transaction.type}: $${transaction.amount} - ${transaction.description}`
+      });
+    });
+
+    return {
+      count: relationships.length,
+      relationships: relationships
+    };
+  }
+
   async getPropertyPerformance(propertyId: string, orgId: string): Promise<any> {
     // Get the property
     const [property] = await db
