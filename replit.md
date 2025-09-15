@@ -77,6 +77,45 @@ Preferred communication style: Simple, everyday language.
 
 **Significance**: This update delivers on the core vision of Mailla as an integrated AI assistant that provides quick, actionable insights in a format optimized for efficient property management decision-making.
 
+### Update 3: Mortgage & Tax Categorization Comprehensive Fix (September 2025)
+**Checkpoint Name**: "Mortgage Recurring Generation & Tax Center Accuracy"
+**Quick Reference**: Update 3
+
+**Summary**: Completed comprehensive fix for mortgage payment handling and tax categorization system, resolving recurring payment generation and eliminating false "uncategorized" expense warnings.
+
+**Key Achievements**:
+- **Mortgage Recurring Generation**: Fixed missing monthly mortgage payments by implementing manual trigger for recurring transaction generation
+- **Tax Center Logic Fix**: Corrected "uncategorized expenses" calculation to only flag tax-deductible expenses missing Schedule E categories
+- **Mortgage Naming Consistency**: Removed "Primary" prefix from standard mortgage payments, keeping "Secondary" only for additional mortgages
+- **Mortgage Adjustment Validation**: Fixed validation to accept mortgage start date as alternative to acquisition date
+- **Complete Workflow Verification**: Successfully tested end-to-end mortgage split into tax-deductible interest and non-deductible principal
+
+**Technical Fixes**:
+- **Tax Center Logic**: Updated `uncategorizedExpenses` filter to `t.taxDeductible && !t.scheduleECategory` instead of just `!t.scheduleECategory`
+- **Mortgage Validation**: Changed validation from requiring `acquisitionDate` to accepting `acquisitionDate || mortgageStartDate`
+- **Mortgage Naming**: Updated description generation to only prefix "Secondary" for second mortgages
+- **Recurring Generation**: Added manual trigger endpoint `/api/admin/generate-recurring` with org-scoped security
+- **Data Consistency**: Updated existing mortgage transaction descriptions via SQL to remove "Primary" prefix
+
+**Files Modified**:
+- `client/src/pages/tax.tsx` - Fixed uncategorized expense calculation logic
+- `server/routes.ts` - Updated mortgage validation, naming, and added manual recurring trigger
+- `client/src/components/forms/mortgage-adjustment-form.tsx` - Verified cache invalidation works correctly
+- `client/src/components/forms/property-form.tsx` - Fixed null value handling for optional fields
+
+**Database Impact**:
+- Successfully generated 3 missing recurring mortgage payments (July, August, September 2025)
+- Mortgage adjustment created 6 transactions: 3 interest (tax-deductible) + 3 principal (non-deductible)
+- All transactions properly categorized with correct `tax_deductible` and `schedule_e_category` fields
+
+**User Impact**:
+- Tax Center now shows accurate categorization status (0 uncategorized instead of false positives)
+- Mortgage payments display consistently without confusing "Primary" prefix
+- Mortgage adjustment workflow functions seamlessly with Form 1098 data
+- Schedule E categories populate correctly for tax-deductible mortgage interest
+
+**Significance**: This update resolves critical accuracy issues in the tax management system and ensures reliable monthly mortgage payment generation, providing landlords with confidence in their expense categorization and tax reporting.
+
 ## System Architecture
 
 ### Frontend Architecture
