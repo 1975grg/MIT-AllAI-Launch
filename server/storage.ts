@@ -100,6 +100,7 @@ export interface IStorage {
   updateTenantGroup(id: string, updates: Partial<InsertTenantGroup>): Promise<TenantGroup>;
   updateTenant(id: string, updates: Partial<InsertTenant>): Promise<Tenant>;
   archiveTenantGroup(id: string): Promise<TenantGroup>;
+  unarchiveTenantGroup(id: string): Promise<TenantGroup>;
   deleteTenant(id: string): Promise<void>;
   deleteTenantGroup(id: string): Promise<void>;
   getTenantsInGroup(groupId: string): Promise<Tenant[]>;
@@ -755,7 +756,7 @@ export class DatabaseStorage implements IStorage {
         propertyId: newProperty.id,
         label: defaultUnit.label,
         bedrooms: defaultUnit.bedrooms,
-        bathrooms: defaultUnit.bathrooms ? defaultUnit.bathrooms.toString() : undefined,
+        bathrooms: defaultUnit.bathrooms,
         sqft: defaultUnit.sqft,
         rentAmount: defaultUnit.rentAmount ? defaultUnit.rentAmount : undefined,
         deposit: defaultUnit.deposit ? defaultUnit.deposit : undefined,
@@ -982,14 +983,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUnit(unit: InsertUnit): Promise<Unit> {
-    const [newUnit] = await db.insert(units).values(unit).returning();
+    const insertData = {
+      ...unit,
+      bathrooms: typeof unit.bathrooms === 'number' ? String(unit.bathrooms) : unit.bathrooms,
+    };
+    const [newUnit] = await db.insert(units).values(insertData).returning();
     return newUnit;
   }
 
   async updateUnit(id: string, unit: Partial<InsertUnit>): Promise<Unit> {
+    const updateData = {
+      ...unit,
+      bathrooms: typeof unit.bathrooms === 'number' ? String(unit.bathrooms) : unit.bathrooms,
+    };
     const [updated] = await db
       .update(units)
-      .set(unit)
+      .set(updateData)
       .where(eq(units.id, id))
       .returning();
     return updated;
@@ -1066,11 +1075,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async archiveTenantGroup(id: string): Promise<TenantGroup> {
+    // Archive the tenant group
     const [updated] = await db
       .update(tenantGroups)
       .set({ status: "Archived" })
       .where(eq(tenantGroups.id, id))
       .returning();
+    
+    // Automatically terminate associated leases
+    await this.terminateLeasesByTenantGroup(id);
+    
     return updated;
   }
 
@@ -1093,20 +1107,54 @@ export class DatabaseStorage implements IStorage {
   }
 
   async archiveTenant(id: string): Promise<Tenant> {
+    // Archive the individual tenant
     const [updated] = await db
       .update(tenants)
       .set({ status: "Archived" })
       .where(eq(tenants.id, id))
       .returning();
+    
+    // Check if all tenants in the group are now archived (only if groupId exists)
+    if (updated.groupId) {
+      const allTenantsInGroup = await this.getTenantsInGroup(updated.groupId);
+      const allArchived = allTenantsInGroup.every(tenant => tenant.status === "Archived");
+      
+      // If all tenants in the group are archived, terminate the leases
+      if (allArchived) {
+        await this.terminateLeasesByTenantGroup(updated.groupId);
+      }
+    }
+    
     return updated;
   }
 
   async unarchiveTenant(id: string): Promise<Tenant> {
+    // Unarchive the individual tenant
     const [updated] = await db
       .update(tenants)
       .set({ status: "Active" })
       .where(eq(tenants.id, id))
       .returning();
+    
+    // Note: We don't automatically reactivate leases when unarchiving tenants
+    // This is intentional - reactivating leases requires more complex logic
+    // and business rules that should be handled manually or through a separate workflow
+    
+    return updated;
+  }
+
+  // Add unarchive function for tenant groups  
+  async unarchiveTenantGroup(id: string): Promise<TenantGroup> {
+    // Unarchive the tenant group
+    const [updated] = await db
+      .update(tenantGroups)
+      .set({ status: "Active" })
+      .where(eq(tenantGroups.id, id))
+      .returning();
+    
+    // Note: We don't automatically reactivate leases when unarchiving tenant groups
+    // This is intentional - lease reactivation requires manual review of dates, rent, etc.
+    
     return updated;
   }
 
@@ -1140,6 +1188,39 @@ export class DatabaseStorage implements IStorage {
       .where(eq(properties.orgId, orgId))
       .orderBy(desc(leases.startDate));
     return result;
+  }
+
+  async getLeasesByTenantGroup(tenantGroupId: string): Promise<Lease[]> {
+    return await db
+      .select()
+      .from(leases)
+      .where(eq(leases.tenantGroupId, tenantGroupId))
+      .orderBy(desc(leases.startDate));
+  }
+
+  // Terminate all leases associated with a tenant group
+  async terminateLeasesByTenantGroup(tenantGroupId: string): Promise<void> {
+    // Get all active leases for this tenant group
+    const activeLeases = await db
+      .select()
+      .from(leases)
+      .where(and(
+        eq(leases.tenantGroupId, tenantGroupId),
+        eq(leases.status, "Active")
+      ));
+
+    // Terminate each active lease
+    if (activeLeases.length > 0) {
+      console.log(`🏠 Automatically terminating ${activeLeases.length} lease(s) for archived tenant group ${tenantGroupId}`);
+      
+      await db
+        .update(leases)
+        .set({ status: "Terminated" })
+        .where(and(
+          eq(leases.tenantGroupId, tenantGroupId),
+          eq(leases.status, "Active")
+        ));
+    }
   }
 
   async getActiveLease(unitId: string): Promise<Lease | undefined> {
@@ -1536,7 +1617,7 @@ export class DatabaseStorage implements IStorage {
     return newExpense;
   }
 
-  async createRevenue(revenue: InsertRevenue): Promise<Transaction> {
+  async createRevenue(revenue: InsertTransaction): Promise<Transaction> {
     const [newRevenue] = await db.insert(transactions).values({
       ...revenue,
       recurringEndDate: revenue.recurringEndDate ? (typeof revenue.recurringEndDate === 'string' ? new Date(revenue.recurringEndDate) : revenue.recurringEndDate) : null,
@@ -1828,7 +1909,7 @@ export class DatabaseStorage implements IStorage {
           .set(data)
           .where(eq(reminders.parentRecurringId, parentRecurringId))
           .returning();
-        updatedReminder = updated[0] || reminder;
+        updatedReminder = Array.isArray(updated) && updated.length > 0 ? updated[0] : reminder;
       } else {
         // mode === "future": Update this reminder and all future recurring instances
         const [updated] = await db
@@ -1841,7 +1922,7 @@ export class DatabaseStorage implements IStorage {
             )
           )
           .returning();
-        updatedReminder = updated[0] || reminder;
+        updatedReminder = Array.isArray(updated) && updated.length > 0 ? updated[0] : reminder;
       }
     } else {
       updatedReminder = reminder;
@@ -1990,6 +2071,9 @@ export class DatabaseStorage implements IStorage {
               leadDays: intervalDays,
               channel: "inapp" as const,
               status: "Pending" as const,
+              isRecurring: false,
+              recurringInterval: 1,
+              isBulkEntry: false,
               payloadJson: {
                 leaseId: lease.id,
                 tenantGroup: lease.tenantGroupName,
