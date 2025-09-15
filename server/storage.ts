@@ -95,6 +95,12 @@ export interface IStorage {
   getTenantGroup(id: string): Promise<TenantGroup | undefined>;
   createTenantGroup(group: InsertTenantGroup): Promise<TenantGroup>;
   createTenant(tenant: InsertTenant): Promise<Tenant>;
+  updateTenantGroup(id: string, updates: Partial<InsertTenantGroup>): Promise<TenantGroup>;
+  updateTenant(id: string, updates: Partial<InsertTenant>): Promise<Tenant>;
+  archiveTenantGroup(id: string): Promise<TenantGroup>;
+  deleteTenant(id: string): Promise<void>;
+  deleteTenantGroup(id: string): Promise<void>;
+  getTenantsInGroup(groupId: string): Promise<Tenant[]>;
   
   // Lease operations
   getLeases(orgId: string): Promise<Lease[]>;
@@ -936,6 +942,13 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTenant(id: string): Promise<void> {
     await db.delete(tenants).where(eq(tenants.id, id));
+  }
+
+  async deleteTenantGroup(id: string): Promise<void> {
+    // First delete all tenants in the group
+    await db.delete(tenants).where(eq(tenants.groupId, id));
+    // Then delete the group itself
+    await db.delete(tenantGroups).where(eq(tenantGroups.id, id));
   }
 
   async getTenantsInGroup(groupId: string): Promise<Tenant[]> {
