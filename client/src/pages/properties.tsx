@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign, Settings, Bell, Archive, Trash2 } from "lucide-react";
+import { Building, Plus, MapPin, Home, Calendar, Building2, Filter, ChevronDown, ChevronRight, Bed, Bath, DollarSign, Settings, Bell, Archive, Trash2, RotateCcw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,7 @@ export default function Properties() {
   const [editingProperty, setEditingProperty] = useState<PropertyWithOwnerships | null>(null);
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
   const [showArchiveConfirm, setShowArchiveConfirm] = useState<string | null>(null);
+  const [showUnarchiveConfirm, setShowUnarchiveConfirm] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -213,6 +214,42 @@ export default function Properties() {
       toast({
         title: "Error",
         description: "Failed to delete property",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Unarchive property mutation
+  const unarchivePropertyMutation = useMutation({
+    mutationFn: async (propertyId: string) => {
+      const response = await apiRequest("PATCH", `/api/properties/${propertyId}/unarchive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leases"] });
+      setShowUnarchiveConfirm(null);
+      toast({
+        title: "Success",
+        description: "Property unarchived successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to unarchive property",
         variant: "destructive",
       });
     },
@@ -455,6 +492,51 @@ export default function Properties() {
                     >
                       <Archive className="h-4 w-4 mr-2" />
                       {archivePropertyMutation.isPending ? "Archiving..." : "Archive Property"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Unarchive Confirmation Dialog */}
+            <Dialog open={!!showUnarchiveConfirm} onOpenChange={() => setShowUnarchiveConfirm(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Unarchive Property</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Unarchive this property? This will:
+                  </p>
+                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                    <li>Mark property as "Active" - it will show in active property lists</li>
+                    <li>Restore access to all units, leases, and management features</li>
+                    <li>Include it in active property reports and dashboards</li>
+                  </ul>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      ✅ <strong>Tip:</strong> Use this to reactivate a property you want to manage again.
+                    </p>
+                  </div>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowUnarchiveConfirm(null)}
+                      disabled={unarchivePropertyMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      onClick={() => {
+                        if (showUnarchiveConfirm) {
+                          unarchivePropertyMutation.mutate(showUnarchiveConfirm);
+                        }
+                      }}
+                      disabled={unarchivePropertyMutation.isPending}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      {unarchivePropertyMutation.isPending ? "Unarchiving..." : "Unarchive Property"}
                     </Button>
                   </div>
                 </div>
@@ -888,7 +970,7 @@ export default function Properties() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2 mt-4 p-4 pt-0">
+                    <div className="flex gap-2 mt-4 px-6 pb-4">
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -921,7 +1003,18 @@ export default function Properties() {
                       >
                         Edit
                       </Button>
-                      {property.status !== "Archived" && (
+                      {property.status === "Archived" ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="px-2" 
+                          onClick={() => setShowUnarchiveConfirm(property.id)}
+                          data-testid={`button-unarchive-property-${index}`}
+                          disabled={unarchivePropertyMutation.isPending}
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                      ) : (
                         <Button 
                           variant="outline" 
                           size="sm" 

@@ -908,6 +908,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Unarchive a property (set status back to "Active")
+  app.patch('/api/properties/:id/unarchive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Verify property exists and user owns it
+      const property = await storage.getProperty(req.params.id);
+      if (!property || property.orgId !== org.id) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      const unarchivedProperty = await storage.updateProperty(req.params.id, { status: "Active" });
+      res.json({ message: "Property unarchived successfully", property: unarchivedProperty });
+    } catch (error) {
+      console.error("Error unarchiving property:", error);
+      res.status(500).json({ message: "Failed to unarchive property" });
+    }
+  });
+
   // Permanently delete a property
   app.delete('/api/properties/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
