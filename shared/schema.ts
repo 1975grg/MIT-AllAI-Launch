@@ -84,6 +84,8 @@ export const ownershipEntities = pgTable("ownership_entities", {
   registeredAgent: varchar("registered_agent"),
   renewalMonth: integer("renewal_month"),
   notes: text("notes"),
+  // Archive status
+  status: varchar("status").default("Active").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

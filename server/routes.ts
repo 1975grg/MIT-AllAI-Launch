@@ -437,6 +437,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Unarchive an entity (set status to "Active")
+  app.patch('/api/entities/:id/unarchive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // SECURITY: Check if entity exists and belongs to organization
+      const entities = await storage.getOwnershipEntities(org.id);
+      const entity = entities.find(e => e.id === req.params.id);
+      if (!entity) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+      
+      const unarchivedEntity = await storage.updateOwnershipEntity(req.params.id, { status: "Active" });
+      res.json({ message: "Entity unarchived successfully", entity: unarchivedEntity });
+    } catch (error) {
+      console.error("Error unarchiving entity:", error);
+      res.status(500).json({ message: "Failed to unarchive entity" });
+    }
+  });
+
   // Permanently delete an entity
   app.delete('/api/entities/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
