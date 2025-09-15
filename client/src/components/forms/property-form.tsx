@@ -125,6 +125,10 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   const [showCreateEntity, setShowCreateEntity] = useState(false);
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"Individual" | "LLC" | "Partnership" | "Corporation">("Individual");
+  
+  // Refs for form initialization timing control
+  const hasInitializedRef = useRef<string | null>(null);
+  const isInitializingRef = useRef(false);
 
 
   const form = useForm<z.infer<typeof propertySchema>>({
@@ -176,14 +180,17 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
     },
   });
 
-  // Effect to reset form when initialData changes (for editing)
-  React.useEffect(() => {
-    if (initialData) {  // Reset for any initialData (removed ID check)
-      console.log("🏠 Property form initialData:", initialData);
+  // Effect to reset form when initialData.id changes (for editing) - using layoutEffect for timing
+  React.useLayoutEffect(() => {
+    const currentId = (initialData as any)?.id;
+    
+    // Only reset when ID actually changes (prevents multiple resets during async data enrichment)
+    if (initialData && currentId && hasInitializedRef.current !== currentId) {
+      console.log("🏠 Property form initializing for ID:", currentId);
       console.log("💰 purchasePrice in initialData:", initialData.purchasePrice);
-      console.log("🏡 propertyValue in initialData:", initialData.propertyValue);
-      console.log("🔢 numberOfUnits in initialData:", initialData.numberOfUnits);
-      console.log("🗓️ mortgageStartDate field:", initialData.mortgageStartDate);
+      
+      isInitializingRef.current = true;
+      hasInitializedRef.current = currentId;
       
       const resetData = {
         ...initialData,
@@ -205,14 +212,15 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         mortgageStartDate2: initialData.mortgageStartDate2 ? new Date(initialData.mortgageStartDate2) : undefined,
       };
       
-      console.log("🔧 Normalized numberOfUnits:", resetData.numberOfUnits);
       console.log("🔧 Normalized purchasePrice:", resetData.purchasePrice);
-      console.log("🔧 Original purchasePrice from DB:", initialData.purchasePrice);
       
       // Single reset with normalized data
       form.reset(resetData);
+      
+      // Mark initialization complete
+      isInitializingRef.current = false;
     }
-  }, [initialData, form]);
+  }, [(initialData as any)?.id, form]);
 
   // Auto-fill purchase price with property value when property value changes
   useEffect(() => {
@@ -1452,13 +1460,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`purchase-price-${(initialData as any)?.id || 'new'}`}
-                        value={(() => {
-                          const val = field.value;
-                          if (!val || val === 0) return "";
-                          const numVal = Number(val);
-                          if (isNaN(numVal)) return "";
-                          return numVal.toLocaleString();
-                        })()}
+                        value={field.value ? Number(field.value).toLocaleString() : ""}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
