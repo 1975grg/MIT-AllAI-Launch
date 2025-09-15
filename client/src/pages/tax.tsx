@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Calculator, FileText, Users, Download, AlertCircle, TrendingUp, Clock } from "lucide-react";
 import PropertyAssistant from "@/components/ai/property-assistant";
 import MortgageAdjustmentForm from "@/components/forms/mortgage-adjustment-form";
+import ScheduleEReport from "@/components/tax/schedule-e-report";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Property, Transaction, Vendor } from "@shared/schema";
 
@@ -342,13 +343,11 @@ export default function Tax() {
                       </CardContent>
                     </Card>
 
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <h3 className="font-semibold mb-2">Schedule E Report</h3>
-                      <p className="text-sm">
-                        Detailed Schedule E report will be displayed here once categorization is complete.
-                      </p>
-                    </div>
+                    <ScheduleEReport 
+                      properties={properties} 
+                      transactions={transactions} 
+                      year={currentYear} 
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>
