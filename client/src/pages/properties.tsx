@@ -221,6 +221,7 @@ export default function Properties() {
       
       console.log("🔧 Setting numberOfUnits to:", propertyUnits.length);
       console.log("🔧 Setting hasMultipleUnits to:", propertyUnits.length > 1);
+      console.log("🔧 Final propertyForEditing:", propertyForEditing);
       
       // Add the first unit as defaultUnit to the editing property
       if (propertyUnits.length > 0) {

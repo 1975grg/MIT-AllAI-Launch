@@ -176,6 +176,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       console.log("🏠 Property form initialData:", initialData);
       console.log("💰 purchasePrice in initialData:", initialData.purchasePrice);
       console.log("🏡 propertyValue in initialData:", initialData.propertyValue);
+      console.log("🔢 numberOfUnits in initialData:", initialData.numberOfUnits);
       console.log("🗓️ mortgageStartDate field:", initialData.mortgageStartDate);
       
       const resetData = {
@@ -1481,7 +1482,15 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`purchase-price-${(initialData as any)?.id || 'new'}`}
-                        value={field.value && field.value !== 0 && !isNaN(Number(field.value)) ? Number(field.value).toLocaleString() : ""}
+                        value={(() => {
+                          console.log("💰 Purchase price field.value:", field.value, "type:", typeof field.value);
+                          if (field.value && field.value !== 0 && !isNaN(Number(field.value))) {
+                            const formatted = Number(field.value).toLocaleString();
+                            console.log("💰 Formatted value:", formatted);
+                            return formatted;
+                          }
+                          return "";
+                        })()}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
