@@ -933,9 +933,9 @@ export default function Properties() {
                         </Button>
                       )}
                       <Button 
-                        variant="outline" 
+                        variant="ghost" 
                         size="sm" 
-                        className="px-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" 
+                        className="px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" 
                         onClick={() => setShowDeleteConfirm(property.id)}
                         data-testid={`button-delete-property-${index}`}
                       >
