@@ -18,9 +18,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { TenantGroup, Unit, Property, Lease } from "@shared/schema";
 import { formatNumberWithCommas, removeCommas } from "@/lib/formatters";
 
-// Lease form schema
-const leaseFormSchema = z.object({
-  unitId: z.string().min(1, "Unit is required"),
+// Lease form schema - will be dynamically created based on property type
+const createLeaseFormSchema = (isBuilding: boolean) => z.object({
+  unitId: isBuilding ? z.string().min(1, "Unit is required") : z.string().optional(),
   startDate: z.date({ required_error: "Start date is required" }),
   endDate: z.date({ required_error: "End date is required" }),
   rent: z.string().min(1, "Rent amount is required"),
@@ -38,6 +38,9 @@ const leaseFormSchema = z.object({
   message: "End date must be after start date",
   path: ["endDate"],
 });
+
+// Static schema for TypeScript inference
+const leaseFormSchema = createLeaseFormSchema(true);
 
 type LeaseFormData = z.infer<typeof leaseFormSchema>;
 
@@ -66,8 +69,16 @@ export default function LeaseForm({
     existingLease ? units.find(u => u.id === existingLease.unitId) : undefined
   );
 
+  // Determine if tenant group's property is a building
+  const tenantProperty = properties.find(p => p.id === tenantGroup.propertyId);
+  const isPropertyBuilding = tenantProperty && 
+    (tenantProperty.type === "Residential Building" || tenantProperty.type === "Commercial Building");
+
+  // Use conditional schema based on property type
+  const dynamicSchema = createLeaseFormSchema(isPropertyBuilding || false);
+
   const form = useForm<LeaseFormData>({
-    resolver: zodResolver(leaseFormSchema),
+    resolver: zodResolver(dynamicSchema),
     defaultValues: {
       unitId: existingLease?.unitId || "",
       startDate: existingLease?.startDate ? new Date(existingLease.startDate) : new Date(),
@@ -161,7 +172,7 @@ export default function LeaseForm({
 
         <Separator />
 
-        {/* Unit Selection */}
+        {/* Property & Unit Selection */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -170,33 +181,52 @@ export default function LeaseForm({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <FormField
-              control={form.control}
-              name="unitId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Select Unit</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-lease-unit">
-                        <SelectValue placeholder="Choose a unit" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {availableUnits.map((unit) => {
-                        const property = getUnitProperty(unit);
-                        return (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {property?.street}, {property?.city} {unit.label ? `- ${unit.label}` : ''}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Show property info */}
+            {tenantProperty && (
+              <div className="mb-4 p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium" data-testid="text-lease-property">
+                  Property: {tenantProperty.name || `${tenantProperty.street}, ${tenantProperty.city}`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {tenantProperty.type} {!isPropertyBuilding && "(Single unit property)"}
+                </p>
+              </div>
+            )}
+
+            {/* Unit selection - only for buildings */}
+            {isPropertyBuilding ? (
+              <FormField
+                control={form.control}
+                name="unitId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Unit</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-lease-unit">
+                          <SelectValue placeholder="Choose a unit" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availableUnits.map((unit) => {
+                          const property = getUnitProperty(unit);
+                          return (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {property?.street}, {property?.city} {unit.label ? `- ${unit.label}` : ''}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No unit selection needed for single-unit properties.
+              </div>
+            )}
             
             {selectedUnit && (
               <div className="mt-4 p-3 bg-muted rounded-lg">
@@ -252,6 +282,9 @@ export default function LeaseForm({
                           onSelect={field.onChange}
                           disabled={(date) => date < new Date("1900-01-01")}
                           initialFocus
+                          captionLayout="dropdown-buttons"
+                          fromYear={new Date().getFullYear() - 10}
+                          toYear={new Date().getFullYear() + 10}
                         />
                       </PopoverContent>
                     </Popover>
@@ -286,6 +319,9 @@ export default function LeaseForm({
                           onSelect={field.onChange}
                           disabled={(date) => date < new Date("1900-01-01")}
                           initialFocus
+                          captionLayout="dropdown-buttons"
+                          fromYear={new Date().getFullYear() - 10}
+                          toYear={new Date().getFullYear() + 10}
                         />
                       </PopoverContent>
                     </Popover>

@@ -254,7 +254,6 @@ export default function TenantForm({ onSubmit, onCancel, isLoading, initialData 
                         <SelectValue placeholder="Select a unit in this building" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="common">Common Area</SelectItem>
                         {availableUnits.length > 0 ? (
                           availableUnits.map((unit) => (
                             <SelectItem key={unit.id} value={unit.id}>
