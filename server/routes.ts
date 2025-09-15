@@ -1409,6 +1409,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create lease reminder(s) if enabled
       await createLeaseReminders(org.id, lease);
       
+      // CRITICAL: Create recurring rent revenue transaction
+      await createLeaseRentRevenue(org.id, lease);
+      
       res.json(lease);
     } catch (error) {
       console.error("Error creating lease:", error);
@@ -1484,6 +1487,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating lease reminder:", error);
         // Don't fail the entire lease creation if reminder creation fails
       }
+    }
+  }
+
+  // Helper function to create recurring rent revenue when lease is created
+  async function createLeaseRentRevenue(orgId: string, lease: any) {
+    try {
+      // Get unit details to find the property ID
+      const unit = await storage.getUnit(lease.unitId);
+      if (!unit) {
+        console.error(`Unit not found for lease ${lease.id}`);
+        return;
+      }
+
+      // Calculate first rent due date based on lease start and due day
+      const startDate = new Date(lease.startDate);
+      const dueDay = Math.min(lease.dueDay || 1, 28); // Clamp to safe day to avoid month overflow
+      const firstRentDate = new Date(startDate.getFullYear(), startDate.getMonth(), dueDay);
+      
+      // If the due day has already passed in the start month, move to next month
+      if (firstRentDate < startDate) {
+        firstRentDate.setMonth(firstRentDate.getMonth() + 1);
+      }
+
+      // Prepare rent revenue data matching existing schema patterns
+      const rentRevenueData = {
+        orgId: orgId,
+        propertyId: unit.propertyId,
+        unitId: lease.unitId,
+        type: "Income" as const,
+        scope: "property" as const,
+        amount: lease.rent.toString(),
+        description: "Monthly Rent",
+        category: "Rental Income",
+        date: firstRentDate,
+        isRecurring: true,
+        recurringFrequency: "months" as const, // Use "months" to match cron expectations
+        recurringInterval: 1,
+        recurringEndDate: new Date(lease.endDate), // Ensure proper date normalization
+        taxDeductible: false, // Rental income is taxable, not deductible
+        notes: `Recurring rent for lease ${lease.id}`,
+        paymentStatus: "Pending" as const, // Rent starts as pending payment
+      };
+
+      // Validate using proper schema before creating
+      const validatedData = insertTransactionSchema.parse(rentRevenueData);
+      
+      // Create the revenue transaction using the correct storage method
+      await storage.createTransaction(validatedData);
+      
+      console.log(`✅ Created recurring rent revenue for lease ${lease.id}: $${lease.rent}/month starting ${firstRentDate.toDateString()}`);
+      
+    } catch (error) {
+      console.error("Error creating lease rent revenue:", error);
+      // Don't fail the entire lease creation if revenue creation fails
     }
   }
 
