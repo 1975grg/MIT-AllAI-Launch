@@ -477,6 +477,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get entity property ownership count
+  app.get('/api/entities/:id/property-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // SECURITY: Check if entity exists and belongs to organization
+      const entities = await storage.getOwnershipEntities(org.id);
+      const entity = entities.find(e => e.id === req.params.id);
+      if (!entity) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+      
+      const propertyCount = await storage.getEntityPropertyCount(req.params.id, org.id);
+      res.json(propertyCount);
+    } catch (error) {
+      console.error("Error fetching entity property count:", error);
+      res.status(500).json({ message: "Failed to fetch entity property count" });
+    }
+  });
+
   // Property routes
   app.get('/api/properties/:id/performance', isAuthenticated, async (req: any, res) => {
     try {
