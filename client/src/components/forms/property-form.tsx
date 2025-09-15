@@ -126,12 +126,6 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"Individual" | "LLC" | "Partnership" | "Corporation">("Individual");
   
-  // Refs for form initialization timing control
-  const hasInitializedRef = useRef<string | null>(null);
-  const isInitializingRef = useRef(false);
-  
-  // Local state for purchase price display formatting
-  const [purchasePriceDisplay, setPurchasePriceDisplay] = useState("");
 
 
   const form = useForm<z.infer<typeof propertySchema>>({
@@ -176,23 +170,16 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       ...initialData,
       // Force correct numeric values for critical fields
       ...(initialData && {
-        purchasePrice: initialData.purchasePrice ? Number(initialData.purchasePrice) : undefined,
+        purchasePrice: initialData.purchasePrice ? Number(initialData.purchasePrice) : (initialData.propertyValue ? Number(initialData.propertyValue) : undefined),
         numberOfUnits: initialData.numberOfUnits ? Number(initialData.numberOfUnits) : 1,
         propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
       }),
     },
   });
 
-  // Effect to reset form when initialData.id changes (for editing) - using layoutEffect for timing
-  React.useLayoutEffect(() => {
-    const currentId = (initialData as any)?.id;
-    
-    // Only reset when ID actually changes (prevents multiple resets during async data enrichment)
-    if (initialData && currentId && hasInitializedRef.current !== currentId) {
-      
-      isInitializingRef.current = true;
-      hasInitializedRef.current = currentId;
-      
+  // Effect to reset form when initialData changes (for editing)
+  React.useEffect(() => {
+    if (initialData) {
       const resetData = {
         ...initialData,
         // Normalize numbers
@@ -213,42 +200,10 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         mortgageStartDate2: initialData.mortgageStartDate2 ? new Date(initialData.mortgageStartDate2) : undefined,
       };
       
-      // Single reset with normalized data
       form.reset(resetData);
-      
-      // Initialize purchase price display value
-      setPurchasePriceDisplay(resetData.purchasePrice ? Number(resetData.purchasePrice).toLocaleString() : "");
-      
-      // Mark initialization complete
-      isInitializingRef.current = false;
     }
-  }, [(initialData as any)?.id, form]);
+  }, [initialData, form]);
 
-  // Auto-fill purchase price with property value when property value changes (guarded during initialization)
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      // Skip auto-fill during initialization to prevent conflicts
-      if (isInitializingRef.current) return;
-      
-      if (name === 'propertyValue' && value.propertyValue && value.propertyValue !== 0) {
-        // Auto-fill if purchase price is empty, zero, null, or not yet set
-        const currentPurchasePrice = value.purchasePrice;
-        if (!currentPurchasePrice || currentPurchasePrice === 0 || currentPurchasePrice === undefined || currentPurchasePrice === null) {
-          const newValue = Number(value.propertyValue);
-          form.setValue('purchasePrice', newValue);
-          setPurchasePriceDisplay(newValue.toLocaleString());
-        }
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
-
-  // Auto-fill purchase price for NEW properties only (not editing)
-  useEffect(() => {
-    if (!initialData && form.getValues('propertyValue') && !form.getValues('purchasePrice')) {
-      form.setValue('purchasePrice', form.getValues('propertyValue'));
-    }
-  }, [form.watch('propertyValue'), initialData, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -1460,32 +1415,12 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                       <Input
-                        type="text"
-                        inputMode="decimal"
-                        pattern="[0-9,\.]*"
-                        placeholder="500,000"
+                        type="number"
+                        step="any"
+                        placeholder="500000"
                         className="pl-9"
-                        value={purchasePriceDisplay}
-                        onFocus={() => {
-                          // Remove formatting for editing
-                          const unformatted = purchasePriceDisplay.replace(/,/g, '');
-                          setPurchasePriceDisplay(unformatted);
-                        }}
-                        onChange={(e) => {
-                          const rawValue = e.target.value.replace(/,/g, '');
-                          setPurchasePriceDisplay(e.target.value);
-                          const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
-                          field.onChange(numericValue);
-                        }}
-                        onBlur={() => {
-                          // Re-apply formatting on blur
-                          const currentValue = field.value;
-                          if (currentValue && !isNaN(Number(currentValue))) {
-                            setPurchasePriceDisplay(Number(currentValue).toLocaleString());
-                          } else {
-                            setPurchasePriceDisplay("");
-                          }
-                        }}
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                         data-testid="input-purchase-price"
                       />
                     </div>
