@@ -92,7 +92,9 @@ export default function Tax() {
 
   // Calculate tax metrics
   const expenseTransactions = transactions.filter((t: Transaction) => t.type === "Expense");
-  const uncategorizedExpenses = expenseTransactions.filter((t: Transaction) => !t.scheduleECategory);
+  const uncategorizedExpenses = expenseTransactions.filter((t: Transaction) => 
+    t.taxDeductible && !t.scheduleECategory
+  );
   const vendorsNeed1099 = vendors.filter((v: Vendor) => v.vendorType === "individual" && !v.w9OnFile);
   
   // Calculate total annual expenses by Schedule E category
