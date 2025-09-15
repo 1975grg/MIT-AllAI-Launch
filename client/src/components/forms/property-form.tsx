@@ -180,13 +180,17 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
   // Effect to reset form when initialData changes (for editing)
   React.useEffect(() => {
     if (initialData) {
+      console.log("🔍 Form reset - initialData:", initialData);
+      console.log("🔍 Purchase price from data:", initialData.purchasePrice);
+      console.log("🔍 Property value from data:", initialData.propertyValue);
+      
       const resetData = {
         ...initialData,
         // Normalize numbers
         propertyValue: initialData.propertyValue ? Number(initialData.propertyValue) : undefined,
         monthlyMortgage: initialData.monthlyMortgage ? Number(initialData.monthlyMortgage) : undefined,
         interestRate: initialData.interestRate ? Number(initialData.interestRate) : undefined,
-        purchasePrice: initialData.purchasePrice ? Number(initialData.purchasePrice) : undefined,
+        purchasePrice: initialData.purchasePrice ? Number(initialData.purchasePrice) : (initialData.propertyValue ? Number(initialData.propertyValue) : undefined),
         downPayment: initialData.downPayment ? Number(initialData.downPayment) : undefined,
         salePrice: initialData.salePrice ? Number(initialData.salePrice) : undefined,
         numberOfUnits: Number(initialData.numberOfUnits ?? 1),
@@ -199,6 +203,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
         mortgageStartDate: initialData.mortgageStartDate ? new Date(initialData.mortgageStartDate) : undefined,
         mortgageStartDate2: initialData.mortgageStartDate2 ? new Date(initialData.mortgageStartDate2) : undefined,
       };
+      
+      console.log("🔧 Normalized purchase price:", resetData.purchasePrice);
       
       form.reset(resetData);
     }
