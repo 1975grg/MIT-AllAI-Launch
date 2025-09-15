@@ -207,6 +207,7 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
       
       console.log("🔧 Normalized numberOfUnits:", resetData.numberOfUnits);
       console.log("🔧 Normalized purchasePrice:", resetData.purchasePrice);
+      console.log("🔧 Original purchasePrice from DB:", initialData.purchasePrice);
       
       // Single reset with normalized data
       form.reset(resetData);
@@ -1451,7 +1452,13 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                         placeholder="500,000"
                         className="pl-9"
                         key={`purchase-price-${(initialData as any)?.id || 'new'}`}
-                                        value={field.value && field.value !== 0 && !isNaN(Number(field.value)) ? Number(field.value).toLocaleString() : ""}
+                        value={(() => {
+                          const val = field.value;
+                          if (!val || val === 0) return "";
+                          const numVal = Number(val);
+                          if (isNaN(numVal)) return "";
+                          return numVal.toLocaleString();
+                        })()}
                         onChange={(e) => {
                           const rawValue = e.target.value.replace(/,/g, '');
                           const numericValue = rawValue === '' ? undefined : parseFloat(rawValue);
