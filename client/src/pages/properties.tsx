@@ -230,8 +230,8 @@ export default function Properties() {
     // Filter by entity
     const entityMatch = selectedEntity === "all" || property.ownerships?.some((ownership: any) => ownership.entityId === selectedEntity);
     
-    // Filter by archive status
-    const isArchived = property.status === "Archived";
+    // Filter by archive status (using saleDate as archive marker)
+    const isArchived = !!property.saleDate;
     const statusMatch = showArchived ? isArchived : !isArchived;
     
     return entityMatch && statusMatch;
@@ -525,7 +525,7 @@ export default function Properties() {
           ) : (filteredProperties && filteredProperties.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProperties.map((property, index) => (
-                <Card key={property.id} className={`hover:shadow-md transition-shadow ${property.status === "Archived" ? "border-orange-300 bg-orange-50/30 opacity-80" : ""}`} data-testid={`card-property-${index}`}>
+                <Card key={property.id} className={`hover:shadow-md transition-shadow ${property.saleDate ? "border-orange-300 bg-orange-50/30 opacity-80" : ""}`} data-testid={`card-property-${index}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
@@ -536,7 +536,7 @@ export default function Properties() {
                           <CardTitle className="text-lg" data-testid={`text-property-name-${index}`}>{property.name}</CardTitle>
                           <div className="flex items-center space-x-2 mt-1">
                             <Badge variant="secondary" data-testid={`badge-property-type-${index}`}>{property.type}</Badge>
-                            {property.status === "Archived" && (
+                            {property.saleDate && (
                               <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50" data-testid={`badge-archived-${index}`}>
                                 Archived
                               </Badge>
@@ -920,7 +920,7 @@ export default function Properties() {
                       >
                         Edit
                       </Button>
-                      {property.status !== "Archived" && (
+                      {!property.saleDate && (
                         <Button 
                           variant="outline" 
                           size="sm" 
