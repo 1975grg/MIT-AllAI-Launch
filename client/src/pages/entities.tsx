@@ -15,6 +15,7 @@ import { useLocation } from "wouter";
 import type { OwnershipEntity, Property, Unit } from "@shared/schema";
 import EntityForm from "@/components/forms/entity-form";
 import ReminderForm from "@/components/forms/reminder-form";
+import { useEntityPropertyCount } from "@/hooks/useEntityPropertyCount";
 
 export default function Entities() {
   const { toast } = useToast();
@@ -24,6 +25,9 @@ export default function Entities() {
   const [showArchiveConfirm, setShowArchiveConfirm] = useState<string | null>(null);
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [, setLocation] = useLocation();
+
+  // Get property count for the entity being archived
+  const { data: propertyCount, isLoading: propertyCountLoading } = useEntityPropertyCount(showArchiveConfirm || undefined);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -124,7 +128,11 @@ export default function Entities() {
 
   const archiveEntityMutation = useMutation({
     mutationFn: async (entityId: string) => {
-      const response = await apiRequest("PATCH", `/api/entities/${entityId}`, { status: "Archived" });
+      const response = await apiRequest("PATCH", `/api/entities/${entityId}/archive`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -147,6 +155,22 @@ export default function Entities() {
         }, 500);
         return;
       }
+      
+      // Handle property ownership error
+      try {
+        const errorData = JSON.parse(error.message);
+        if (errorData.error === "ENTITY_OWNS_PROPERTIES") {
+          toast({
+            title: "Cannot Archive Entity",
+            description: errorData.details || "Entity owns properties. Please reassign ownership first.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch {
+        // Fall through to default error handling
+      }
+      
       toast({
         title: "Error",
         description: "Failed to archive entity",
@@ -291,19 +315,52 @@ export default function Entities() {
                   <DialogTitle>Archive Entity</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Archive this ownership entity? This will:
-                  </p>
-                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                    <li>Mark entity as "Archived" - it won't show in active lists</li>
-                    <li>Preserve all historical data and ownership records</li>
-                    <li>Allow you to view it in archived entity reports</li>
-                  </ul>
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      💡 <strong>Tip:</strong> Use this when you dissolve an entity or stop using it for property ownership while keeping compliance records.
-                    </p>
-                  </div>
+                  {propertyCountLoading ? (
+                    <div className="text-sm text-muted-foreground">
+                      Checking property ownership...
+                    </div>
+                  ) : propertyCount && propertyCount.count > 0 ? (
+                    // Show warning if entity owns properties
+                    <div className="space-y-4">
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Archive className="h-4 w-4 text-red-600" />
+                          <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                            Cannot Archive Entity
+                          </p>
+                        </div>
+                        <p className="text-sm text-red-700 dark:text-red-300 mb-3">
+                          This entity owns {propertyCount.count} propert{propertyCount.count === 1 ? 'y' : 'ies'}:
+                        </p>
+                        <ul className="text-sm text-red-700 dark:text-red-300 list-disc list-inside space-y-1">
+                          {propertyCount.properties.map(property => (
+                            <li key={property.id}>{property.name}</li>
+                          ))}
+                        </ul>
+                        <p className="text-sm text-red-700 dark:text-red-300 mt-3 font-medium">
+                          Please reassign property ownership before archiving this entity.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    // Show normal archive dialog if no properties owned
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Archive this ownership entity? This will:
+                      </p>
+                      <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                        <li>Mark entity as "Archived" - it won't show in active lists</li>
+                        <li>Preserve all historical data and ownership records</li>
+                        <li>Allow you to view it in archived entity reports</li>
+                      </ul>
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          💡 <strong>Tip:</strong> Use this when you dissolve an entity or stop using it for property ownership while keeping compliance records.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-end space-x-2 pt-4">
                     <Button 
                       variant="outline" 
@@ -319,7 +376,8 @@ export default function Entities() {
                           archiveEntityMutation.mutate(showArchiveConfirm);
                         }
                       }}
-                      disabled={archiveEntityMutation.isPending}
+                      disabled={archiveEntityMutation.isPending || (propertyCount && propertyCount.count > 0)}
+                      data-testid="button-archive-entity"
                     >
                       <Archive className="h-4 w-4 mr-2" />
                       {archiveEntityMutation.isPending ? "Archiving..." : "Archive Entity"}
