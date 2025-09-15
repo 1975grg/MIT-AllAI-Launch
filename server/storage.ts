@@ -244,6 +244,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteOwnershipEntity(id: string): Promise<void> {
+    // CASCADE DELETE: Clean up all related data to prevent FK violations
+    
+    // 1. Delete property ownerships for this entity
+    await db.delete(propertyOwnerships).where(eq(propertyOwnerships.entityId, id));
+    
+    // 2. Delete transactions related to this entity
+    await db.delete(transactions).where(eq(transactions.entityId, id));
+    
+    // 3. Delete reminders scoped to this entity
+    await db.delete(reminders).where(and(eq(reminders.scope, "entity"), eq(reminders.scopeId, id)));
+    
+    // 4. Finally delete the entity itself
     await db.delete(ownershipEntities).where(eq(ownershipEntities.id, id));
   }
 
@@ -798,6 +810,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProperty(id: string): Promise<void> {
+    // CASCADE DELETE: Clean up all related data to prevent FK violations
+    
+    // 1. Delete property ownerships
+    await db.delete(propertyOwnerships).where(eq(propertyOwnerships.propertyId, id));
+    
+    // 2. Get units for this property and delete them with their dependencies
+    const propertyUnits = await db.select({ id: units.id }).from(units).where(eq(units.propertyId, id));
+    
+    for (const unit of propertyUnits) {
+      // Delete unit appliances
+      await db.delete(unitAppliances).where(eq(unitAppliances.unitId, unit.id));
+      
+      // Delete leases for this unit
+      await db.delete(leases).where(eq(leases.unitId, unit.id));
+    }
+    
+    // 3. Delete all units for this property
+    await db.delete(units).where(eq(units.propertyId, id));
+    
+    // 4. Delete transactions related to this property
+    await db.delete(transactions).where(eq(transactions.propertyId, id));
+    
+    // 5. Delete reminders scoped to this property
+    await db.delete(reminders).where(and(eq(reminders.scope, "property"), eq(reminders.scopeId, id)));
+    
+    // 6. Delete assets related to this property
+    await db.delete(assets).where(eq(assets.propertyId, id));
+    
+    // 7. Finally delete the property itself
     await db.delete(properties).where(eq(properties.id, id));
   }
 

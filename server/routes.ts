@@ -410,8 +410,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const entity = await storage.updateOwnershipEntity(req.params.id, { status: "Archived" });
-      res.json({ message: "Entity archived successfully", entity });
+      // SECURITY: Check if entity exists and belongs to organization
+      const entities = await storage.getOwnershipEntities(org.id);
+      const entity = entities.find(e => e.id === req.params.id);
+      if (!entity) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+      
+      const archivedEntity = await storage.updateOwnershipEntity(req.params.id, { status: "Archived" });
+      res.json({ message: "Entity archived successfully", entity: archivedEntity });
     } catch (error) {
       console.error("Error archiving entity:", error);
       res.status(500).json({ message: "Failed to archive entity" });
@@ -887,8 +894,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const property = await storage.updateProperty(req.params.id, { status: "Archived" });
-      res.json({ message: "Property archived successfully", property });
+      // SECURITY: Check if property exists and belongs to organization  
+      const property = await storage.getProperty(req.params.id);
+      if (!property || property.orgId !== org.id) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      const archivedProperty = await storage.updateProperty(req.params.id, { status: "Archived" });
+      res.json({ message: "Property archived successfully", property: archivedProperty });
     } catch (error) {
       console.error("Error archiving property:", error);
       res.status(500).json({ message: "Failed to archive property" });
@@ -1124,25 +1137,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Permanently delete a tenant group
-  app.delete('/api/tenants/:groupId/permanent', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/tenant-groups/:id/permanent', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const { groupId } = req.params;
+      const { id } = req.params;
       
-      // Check if tenant group exists and belongs to organization
-      const tenantGroup = await storage.getTenantGroup(groupId);
+      // SECURITY: Check if tenant group exists and belongs to organization
+      const tenantGroup = await storage.getTenantGroup(id);
       if (!tenantGroup || tenantGroup.orgId !== org.id) {
         return res.status(404).json({ message: "Tenant group not found" });
       }
       
-      await storage.deleteTenantGroup(groupId);
-      res.json({ message: "Tenant deleted permanently" });
+      await storage.deleteTenantGroup(id);
+      res.json({ message: "Tenant group deleted permanently" });
     } catch (error) {
-      console.error("Error deleting tenant:", error);
-      res.status(500).json({ message: "Failed to delete tenant" });
+      console.error("Error deleting tenant group:", error);
+      res.status(500).json({ message: "Failed to delete tenant group" });
     }
   });
 
