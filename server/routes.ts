@@ -1195,6 +1195,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Archive a tenant group
+  app.patch('/api/tenants/:groupId/archive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { groupId } = req.params;
+      
+      // SECURITY: Check if tenant group exists and belongs to organization
+      const tenantGroup = await storage.getTenantGroup(groupId);
+      if (!tenantGroup || tenantGroup.orgId !== org.id) {
+        return res.status(404).json({ message: "Tenant group not found" });
+      }
+      
+      // Archive the tenant group
+      const archivedTenant = await storage.archiveTenantGroup(groupId);
+      
+      res.json({ message: "Tenant archived successfully", tenant: archivedTenant });
+    } catch (error) {
+      console.error("Error archiving tenant:", error);
+      res.status(500).json({ message: "Failed to archive tenant" });
+    }
+  });
+
+  // Unarchive a tenant group  
+  app.patch('/api/tenants/:groupId/unarchive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { groupId } = req.params;
+      
+      // SECURITY: Check if tenant group exists and belongs to organization
+      const tenantGroup = await storage.getTenantGroup(groupId);
+      if (!tenantGroup || tenantGroup.orgId !== org.id) {
+        return res.status(404).json({ message: "Tenant group not found" });
+      }
+      
+      // Unarchive the tenant group (set status to "Active")
+      const unarchivedTenant = await storage.updateTenantGroup(groupId, { status: "Active" });
+      
+      res.json({ message: "Tenant unarchived successfully", tenant: unarchivedTenant });
+    } catch (error) {
+      console.error("Error unarchiving tenant:", error);
+      res.status(500).json({ message: "Failed to unarchive tenant" });
+    }
+  });
+
   app.delete('/api/tenants/:groupId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
