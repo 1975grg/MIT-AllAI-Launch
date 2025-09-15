@@ -527,6 +527,7 @@ export class DatabaseStorage implements IStorage {
         acquisitionDate: properties.acquisitionDate,
         saleDate: properties.saleDate,
         salePrice: properties.salePrice,
+        status: properties.status,
         // Include ownership information
         ownershipEntityId: propertyOwnerships.entityId,
         ownershipPercent: propertyOwnerships.percent,
@@ -577,7 +578,7 @@ export class DatabaseStorage implements IStorage {
           acquisitionDate: row.acquisitionDate,
           saleDate: row.saleDate,
           salePrice: row.salePrice ? Number(row.salePrice) : undefined,
-          status: (row as any).status || "Active", // Add status field for archive functionality
+          status: row.status || "Active", // Add status field for archive functionality
           ownerships: []
         });
       }

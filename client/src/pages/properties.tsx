@@ -888,7 +888,7 @@ export default function Properties() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2 mt-4 mx-2">
+                    <div className="flex gap-2 mt-4 p-4 pt-0">
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -925,7 +925,7 @@ export default function Properties() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="px-3 min-w-[44px] justify-center" 
+                          className="px-2" 
                           onClick={() => setShowArchiveConfirm(property.id)}
                           data-testid={`button-archive-property-${index}`}
                           disabled={archivePropertyMutation.isPending}
@@ -936,7 +936,7 @@ export default function Properties() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="px-3 min-w-[44px] justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" 
+                        className="px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" 
                         onClick={() => setShowDeleteConfirm(property.id)}
                         data-testid={`button-delete-property-${index}`}
                       >
