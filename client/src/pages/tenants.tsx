@@ -94,6 +94,18 @@ export default function Tenants() {
     retry: false,
   });
 
+  // Query for checking tenant relationships before delete
+  const { data: tenantRelationships, refetch: checkTenantRelationships } = useQuery({
+    queryKey: ["/api/tenants", "relationship-count", showPermanentDeleteConfirm],
+    queryFn: async () => {
+      if (!showPermanentDeleteConfirm) return null;
+      const response = await apiRequest("GET", `/api/tenants/${showPermanentDeleteConfirm}/relationship-count`);
+      return response.json();
+    },
+    enabled: false, // Only run when manually triggered
+    retry: false,
+  });
+
   const createTenantMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/tenants", data);
@@ -905,7 +917,32 @@ export default function Tenants() {
                             variant="destructive" 
                             size="sm" 
                             className="px-3" 
-                            onClick={() => setShowPermanentDeleteConfirm(group.id)}
+                            onClick={async () => {
+                              try {
+                                // Preflight check: verify tenant can be deleted
+                                const response = await apiRequest("GET", `/api/tenants/${group.id}/relationship-count`);
+                                const relationshipData = await response.json();
+                                
+                                if (relationshipData.count > 0) {
+                                  // Show blocking message instead of delete dialog
+                                  toast({
+                                    title: "Cannot Delete Tenant",
+                                    description: `This tenant has ${relationshipData.count} relationship${relationshipData.count === 1 ? '' : 's'} (leases, transactions). Please archive instead of deleting.`,
+                                    variant: "destructive",
+                                  });
+                                } else {
+                                  // Safe to delete - show confirmation dialog
+                                  setShowPermanentDeleteConfirm(group.id);
+                                }
+                              } catch (error) {
+                                console.error("Error checking tenant relationships:", error);
+                                toast({
+                                  title: "Error",
+                                  description: "Could not verify tenant relationships. Please try again.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
                             data-testid={`button-delete-tenant-${index}`}
                             disabled={permanentDeleteTenantMutation.isPending}
                           >
