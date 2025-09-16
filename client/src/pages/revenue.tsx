@@ -291,6 +291,20 @@ export default function Revenue() {
 
   // Apply future payment filtering
   const now = new Date();
+  
+  // Helper function to get smart payment status display text
+  const getPaymentStatusDisplay = (revenue: Transaction) => {
+    const paymentStatus = revenue.paymentStatus || 'Unpaid';
+    if (paymentStatus !== 'Unpaid') {
+      return paymentStatus; // Return as-is for Paid, Partial, Skipped
+    }
+    
+    // For 'Unpaid' status, check if it's actually future/not due yet
+    const transactionDate = new Date(revenue.date);
+    const isInFuture = transactionDate > now;
+    
+    return isInFuture ? 'Not due yet' : 'Unpaid';
+  };
   const filteredRevenuesByTime = showFuturePayments 
     ? filteredRevenues  // Show all
     : filteredRevenues.filter(revenue => new Date(revenue.date) <= now); // Current & past only
@@ -364,17 +378,32 @@ export default function Revenue() {
   }).filter(p => p.total > 0).sort((a, b) => b.total - a.total);
 
   // Payment Analysis Data
-  const paymentStatusData = ['Paid', 'Partial', 'Unpaid', 'Skipped'].map(status => {
-    const statusRevenues = filteredRevenues.filter(r => (r.paymentStatus || 'Unpaid') === status);
-    const total = statusRevenues.reduce((sum, r) => sum + Number(r.amount), 0);
-    const count = statusRevenues.length;
-    return {
-      status,
-      total,
-      count,
-      percentage: filteredRevenues.length > 0 ? Math.round((count / filteredRevenues.length) * 100) : 0
+  const paymentStatusData = (() => {
+    const statusGroups = {
+      'Paid': { total: 0, count: 0 },
+      'Partial': { total: 0, count: 0 },
+      'Not due yet': { total: 0, count: 0 },
+      'Unpaid': { total: 0, count: 0 },
+      'Skipped': { total: 0, count: 0 }
     };
-  }).filter(p => p.count > 0);
+
+    filteredRevenues.forEach(r => {
+      const smartStatus = getPaymentStatusDisplay(r);
+      if (statusGroups[smartStatus]) {
+        statusGroups[smartStatus].total += Number(r.amount);
+        statusGroups[smartStatus].count += 1;
+      }
+    });
+
+    return Object.entries(statusGroups)
+      .map(([status, data]) => ({
+        status,
+        total: data.total,
+        count: data.count,
+        percentage: filteredRevenues.length > 0 ? Math.round((data.count / filteredRevenues.length) * 100) : 0
+      }))
+      .filter(s => s.count > 0);
+  })();
 
   // Timeline & Trends Data
   const monthlyTrendsData = Array.from({ length: 12 }, (_, i) => {
@@ -713,14 +742,15 @@ export default function Revenue() {
                                     variant="outline" 
                                     size="sm"
                                     className={`h-6 px-2 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 ${
-                                      (revenue.paymentStatus || 'Unpaid') === 'Paid' ? "text-green-600 border-green-600" :
-                                      (revenue.paymentStatus || 'Unpaid') === 'Partial' ? "text-yellow-600 border-yellow-600" :
-                                      (revenue.paymentStatus || 'Unpaid') === 'Skipped' ? "text-gray-600 border-gray-600" :
+                                      getPaymentStatusDisplay(revenue) === 'Paid' ? "text-green-600 border-green-600" :
+                                      getPaymentStatusDisplay(revenue) === 'Partial' ? "text-yellow-600 border-yellow-600" :
+                                      getPaymentStatusDisplay(revenue) === 'Skipped' ? "text-gray-600 border-gray-600" :
+                                      getPaymentStatusDisplay(revenue) === 'Not due yet' ? "text-blue-600 border-blue-600" :
                                       "text-orange-600 border-orange-600"
                                     }`}
                                     data-testid={`badge-payment-status-${index}`}
                                   >
-                                    {revenue.paymentStatus || 'Unpaid'}
+                                    {getPaymentStatusDisplay(revenue)}
                                     <ChevronDown className="h-3 w-3 ml-1" />
                                   </Button>
                                 </DropdownMenuTrigger>
@@ -1162,12 +1192,14 @@ export default function Revenue() {
                         <div className={`w-12 h-12 rounded-lg mx-auto mb-2 flex items-center justify-center ${
                           status.status === 'Paid' ? 'bg-green-100' :
                           status.status === 'Partial' ? 'bg-yellow-100' :
+                          status.status === 'Not due yet' ? 'bg-blue-100' :
                           status.status === 'Skipped' ? 'bg-gray-100' :
                           'bg-red-100'
                         }`}>
                           <DollarSign className={`h-6 w-6 ${
                             status.status === 'Paid' ? 'text-green-600' :
                             status.status === 'Partial' ? 'text-yellow-600' :
+                            status.status === 'Not due yet' ? 'text-blue-600' :
                             status.status === 'Skipped' ? 'text-gray-600' :
                             'text-red-600'
                           }`} />
@@ -1207,6 +1239,7 @@ export default function Revenue() {
                             <Cell key={`cell-${index}`} fill={
                               entry.status === 'Paid' ? '#22c55e' :
                               entry.status === 'Partial' ? '#eab308' :
+                              entry.status === 'Not due yet' ? '#3b82f6' :
                               entry.status === 'Skipped' ? '#6b7280' :
                               '#ef4444'
                             } />
@@ -1233,6 +1266,7 @@ export default function Revenue() {
                             <div className={`w-4 h-4 rounded ${
                               status.status === 'Paid' ? 'bg-green-500' :
                               status.status === 'Partial' ? 'bg-yellow-500' :
+                              status.status === 'Not due yet' ? 'bg-blue-500' :
                               status.status === 'Skipped' ? 'bg-gray-500' :
                               'bg-red-500'
                             }`}></div>
