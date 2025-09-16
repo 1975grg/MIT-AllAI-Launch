@@ -944,19 +944,25 @@ export default function Revenue() {
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                              {monthTransactions.length > 0 && monthTransactions.map((transaction) => {
+                              {recurringRevenues.map((recurringRevenue) => {
+                                // Find actual transaction for this recurring revenue in this month
+                                const actualTransaction = monthTransactions.find(t => 
+                                  t.parentRecurringId === recurringRevenue.id || t.id === recurringRevenue.id
+                                );
+                                
                                 // Use same smart payment status logic as List view
-                                const smartPaymentStatus = getPaymentStatusDisplay(transaction);
+                                const smartPaymentStatus = actualTransaction ? getPaymentStatusDisplay(actualTransaction) : 'Not due yet';
                                 
                                 return (
-                                  <div key={`${month.year}-${month.month}-${transaction.id}`} 
+                                  <div key={`${month.year}-${month.month}-${recurringRevenue.id}`} 
                                        className="flex items-center justify-between p-3 border rounded-lg">
                                     <div className="flex-1">
-                                      <div className="font-medium text-sm">{transaction.description}</div>
+                                      <div className="font-medium text-sm">{recurringRevenue.description}</div>
                                       <div className="text-xs text-muted-foreground">
-                                        ${Number(transaction.amount).toLocaleString()}
+                                        ${Number(recurringRevenue.amount).toLocaleString()}
                                       </div>
                                     </div>
+                                    {actualTransaction ? (
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                           <Button
@@ -977,7 +983,7 @@ export default function Revenue() {
                                         <DropdownMenuContent align="end">
                                           <DropdownMenuItem
                                             onClick={() => updatePaymentStatusMutation.mutate({
-                                              transactionId: transaction.id,
+                                              transactionId: actualTransaction.id,
                                               paymentStatus: 'Paid'
                                             })}
                                             className="text-green-600"
@@ -988,8 +994,8 @@ export default function Revenue() {
                                           <DropdownMenuItem
                                             onClick={() => setPartialPaymentDialog({
                                               open: true,
-                                              transactionId: transaction.id,
-                                              expectedAmount: Number(transaction.amount)
+                                              transactionId: actualTransaction.id,
+                                              expectedAmount: Number(recurringRevenue.amount)
                                             })}
                                             className="text-yellow-600"
                                           >
@@ -997,7 +1003,7 @@ export default function Revenue() {
                                           </DropdownMenuItem>
                                           <DropdownMenuItem
                                             onClick={() => updatePaymentStatusMutation.mutate({
-                                              transactionId: transaction.id,
+                                              transactionId: actualTransaction.id,
                                               paymentStatus: 'Unpaid'
                                             })}
                                             className="text-orange-600"
@@ -1006,7 +1012,7 @@ export default function Revenue() {
                                           </DropdownMenuItem>
                                           <DropdownMenuItem
                                             onClick={() => updatePaymentStatusMutation.mutate({
-                                              transactionId: transaction.id,
+                                              transactionId: actualTransaction.id,
                                               paymentStatus: 'Skipped'
                                             })}
                                             className="text-gray-600"
@@ -1015,6 +1021,11 @@ export default function Revenue() {
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
+                                    ) : (
+                                      <Badge variant="outline" className="text-gray-600 border-gray-600">
+                                        No Transaction
+                                      </Badge>
+                                    )}
                                   </div>
                                 );
                               })}
