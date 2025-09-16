@@ -22,6 +22,7 @@ import { z } from "zod";
 import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, Bell } from "lucide-react";
 import ReminderForm from "@/components/forms/reminder-form";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
+import PropertyAssistant from "@/components/ai/property-assistant";
 
 // Predefined maintenance categories
 const MAINTENANCE_CATEGORIES = [
@@ -782,6 +783,17 @@ export default function Maintenance() {
               </Dialog>
             </div>
           </div>
+
+          {/* Mailla AI Assistant */}
+          <PropertyAssistant 
+            context="maintenance"
+            exampleQuestions={[
+              "What maintenance is overdue or urgent?",
+              "Which property needs the most attention?",
+              "Any recurring maintenance patterns I should address?",
+              "What repairs are costing me the most?"
+            ]}
+          />
 
           {casesLoading ? (
             <div className="grid grid-cols-1 gap-6">
