@@ -346,6 +346,25 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-3">
+                    {/* Mailla AI Assistant - Centered at top */}
+                    <Button
+                      variant="ghost"
+                      className="col-span-2 h-20 flex flex-col items-center justify-center space-y-2 border border-purple-200 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800 dark:bg-purple-900/20 dark:hover:bg-purple-900/30"
+                      onClick={() => {
+                        const maillaElement = document.getElementById('mailla-assistant');
+                        if (maillaElement) {
+                          maillaElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }}
+                      aria-label="Focus on Mailla AI Assistant"
+                      data-testid="button-mailla-assistant"
+                    >
+                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                        <Bot className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Mailla AI Assistant</span>
+                    </Button>
+
                     <Button
                       variant="ghost"
                       className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
@@ -418,16 +437,6 @@ export default function Dashboard() {
                       <span className="text-sm font-medium">Reminder</span>
                     </Button>
 
-                    <Button
-                      variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
-                      data-testid="button-mailla-assistant"
-                    >
-                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
-                        <Bot className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <span className="text-sm font-medium">Mailla</span>
-                    </Button>
                   </div>
                 </CardContent>
               </Card>

@@ -114,7 +114,7 @@ export default function PropertyAssistant({ context = "dashboard", exampleQuesti
   };
 
   return (
-    <Card className="mb-8" data-testid="card-ai-assistant">
+    <Card id="mailla-assistant" className="mb-8" data-testid="card-ai-assistant">
       <CardHeader>
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
