@@ -328,8 +328,8 @@ export default function PropertyForm({ entities, onSubmit, onCancel, isLoading, 
                     form.setValue("numberOfUnits", Math.max(currentCount, 2));
                     generateUnits(Math.max(currentCount, 2));
                   } else {
-                    // For single-unit properties, reset to default state
-                    form.setValue("createDefaultUnit", false);
+                    // For single-unit properties, create a default unit so leases can reference it
+                    form.setValue("createDefaultUnit", true);
                     form.setValue("hasMultipleUnits", false);
                     form.setValue("numberOfUnits", 1);
                     form.setValue("units", []);

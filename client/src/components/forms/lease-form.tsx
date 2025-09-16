@@ -136,8 +136,17 @@ export default function LeaseForm({
   }, [existingLease, units, form]);
 
   const handleSubmit = (data: LeaseFormData) => {
+    // For non-building properties, automatically use the property's default unit
+    let unitId = data.unitId;
+    if (!unitId && !isPropertyBuilding && availableUnits.length > 0) {
+      // For single-family properties, use the first (and only) available unit
+      unitId = availableUnits[0].id;
+      console.log("🏠 Auto-selecting unit for single-family property:", unitId);
+    }
+
     const submitData = {
       ...data,
+      unitId, // Use the resolved unitId
       tenantGroupId: tenantGroup.id,
       rent: parseFloat(data.rent).toFixed(2),
       deposit: data.deposit ? parseFloat(data.deposit).toFixed(2) : undefined,
