@@ -1816,6 +1816,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rentYear = firstRentDate.getFullYear();
       const clearDescription = `${rentMonth} ${rentYear} Rent`;
 
+      // Get property details for user-friendly notes
+      const property = await storage.getProperty(unit.propertyId);
+      if (!property) {
+        console.error(`Property not found for unit ${unit.id}`);
+        return;
+      }
+
+      // Create user-friendly location description
+      const propertyName = property.name || `${property.street}, ${property.city}`;
+      let locationDescription = propertyName;
+      
+      // Add unit information for buildings with multiple units
+      if (unit.label && unit.label.trim()) {
+        locationDescription += `, Unit ${unit.label}`;
+      }
+
       // Prepare rent revenue data matching existing schema patterns
       const rentRevenueData = {
         orgId: orgId,
@@ -1832,7 +1848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recurringInterval: 1,
         recurringEndDate: new Date(lease.endDate), // Ensure proper date normalization
         taxDeductible: false, // Rental income is taxable, not deductible
-        notes: `Recurring rent for lease ${lease.id}`,
+        notes: `Recurring rent for ${locationDescription}`,
         paymentStatus: "Unpaid" as const, // Rent starts as unpaid until payment received
       };
 
