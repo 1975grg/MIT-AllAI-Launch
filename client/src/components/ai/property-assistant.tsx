@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot, Send, Lightbulb, CheckCircle, Calendar, AlertCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type AIResponse = {
   answer: {
@@ -120,8 +121,17 @@ export default function PropertyAssistant({ context = "dashboard", exampleQuesti
             <Bot className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <CardTitle className="text-lg">Mailla</CardTitle>
-            <p className="text-sm text-muted-foreground">Your AI assistant for part-time landlords</p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle className="text-lg cursor-help">Mailla</CardTitle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">ask me anything, I will leverage my intimate knowledge of your real estate portfolio and the power of AI to try to help you</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <p className="text-sm text-muted-foreground">Enjoy the Power of your Personal AI Assistant</p>
           </div>
         </div>
       </CardHeader>
