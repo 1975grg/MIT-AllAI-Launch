@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ export default function Revenue() {
   const [viewMode, setViewMode] = useState<"list" | "schedule" | "property" | "payment" | "trends" | "tenant">("list");
   const [partialPaymentDialog, setPartialPaymentDialog] = useState<{open: boolean; transactionId: string; expectedAmount: number} | null>(null);
   const [partialAmount, setPartialAmount] = useState("");
+  const [showFuturePayments, setShowFuturePayments] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -287,6 +289,15 @@ export default function Revenue() {
     return categoryMatch && propertyMatch && entityMatch && unitMatch;
   });
 
+  // Apply future payment filtering
+  const now = new Date();
+  const filteredRevenuesByTime = showFuturePayments 
+    ? filteredRevenues  // Show all
+    : filteredRevenues.filter(revenue => new Date(revenue.date) <= now); // Current & past only
+  
+  // Count future payments for display
+  const futurePaymentCount = filteredRevenues.filter(revenue => new Date(revenue.date) > now).length;
+
   const categories = Array.from(new Set(revenueTransactions.map(r => r.category).filter(Boolean)));
   
   // Calculate totals considering only Paid and Partial payments
@@ -300,8 +311,8 @@ export default function Revenue() {
     return 0; // Unpaid and Skipped don't count towards revenue
   };
   
-  const totalRevenues = filteredRevenues.reduce((sum, revenue) => sum + getRevenueAmount(revenue), 0);
-  const thisMonthRevenues = filteredRevenues.filter(revenue => {
+  const totalRevenues = filteredRevenuesByTime.reduce((sum, revenue) => sum + getRevenueAmount(revenue), 0);
+  const thisMonthRevenues = filteredRevenuesByTime.filter(revenue => {
     const revenueMonth = new Date(revenue.date).getMonth();
     const currentMonth = new Date().getMonth();
     return revenueMonth === currentMonth;
@@ -509,6 +520,23 @@ export default function Revenue() {
                 </SelectContent>
               </Select>
 
+              {/* Future Payments Toggle */}
+              <div className="flex items-center gap-3 px-3 py-2 border rounded-lg bg-background">
+                <Switch 
+                  checked={showFuturePayments}
+                  onCheckedChange={setShowFuturePayments}
+                  data-testid="toggle-future-payments"
+                />
+                <div className="flex flex-col">
+                  <Label className="text-sm font-medium">Future payments</Label>
+                  {futurePaymentCount > 0 && (
+                    <Badge variant="outline" className="text-xs w-fit">
+                      {futurePaymentCount} upcoming
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
               <Dialog open={showRevenueForm} onOpenChange={setShowRevenueForm}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-revenue">
@@ -633,14 +661,21 @@ export default function Revenue() {
                     </Card>
                   ))}
                 </div>
-              ) : filteredRevenues.length > 0 ? (
+              ) : filteredRevenuesByTime.length > 0 ? (
                 <div className="space-y-4">
-                  {filteredRevenues.map((revenue, index) => (
-                <Card key={revenue.id} className="hover:shadow-md transition-shadow" data-testid={`card-revenue-${index}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  {filteredRevenuesByTime.map((revenue, index) => {
+                    // Check if this is a future payment for visual differentiation
+                    const isFuture = new Date(revenue.date) > now;
+                    const cardClassName = isFuture 
+                      ? "hover:shadow-md transition-shadow opacity-60 border-dashed border-2" 
+                      : "hover:shadow-md transition-shadow";
+                    
+                    return (
+                      <Card key={revenue.id} className={cardClassName} data-testid={`card-revenue-${index}`}>
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                           <DollarSign className="h-6 w-6 text-green-600" />
                         </div>
                         <div>
@@ -800,10 +835,11 @@ export default function Revenue() {
                         {revenue.notes}
                       </p>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
           ) : (
             <Card>
               <CardContent className="p-12 text-center">
