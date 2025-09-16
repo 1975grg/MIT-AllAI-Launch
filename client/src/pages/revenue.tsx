@@ -950,9 +950,8 @@ export default function Revenue() {
                                   t.parentRecurringId === recurringRevenue.id || t.id === recurringRevenue.id
                                 );
                                 
-                                const paymentStatus = actualTransaction?.paymentStatus || 'Unpaid';
-                                const isCurrentMonth = month.year === currentDate.getFullYear() && month.month === currentDate.getMonth();
-                                const isPastDue = new Date(month.year, month.month, 15) < currentDate && paymentStatus === 'Unpaid';
+                                // Use same smart payment status logic as List view
+                                const smartPaymentStatus = actualTransaction ? getPaymentStatusDisplay(actualTransaction) : 'Not due yet';
                                 
                                 return (
                                   <div key={`${month.year}-${month.month}-${recurringRevenue.id}`} 
@@ -970,14 +969,14 @@ export default function Revenue() {
                                             variant="outline" 
                                             size="sm"
                                             className={`h-6 px-2 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 ${
-                                              paymentStatus === 'Paid' ? "text-green-600 border-green-600" :
-                                              paymentStatus === 'Partial' ? "text-yellow-600 border-yellow-600" :
-                                              paymentStatus === 'Skipped' ? "text-gray-600 border-gray-600" :
-                                              isPastDue ? "text-red-600 border-red-600" :
+                                              smartPaymentStatus === 'Paid' ? "text-green-600 border-green-600" :
+                                              smartPaymentStatus === 'Partial' ? "text-yellow-600 border-yellow-600" :
+                                              smartPaymentStatus === 'Skipped' ? "text-gray-600 border-gray-600" :
+                                              smartPaymentStatus === 'Not due yet' ? "text-blue-600 border-blue-600" :
                                               "text-orange-600 border-orange-600"
                                             }`}
                                           >
-                                            {isPastDue && paymentStatus === 'Unpaid' ? 'Overdue' : paymentStatus}
+                                            {smartPaymentStatus}
                                             <ChevronDown className="h-3 w-3 ml-1" />
                                           </Button>
                                         </DropdownMenuTrigger>
