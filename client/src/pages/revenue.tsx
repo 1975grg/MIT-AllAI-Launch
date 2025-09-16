@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { DollarSign, Plus, Calendar, Building, Tag, Repeat, CheckCircle, Trash2, Grid3x3, List, ChevronDown, BarChart3, PieChart, TrendingUp, Users } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart as RechartsPieChart, Pie, LineChart, Line } from "recharts";
 import type { Transaction, Property, Unit } from "@shared/schema";
+import PropertyAssistant from "@/components/ai/property-assistant";
 
 export default function Revenue() {
   const { toast } = useToast();
@@ -644,6 +645,17 @@ export default function Revenue() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Mailla AI Assistant */}
+          <PropertyAssistant 
+            context="revenue"
+            exampleQuestions={[
+              "Who's late on rent this month?",
+              "What's my expected income this month?", 
+              "Which tenants have payment issues?",
+              "How are my rent collections trending?"
+            ]}
+          />
 
           {/* View Toggle Tabs */}
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "list" | "schedule" | "property" | "payment" | "trends" | "tenant")} className="space-y-6">
