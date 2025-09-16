@@ -19,6 +19,7 @@ import { Receipt, Plus, DollarSign, Calendar, Building, Tag, Repeat, CheckCircle
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart as RechartsPieChart, Pie } from "recharts";
 import type { Transaction, Property, Unit } from "@shared/schema";
 import { getExpenseDeductionForYear, getAmortizationStatus, formatAmortizationDisplay } from "@/lib/calculations";
+import PropertyAssistant from "@/components/ai/property-assistant";
 
 export default function Expenses() {
   const { toast } = useToast();
@@ -662,6 +663,17 @@ export default function Expenses() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Mailla AI Assistant */}
+          <PropertyAssistant 
+            context="expenses"
+            exampleQuestions={[
+              "What are my biggest expenses this quarter?",
+              "Which properties cost the most to maintain?",
+              "Any unusual spending patterns I should know about?",
+              "What's my average monthly expense per property?"
+            ]}
+          />
 
           {/* View Toggle Tabs */}
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "list" | "category" | "property" | "calendar" | "timeline")} className="space-y-6">
