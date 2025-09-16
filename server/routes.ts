@@ -1826,7 +1826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recurringEndDate: new Date(lease.endDate), // Ensure proper date normalization
         taxDeductible: false, // Rental income is taxable, not deductible
         notes: `Recurring rent for lease ${lease.id}`,
-        paymentStatus: "Pending" as const, // Rent starts as pending payment
+        paymentStatus: "Unpaid" as const, // Rent starts as unpaid until payment received
       };
 
       // Validate using proper schema before creating
@@ -3225,6 +3225,49 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
     } catch (error) {
       console.error("Error generating missing mortgage expenses:", error);
       res.status(500).json({ message: "Failed to generate missing mortgage expenses" });
+    }
+  });
+
+  // Generate missing revenue for existing leases (admin/debug route)
+  app.post('/api/admin/generate-missing-revenues', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const leases = await storage.getLeases(org.id);
+      const activeLeases = leases.filter(lease => lease.status === "Active");
+      let generatedCount = 0;
+      
+      for (const lease of activeLeases) {
+        // Get unit and property for this lease
+        const unit = await storage.getUnit(lease.unitId);
+        if (!unit) continue;
+        
+        const property = await storage.getProperty(unit.propertyId);
+        if (!property) continue;
+        
+        // Check if lease has revenue transactions
+        const existingTransactions = await storage.getTransactionsByProperty(property.id);
+        const hasRevenue = existingTransactions.some(t => 
+          t.type === "Income" && t.category === "Rental Income" && 
+          t.notes?.includes(lease.id)
+        );
+        
+        if (!hasRevenue) {
+          console.log(`💰 Creating missing rent revenue for lease: ${lease.id} (${property.name || property.street})`);
+          await createLeaseRentRevenue(org.id, lease);
+          generatedCount++;
+        }
+      }
+      
+      res.json({ 
+        message: `Generated ${generatedCount} missing lease revenue${generatedCount === 1 ? '' : 's'}`,
+        count: generatedCount
+      });
+    } catch (error) {
+      console.error("Error generating missing lease revenues:", error);
+      res.status(500).json({ message: "Failed to generate missing lease revenues" });
     }
   });
 

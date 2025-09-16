@@ -447,6 +447,36 @@ export default function Dashboard() {
                       </div>
                       <span className="text-xs font-medium">Fix Mortgages</span>
                     </Button>
+
+                    <Button
+                      variant="outline"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-green-300 hover:bg-green-50"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/admin/generate-missing-revenues', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                          });
+                          const result = await response.json();
+                          toast({
+                            title: "✅ Success",
+                            description: result.message,
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "❌ Error", 
+                            description: "Failed to generate lease revenues",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      data-testid="button-generate-revenues"
+                    >
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-green-600" />
+                      </div>
+                      <span className="text-xs font-medium">Fix Revenues</span>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
