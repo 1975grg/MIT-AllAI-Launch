@@ -45,10 +45,17 @@ export default function ScheduleEReport({ properties, transactions, year }: Sche
       t.propertyId === property.id
     );
 
-    // Calculate rental income
+    // Calculate rental income (paid rent + partial payments)
     const income = propertyTransactions
-      .filter(t => t.type === "Income")
-      .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      .filter(t => t.type === "Income" && (t.paymentStatus === "Paid" || t.paymentStatus === "Partial"))
+      .reduce((sum, t) => {
+        if (t.paymentStatus === "Paid") {
+          return sum + parseFloat(t.amount);
+        } else if (t.paymentStatus === "Partial" && t.paidAmount) {
+          return sum + parseFloat(t.paidAmount);
+        }
+        return sum;
+      }, 0);
 
     // Calculate expenses by Schedule E category
     const expenses: Record<string, number> = {};

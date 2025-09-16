@@ -703,8 +703,8 @@ export default function Revenue() {
                               </Badge>
                             )}
                             {revenue.taxDeductible === false && (
-                              <Badge variant="outline" className="text-orange-600 border-orange-600" data-testid={`badge-non-taxable-${index}`}>
-                                Non-taxable
+                              <Badge variant="outline" className="text-green-600 border-green-600" data-testid={`badge-taxable-${index}`}>
+                                Taxable
                               </Badge>
                             )}
                             <DropdownMenu>
