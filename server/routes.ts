@@ -1809,6 +1809,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstRentDate.setMonth(firstRentDate.getMonth() + 1);
       }
 
+      // Generate clear month/year description
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+      const rentMonth = monthNames[firstRentDate.getMonth()];
+      const rentYear = firstRentDate.getFullYear();
+      const clearDescription = `${rentMonth} ${rentYear} Rent`;
+
       // Prepare rent revenue data matching existing schema patterns
       const rentRevenueData = {
         orgId: orgId,
@@ -1817,7 +1824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: "Income" as const,
         scope: "property" as const,
         amount: lease.rent.toString(),
-        description: "Monthly Rent",
+        description: clearDescription,
         category: "Rental Income",
         date: firstRentDate,
         isRecurring: true,

@@ -1833,6 +1833,16 @@ export class DatabaseStorage implements IStorage {
       // Stop if we're more than 2 years out
       if (currentDate > new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000)) break;
 
+      // Generate clear month/year description for rent transactions  
+      let instanceDescription = originalTransaction.description;
+      if (originalTransaction.category === "Rental Income" && originalTransaction.description.includes(" Rent")) {
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"];
+        const instanceMonth = monthNames[currentDate.getMonth()];
+        const instanceYear = currentDate.getFullYear();
+        instanceDescription = `${instanceMonth} ${instanceYear} Rent`;
+      }
+
       instances.push({
         orgId: originalTransaction.orgId,
         propertyId: originalTransaction.propertyId || undefined,
@@ -1842,7 +1852,7 @@ export class DatabaseStorage implements IStorage {
         type: originalTransaction.type, // Use the original transaction type (Expense or Income)
         scope: (originalTransaction.scope as "property" | "operational") || "property",
         amount: originalTransaction.amount,
-        description: originalTransaction.description,
+        description: instanceDescription,
         category: originalTransaction.category || undefined,
         date: new Date(currentDate),
         receiptUrl: originalTransaction.receiptUrl || undefined,
