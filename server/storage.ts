@@ -1256,7 +1256,7 @@ export class DatabaseStorage implements IStorage {
           .where(and(
             eq(transactions.parentRecurringId, transaction.id),
             gte(transactions.date, currentDate),
-            eq(transactions.paymentStatus, "Pending")
+            eq(transactions.paymentStatus, "Unpaid")
           ));
 
         canceledCount++;
@@ -1293,7 +1293,7 @@ export class DatabaseStorage implements IStorage {
         .update(reminders)
         .set({ 
           status: "Completed",
-          notes: `Auto-completed due to lease termination on ${new Date().toDateString()}`
+          completedAt: new Date()
         })
         .where(and(
           eq(reminders.scope, "lease"),
