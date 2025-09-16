@@ -923,12 +923,11 @@ export default function Revenue() {
                   return (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                       {months.map((month) => {
-                        // Find actual transactions for this month
+                        // Find actual transactions for this month (both parent and generated instances)
                         const monthTransactions = filteredRevenues.filter(t => {
                           const transactionDate = new Date(t.date);
                           return transactionDate.getFullYear() === month.year && 
-                                 transactionDate.getMonth() === month.month &&
-                                 t.isRecurring;
+                                 transactionDate.getMonth() === month.month;
                         });
 
                         const monthlyTotal = monthTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
