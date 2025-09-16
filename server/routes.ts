@@ -667,12 +667,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const property = await storage.createPropertyWithOwnerships(validatedData, ownerships);
         
         // Auto-create mortgage expense if mortgage details provided
-        if (validatedData.monthlyMortgage && validatedData.acquisitionDate) {
+        if (validatedData.monthlyMortgage) {
           await createMortgageExpense({
             org,
             property,
             monthlyMortgage: validatedData.monthlyMortgage,
-            mortgageStartDate: validatedData.mortgageStartDate || validatedData.acquisitionDate,
+            mortgageStartDate: validatedData.mortgageStartDate || undefined,
+            mortgageType: "Primary",
+            storage
+          });
+        }
+
+        // Auto-create secondary mortgage expense if provided
+        if (validatedData.monthlyMortgage2) {
+          await createMortgageExpense({
+            org,
+            property,
+            monthlyMortgage: validatedData.monthlyMortgage2,
+            mortgageStartDate: validatedData.mortgageStartDate2 || undefined,
+            mortgageType: "Secondary",
             storage
           });
         }
@@ -1402,6 +1415,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate: new Date(req.body.startDate),
         endDate: new Date(req.body.endDate),
       };
+      
+      // Handle missing unitId for single-family properties
+      if (!requestData.unitId) {
+        // Get tenant group to find property
+        const tenantGroup = await storage.getTenantGroup(requestData.tenantGroupId);
+        if (!tenantGroup?.propertyId) {
+          return res.status(400).json({ message: "Tenant group has no associated property" });
+        }
+
+        // Get property to check type
+        const property = await storage.getProperty(tenantGroup.propertyId);
+        if (!property || property.orgId !== org.id) {
+          return res.status(400).json({ message: "Property not found or access denied" });
+        }
+
+        // Check if property already has units
+        const existingUnits = await storage.getUnits(property.id);
+        
+        if (existingUnits.length === 0) {
+          // For single-family properties (non-buildings), auto-create a default unit
+          const isBuilding = property.type === "Residential Building" || property.type === "Commercial Building";
+          
+          if (!isBuilding) {
+            console.log("🏠 Auto-creating default unit for single-family property:", property.id);
+            // Create a default unit for the property
+            const defaultUnitData = {
+              propertyId: property.id,
+              label: "Main Unit",
+              sqft: property.sqft || undefined,
+            };
+            
+            const unit = await storage.createUnit(defaultUnitData);
+            requestData.unitId = unit.id;
+          } else {
+            return res.status(400).json({ message: "Building property requires specific unit selection" });
+          }
+        } else {
+          // Use the first available unit for single-family properties
+          requestData.unitId = existingUnits[0].id;
+          console.log("🏠 Auto-selecting existing unit for property:", existingUnits[0].id);
+        }
+      }
       
       const validatedData = insertLeaseSchema.parse(requestData);
       const lease = await storage.createLease(validatedData);
@@ -3106,6 +3161,70 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
     } catch (error) {
       console.error("Error generating recurring transactions:", error);
       res.status(500).json({ message: "Failed to generate recurring transactions" });
+    }
+  });
+
+  // Generate missing mortgage expenses for existing properties (admin/debug route)
+  app.post('/api/admin/generate-missing-mortgages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const properties = await storage.getProperties(org.id);
+      let generatedCount = 0;
+      
+      for (const property of properties) {
+        // Check if property has mortgage data but no mortgage expenses
+        if (property.monthlyMortgage) {
+          const existingTransactions = await storage.getTransactionsByProperty(property.id);
+          const hasMortgageExpense = existingTransactions.some(t => 
+            t.category === "Mortgage" && t.type === "Expense" && t.isRecurring
+          );
+          
+          if (!hasMortgageExpense) {
+            console.log(`🏦 Creating missing mortgage expense for property: ${property.name || property.street}`);
+            await createMortgageExpense({
+              org,
+              property,
+              monthlyMortgage: property.monthlyMortgage,
+              mortgageStartDate: property.mortgageStartDate || undefined,
+              mortgageType: "Primary",
+              storage
+            });
+            generatedCount++;
+          }
+          
+          // Check for secondary mortgage
+          if (property.monthlyMortgage2) {
+            const hasSecondaryMortgageExpense = existingTransactions.some(t => 
+              t.category === "Mortgage" && t.type === "Expense" && t.isRecurring && 
+              t.description?.includes("Secondary")
+            );
+            
+            if (!hasSecondaryMortgageExpense) {
+              console.log(`🏦 Creating missing secondary mortgage expense for property: ${property.name || property.street}`);
+              await createMortgageExpense({
+                org,
+                property,
+                monthlyMortgage: property.monthlyMortgage2,
+                mortgageStartDate: property.mortgageStartDate2 || undefined,
+                mortgageType: "Secondary",
+                storage
+              });
+              generatedCount++;
+            }
+          }
+        }
+      }
+      
+      res.json({ 
+        message: `Generated ${generatedCount} missing mortgage expense${generatedCount === 1 ? '' : 's'}`,
+        count: generatedCount
+      });
+    } catch (error) {
+      console.error("Error generating missing mortgage expenses:", error);
+      res.status(500).json({ message: "Failed to generate missing mortgage expenses" });
     }
   });
 

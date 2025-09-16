@@ -320,7 +320,7 @@ export default function Dashboard() {
                     <div className="space-y-3">
                       {reminders.slice(0, 4).map((reminder, index) => (
                         <div key={reminder.id} className="flex items-start space-x-3 p-3 bg-muted/50 rounded-md" data-testid={`reminder-item-${index}`}>
-                          <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getPriorityColor(reminder.type)}`} />
+                          <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getPriorityColor(reminder.type || '')}`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground" data-testid={`text-reminder-title-${index}`}>{reminder.title}</p>
                             <p className="text-xs text-muted-foreground" data-testid={`text-reminder-date-${index}`}>
@@ -416,6 +416,36 @@ export default function Dashboard() {
                         <Bell className="h-5 w-5 text-blue-600" />
                       </div>
                       <span className="text-sm font-medium">Reminder</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-red-300 hover:bg-red-50"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/admin/generate-missing-mortgages', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                          });
+                          const result = await response.json();
+                          toast({
+                            title: "✅ Success",
+                            description: result.message,
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "❌ Error",
+                            description: "Failed to generate mortgage expenses",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      data-testid="button-generate-mortgages"
+                    >
+                      <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-red-600" />
+                      </div>
+                      <span className="text-xs font-medium">Fix Mortgages</span>
                     </Button>
                   </div>
                 </CardContent>
