@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Building, DollarSign, AlertTriangle, Bell, Check, Clock, X, Receipt, Users, Wrench } from "lucide-react";
+import { Building, DollarSign, AlertTriangle, Bell, Check, Clock, X, Receipt, Users, Wrench, Bot } from "lucide-react";
 import type { SmartCase, Reminder } from "@shared/schema";
 import PropertyAssistant from "@/components/ai/property-assistant";
 
@@ -419,63 +419,14 @@ export default function Dashboard() {
                     </Button>
 
                     <Button
-                      variant="outline"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-red-300 hover:bg-red-50"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/admin/generate-missing-mortgages', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' }
-                          });
-                          const result = await response.json();
-                          toast({
-                            title: "✅ Success",
-                            description: result.message,
-                          });
-                        } catch (error) {
-                          toast({
-                            title: "❌ Error",
-                            description: "Failed to generate mortgage expenses",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      data-testid="button-generate-mortgages"
+                      variant="ghost"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      data-testid="button-mailla-assistant"
                     >
-                      <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                        <DollarSign className="h-5 w-5 text-red-600" />
+                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                        <Bot className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <span className="text-xs font-medium">Fix Mortgages</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-green-300 hover:bg-green-50"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/admin/generate-missing-revenues', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' }
-                          });
-                          const result = await response.json();
-                          toast({
-                            title: "✅ Success",
-                            description: result.message,
-                          });
-                        } catch (error) {
-                          toast({
-                            title: "❌ Error", 
-                            description: "Failed to generate lease revenues",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      data-testid="button-generate-revenues"
-                    >
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <DollarSign className="h-5 w-5 text-green-600" />
-                      </div>
-                      <span className="text-xs font-medium">Fix Revenues</span>
+                      <span className="text-sm font-medium">Mailla</span>
                     </Button>
                   </div>
                 </CardContent>
