@@ -935,11 +935,37 @@ export default function Revenue() {
                   return (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                       {months.map((month) => {
-                        // Find actual transactions for this month (both parent and generated instances)
+                        // Helper function to extract rent period from transaction description
+                        const getRentPeriod = (transaction: Transaction) => {
+                          const description = transaction.description || '';
+                          
+                          // Month name mapping for reliable parsing
+                          const MONTHS: { [key: string]: number } = {
+                            january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+                            july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+                            jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+                          };
+                          
+                          // Match patterns like "September 2025 Rent", "Jan 2024 rent", etc. (case-insensitive)
+                          const rentMatch = description.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b\s+(\d{4})\s+rent\b/i);
+                          
+                          if (rentMatch) {
+                            const [, monthName, year] = rentMatch;
+                            const monthIndex = MONTHS[monthName.toLowerCase()];
+                            if (monthIndex !== undefined) {
+                              return { year: parseInt(year), month: monthIndex };
+                            }
+                          }
+                          
+                          // Fall back to transaction date for non-rent transactions or parsing failures
+                          const transactionDate = new Date(transaction.date);
+                          return { year: transactionDate.getFullYear(), month: transactionDate.getMonth() };
+                        };
+
+                        // Find actual transactions for this month (grouped by rent period, not transaction date)
                         const monthTransactions = filteredRevenues.filter(t => {
-                          const transactionDate = new Date(t.date);
-                          return transactionDate.getFullYear() === month.year && 
-                                 transactionDate.getMonth() === month.month;
+                          const rentPeriod = getRentPeriod(t);
+                          return rentPeriod.year === month.year && rentPeriod.month === month.month;
                         });
 
                         const monthlyTotal = monthTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
