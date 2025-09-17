@@ -3171,15 +3171,14 @@ EXAMPLE for question "How much rent did I collect in August?":
     {"label": "Review and update rental rates for next year", "due": "October"}
   ]
 }
+${fewShotExample}
 
 PROPERTY DATA:
 ${JSON.stringify(aiData, null, 2)}
 
-USER QUESTION: ${question}
-
 Provide helpful analysis based on the actual data. Respond with valid JSON only:`;
 
-      // Call OpenAI Responses API (GPT-5) with correct parameter structure
+      // Call OpenAI Responses API (GPT-5) with optimized token budget and reasoning
       const response = await openai.responses.create({
         model: "gpt-5",
         input: [
@@ -3189,7 +3188,8 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
         text: {
           format: { type: "json_object" }
         },
-        max_output_tokens: 1200,
+        reasoning: { effort: 'low' },
+        max_output_tokens: 4096,
         stream: false
       });
 
@@ -3227,21 +3227,63 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
       console.log("🤖 Raw AI response:", aiResponse);
 
       if (!aiResponse || aiResponse.trim().length === 0) {
-        console.log("❌ Empty AI response received - debugging response structure:");
-        console.log("Response keys:", Object.keys(response));
-        console.log("output_text:", (response as any).output_text?.length || 'undefined');
-        console.log("output items:", (response as any).output?.length || 'undefined');
-        console.dir(response, { depth: 3 });
-        return res.json({
-          answer: {
-            tldr: "No data available for analysis",
-            bullets: ["Unable to analyze your property data at this time"],
-            actions: [{ label: "Please try your question again", due: "Now" }],
-            caveats: "The AI assistant is temporarily unavailable"
-          },
-          sources: ["Property Database"],
-          confidence: 0.3
-        });
+        console.log("❌ Empty AI response received - attempting retry with simplified prompt");
+        
+        // Retry with simplified prompt and reduced data
+        try {
+          const simplifiedAiData = {
+            ...aiData,
+            properties: aiData.properties?.slice(0, 3) || [],
+            financials: {
+              ...aiData.financials,
+              augustCollections: aiData.financials?.augustCollections?.slice(0, 5) || []
+            },
+            cases: aiData.cases?.slice(0, 5) || [],
+            reminders: aiData.reminders?.slice(0, 5) || []
+          };
+
+          const retryPrompt = `You are Mailla, a property management assistant. Answer briefly using actual data.${contextualGuidance}
+
+PROPERTY DATA:
+${JSON.stringify(simplifiedAiData, null, 2)}
+
+Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{"label": "task", "due": "time"}]}`;
+
+          const retryResponse = await openai.responses.create({
+            model: "gpt-5",
+            input: [
+              { role: 'system', content: retryPrompt },
+              { role: 'user', content: question }
+            ],
+            reasoning: { effort: 'low' },
+            max_output_tokens: 2048,
+            stream: false
+          });
+
+          let retryAiResponse = '';
+          if ((retryResponse as any).output_text?.trim()) {
+            retryAiResponse = (retryResponse as any).output_text.trim();
+            console.log("✅ Retry successful, using simplified response");
+            aiResponse = retryAiResponse;
+          }
+        } catch (retryError) {
+          console.log("❌ Retry failed:", retryError);
+        }
+
+        // Final fallback if retry also failed
+        if (!aiResponse || aiResponse.trim().length === 0) {
+          console.log("❌ Both attempts failed - using fallback response");
+          return res.json({
+            answer: {
+              tldr: "No data available for analysis",
+              bullets: ["Unable to analyze your property data at this time"],
+              actions: [{ label: "Please try your question again", due: "Now" }],
+              caveats: "The AI assistant is temporarily unavailable"
+            },
+            sources: ["Property Database"],
+            confidence: 0.3
+          });
+        }
       }
 
       try {
