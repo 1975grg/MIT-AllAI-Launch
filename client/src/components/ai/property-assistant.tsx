@@ -185,37 +185,39 @@ function EnhancedAIResponse({ content, timestamp, isLatest = false }: EnhancedAI
 
         {/* Actions Tab */}
         <TabsContent value="actions" className="p-4">
-          <div className="space-y-3" data-testid="list-actions-enhanced">
-            {content.actions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">No actions required right now</p>
-              </div>
-            ) : (
-              content.actions.map((action, index) => (
-                <div key={index} className="group">
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border-l-4 border-blue-500 hover:shadow-md transition-all">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{action.label}</div>
-                      {action.due && (
-                        <Badge variant="outline" className="mt-1 text-xs">
-                          Due: {action.due}
-                        </Badge>
-                      )}
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      data-testid={`button-action-${index}`}
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
+          <ScrollArea className="h-48">
+            <div className="space-y-3" data-testid="list-actions-enhanced">
+              {content.actions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-8 w-8 mx-auto mb-2" />
+                  <p className="text-sm">No actions required right now</p>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                content.actions.map((action, index) => (
+                  <div key={index} className="group">
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border-l-4 border-blue-500 hover:shadow-md transition-all">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{action.label}</div>
+                        {action.due && (
+                          <Badge variant="outline" className="mt-1 text-xs">
+                            Due: {action.due}
+                          </Badge>
+                        )}
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        data-testid={`button-action-${index}`}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
         </TabsContent>
       </Tabs>
 
