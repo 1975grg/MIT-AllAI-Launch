@@ -3179,14 +3179,16 @@ USER QUESTION: ${question}
 
 Provide helpful analysis based on the actual data. Respond with valid JSON only:`;
 
-      // Call OpenAI Responses API (GPT-5) with proper input structure
+      // Call OpenAI Responses API (GPT-5) with correct parameter structure
       const response = await openai.responses.create({
         model: "gpt-5",
         input: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: question }
         ],
-        response_format: { type: "json" },
+        text: {
+          format: { type: "json" }
+        },
         max_output_tokens: 1200,
         stream: false
       });
