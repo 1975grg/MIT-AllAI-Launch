@@ -1827,8 +1827,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyName = property.name || `${property.street}, ${property.city}`;
       let locationDescription = propertyName;
       
-      // Add unit information for buildings with multiple units
-      if (unit.label && unit.label.trim()) {
+      // Check if this property has multiple units
+      const propertyUnits = await storage.getUnits(unit.propertyId);
+      const isMultiUnit = propertyUnits.length > 1;
+      
+      // Add unit information only for buildings with multiple units
+      if (isMultiUnit && unit.label && unit.label.trim()) {
         locationDescription += `, Unit ${unit.label}`;
       }
 
