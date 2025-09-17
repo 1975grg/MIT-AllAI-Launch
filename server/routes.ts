@@ -2950,6 +2950,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getTransactions(orgId)
       ]);
 
+      // Debug logging to identify data access issue
+      console.log('🤖 AI Data Debug:', {
+        orgId: orgId,
+        propertiesCount: properties?.length || 0,
+        unitsCount: units?.length || 0,
+        tenantGroupsCount: tenantGroups?.length || 0,
+        casesCount: cases?.length || 0,
+        remindersCount: reminders?.length || 0,
+        transactionsCount: transactions?.length || 0,
+        sampleProperty: properties?.[0] ? { id: properties[0].id, name: properties[0].name } : null,
+        sampleTransaction: transactions?.[0] ? { id: transactions[0].id, type: transactions[0].type, amount: transactions[0].amount } : null
+      });
+
       // Build data context for AI
       const aiData = {
         properties: properties.map(p => ({
