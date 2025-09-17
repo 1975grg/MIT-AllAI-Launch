@@ -2959,6 +2959,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
 
 
+      // Debug logging for transaction analysis
+      const augustTransactions = transactions.filter((t: any) => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'Income' && 
+               transactionDate.getMonth() === 7 && // August = month 7 (0-indexed)
+               transactionDate.getFullYear() === 2025;
+      });
+      
+      console.log('🤖 August 2025 Debug:', {
+        totalTransactions: transactions.length,
+        augustTransactions: augustTransactions.length,
+        augustSample: augustTransactions.slice(0, 2).map((t: any) => ({
+          id: t.id,
+          description: t.description,
+          date: t.date,
+          amount: t.amount,
+          type: t.type
+        }))
+      });
+
       // Build data context for AI
       const aiData = {
         properties: properties.map(p => ({
@@ -3026,7 +3046,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return t.type === 'Income' && 
                    transactionDate.getMonth() === currentMonth.getMonth() && 
                    transactionDate.getFullYear() === currentMonth.getFullYear();
-          }).reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0)
+          }).reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0),
+          augustCollections: augustTransactions.map((t: any) => ({
+            description: t.description,
+            amount: Number(t.amount),
+            date: t.date,
+            paymentStatus: t.paymentStatus || 'Paid'
+          })),
+          augustTotal: augustTransactions.reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0)
         }
       };
 
@@ -3057,33 +3084,33 @@ EXAMPLE OUTPUT for reminders question "What needs my attention?":
 }`;
       }
 
-      const systemPrompt = `You are a helpful property management assistant. Analyze the provided property data and answer user questions with structured, concise responses.
+      const systemPrompt = `You are Mailla, a friendly property management assistant. Answer user questions in a conversational, helpful way using their actual property data.
 
-KEY REQUIREMENTS:
-- Always analyze the actual data provided
-- Be concise but informative (max 120 words total)
-- Focus on actionable insights
-- Use exact numbers from the data when available${contextualGuidance}
+COMMUNICATION STYLE:
+- Be warm, conversational, and supportive (like talking to a friend)
+- Use simple, everyday language (avoid technical jargon)
+- Focus on what matters most to busy landlords
+- Always use the actual transaction data provided, especially augustCollections for August questions
+- Give specific numbers and actionable advice${contextualGuidance}
 
 RESPONSE FORMAT (JSON):
 {
-  "tldr": "string (key insight in 1-2 sentences)",
-  "bullets": ["string array (2-5 key facts with specific numbers)"],
-  "actions": [{"label": "string", "due": "string (timeframe)"}],
-  "caveats": "string (optional - only if data is truly incomplete)"
+  "tldr": "Conversational summary with specific numbers",
+  "bullets": ["Easy-to-understand facts with real data"],
+  "actions": [{"label": "Clear next step", "due": "timeframe"}],
+  "caveats": "Only if data is incomplete (rare)"
 }
 
-EXAMPLE for question "What needs my attention?":
+EXAMPLE for question "How much rent did I collect in August?":
 {
-  "tldr": "You have 1 HVAC maintenance item due and 6 properties generating $15,400 monthly revenue.",
+  "tldr": "You collected $3,600 in August rent from both properties - that's 100% of what was due!",
   "bullets": [
-    "HVAC System Replacement needed at 3535 Suncrest (365 days overdue)",
-    "6 properties with total value of $3,000,000",
-    "Monthly mortgage payments total $15,000"
+    "Property 1 paid $2,000 (on time)",
+    "Property 2 paid $1,600 (on time)", 
+    "Both tenants are current on rent payments"
   ],
   "actions": [
-    {"label": "Schedule HVAC system replacement", "due": "This week"},
-    {"label": "Review maintenance budget for next quarter", "due": "This month"}
+    {"label": "Set September rent collection reminders", "due": "End of month"}
   ]
 }
 
