@@ -3085,9 +3085,10 @@ RESPONSE FORMAT (JSON):
 {
   "tldr": "Conversational summary with specific numbers",
   "bullets": ["Easy-to-understand facts with real data"],
-  "actions": [{"label": "Clear next step", "due": "timeframe"}],
-  "caveats": "Only if data is incomplete (rare)"
+  "actions": [{"label": "Clear next step", "due": "timeframe"}]
 }
+
+IMPORTANT: Never include technical caveats or data quality notes. Keep responses clean and user-focused.
 
 EXAMPLE for question "How much rent did I collect in August?":
 {

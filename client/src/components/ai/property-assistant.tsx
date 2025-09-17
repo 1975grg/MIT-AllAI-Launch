@@ -40,7 +40,7 @@ type EnhancedAIResponseProps = {
 function EnhancedAIResponse({ content, timestamp, isLatest = false }: EnhancedAIResponseProps) {
   const [activeTab, setActiveTab] = useState("summary");
   
-  // Extract potential KPI highlights from TL;DR and bullets
+  // Extract potential KPI highlights with context-aware labels
   const extractHighlights = () => {
     if (content.highlights) return content.highlights;
     
@@ -51,9 +51,28 @@ function EnhancedAIResponse({ content, timestamp, isLatest = false }: EnhancedAI
     // Look for money amounts, percentages, or counts
     const tldrNumbers = content.tldr.match(numberRegex);
     if (tldrNumbers && tldrNumbers.length > 0) {
+      const value = tldrNumbers[0];
+      let label = "Amount";
+      
+      // Context-aware labeling based on TL;DR content
+      const tldrLower = content.tldr.toLowerCase();
+      if (tldrLower.includes("collected") || tldrLower.includes("received") || tldrLower.includes("paid")) {
+        label = "Collected";
+      } else if (tldrLower.includes("unpaid") || tldrLower.includes("outstanding") || tldrLower.includes("owe")) {
+        label = "Outstanding";
+      } else if (tldrLower.includes("due") || tldrLower.includes("total")) {
+        label = "Total Due";
+      } else if (tldrLower.includes("rent") && !tldrLower.includes("collected")) {
+        label = "Monthly Rent";
+      } else if (tldrLower.includes("expense") || tldrLower.includes("cost")) {
+        label = "Expense";
+      } else if (value.includes("%")) {
+        label = "Rate";
+      }
+      
       highlights.push({
-        label: "Key Figure",
-        value: tldrNumbers[0],
+        label,
+        value,
         trend: "neutral" as const
       });
     }
@@ -147,12 +166,6 @@ function EnhancedAIResponse({ content, timestamp, isLatest = false }: EnhancedAI
             </Button>
           )}
 
-          {content.caveats && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-xs">{content.caveats}</AlertDescription>
-            </Alert>
-          )}
         </TabsContent>
 
         {/* Details Tab */}
@@ -168,12 +181,6 @@ function EnhancedAIResponse({ content, timestamp, isLatest = false }: EnhancedAI
             </div>
           </ScrollArea>
           
-          {content.caveats && (
-            <Alert className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-xs">{content.caveats}</AlertDescription>
-            </Alert>
-          )}
         </TabsContent>
 
         {/* Actions Tab */}
@@ -212,12 +219,6 @@ function EnhancedAIResponse({ content, timestamp, isLatest = false }: EnhancedAI
         </TabsContent>
       </Tabs>
 
-      {/* Timestamp */}
-      <div className="px-4 pb-2">
-        <p className="text-xs text-muted-foreground text-right">
-          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </p>
-      </div>
     </div>
   );
 }
