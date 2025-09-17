@@ -969,7 +969,9 @@ export default function Revenue() {
                                   <div key={`${month.year}-${month.month}-${recurringRevenue.id}`} 
                                        className="flex items-center justify-between p-3 border rounded-lg">
                                     <div className="flex-1">
-                                      <div className="font-medium text-sm">{recurringRevenue.description}</div>
+                                      <div className="font-medium text-sm">
+                                        {actualTransaction ? actualTransaction.description : recurringRevenue.description}
+                                      </div>
                                       <div className="text-xs text-muted-foreground">
                                         ${Number(recurringRevenue.amount).toLocaleString()}
                                       </div>
