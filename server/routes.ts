@@ -2959,24 +2959,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
 
 
-      // Debug logging for transaction analysis
+      // Filter August 2025 transactions for AI context
       const augustTransactions = transactions.filter((t: any) => {
         const transactionDate = new Date(t.date);
         return t.type === 'Income' && 
                transactionDate.getMonth() === 7 && // August = month 7 (0-indexed)
                transactionDate.getFullYear() === 2025;
-      });
-      
-      console.log('🤖 August 2025 Debug:', {
-        totalTransactions: transactions.length,
-        augustTransactions: augustTransactions.length,
-        augustSample: augustTransactions.slice(0, 2).map((t: any) => ({
-          id: t.id,
-          description: t.description,
-          date: t.date,
-          amount: t.amount,
-          type: t.type
-        }))
       });
 
       // Build data context for AI
