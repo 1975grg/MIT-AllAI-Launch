@@ -2923,7 +2923,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/ai/ask', isAuthenticated, async (req: any, res) => {
     try {
       const { question, context } = req.body;
-      const orgId = req.user.orgId;
+      const userId = req.user.claims.sub;
+      
+      // Get user's organization (same pattern as other routes)
+      const org = await storage.getUserOrganization(userId);
+      if (!org) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      const orgId = org.id;
 
       if (!question?.trim()) {
         return res.status(400).json({ message: "Question is required" });
