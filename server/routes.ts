@@ -3187,7 +3187,7 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
           { role: 'user', content: question }
         ],
         text: {
-          format: { type: "json" }
+          format: { type: "json_object" }
         },
         max_output_tokens: 1200,
         stream: false
