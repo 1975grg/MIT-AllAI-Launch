@@ -2947,28 +2947,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         apiKey: process.env.OPENAI_API_KEY 
       });
 
-      // Gather property data for context
-      const [properties, units, tenantGroups, cases, reminders, transactions] = await Promise.all([
+      // Gather property data for context (including leases for rent mapping)
+      const [properties, units, tenantGroups, cases, reminders, transactions, leases] = await Promise.all([
         storage.getProperties(orgId),
         storage.getAllUnits(orgId),
         storage.getTenantGroups(orgId),
         storage.getSmartCases(orgId),
         storage.getReminders(orgId),
-        storage.getTransactions(orgId)
+        storage.getTransactions(orgId),
+        storage.getLeases(orgId)
       ]);
 
-      // Debug logging to identify data access issue
-      console.log('🤖 AI Data Debug:', {
-        orgId: orgId,
-        propertiesCount: properties?.length || 0,
-        unitsCount: units?.length || 0,
-        tenantGroupsCount: tenantGroups?.length || 0,
-        casesCount: cases?.length || 0,
-        remindersCount: reminders?.length || 0,
-        transactionsCount: transactions?.length || 0,
-        sampleProperty: properties?.[0] ? { id: properties[0].id, name: properties[0].name } : null,
-        sampleTransaction: transactions?.[0] ? { id: transactions[0].id, type: transactions[0].type, amount: transactions[0].amount } : null
-      });
 
       // Build data context for AI
       const aiData = {
@@ -2983,14 +2972,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           purchasePrice: p.purchasePrice,
           acquisitionDate: p.acquisitionDate
         })),
-        units: units.map((u: any) => ({
-          propertyName: (u as any).propertyName || 'Unknown',
-          unitNumber: u.label || 'Unknown',
-          bedrooms: u.bedrooms,
-          bathrooms: u.bathrooms,
-          sqft: u.sqft,
-          monthlyRent: (u as any).monthlyRent || 0
-        })),
+        units: units.map((u: any) => {
+          // Find active lease for this unit to get correct monthly rent
+          const activeLease = leases.find((l: any) => 
+            l.unitId === u.id && 
+            l.status === 'Active' && 
+            new Date(l.startDate) <= new Date() && 
+            (l.endDate ? new Date(l.endDate) >= new Date() : true)
+          );
+          
+          return {
+            propertyName: (u as any).propertyName || 'Unknown',
+            unitNumber: u.label || 'Unknown',
+            bedrooms: u.bedrooms,
+            bathrooms: u.bathrooms,
+            sqft: u.sqft,
+            monthlyRent: Number(activeLease?.rent || u.rentAmount || 0)
+          };
+        }),
         tenants: tenantGroups.map((tg: any) => ({
           name: tg.name,
           propertyName: tg.propertyName,
@@ -3095,7 +3094,7 @@ USER QUESTION: ${question}
 
 Provide helpful analysis based on the actual data. Respond with valid JSON only:`;
 
-      // Call OpenAI Responses API (GPT-5) with parameters to ensure output generation
+      // Call OpenAI Responses API (GPT-5) with enforced JSON structure
       const response = await openai.responses.create({
         model: "gpt-5",
         input: systemPrompt,
@@ -3104,7 +3103,8 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
           verbosity: "high"
         },
         reasoning: { effort: "low" }, // Reduce reasoning to focus on output
-        max_output_tokens: 500
+        max_output_tokens: 800, // Increased for complete JSON response
+        stream: false // Ensure complete response, no streaming
       });
 
       // Robust extraction for GPT-5 Responses API - handle all possible content locations
@@ -3143,7 +3143,7 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
       }
 
       try {
-        // Clean the response by removing potential code fences
+        // Clean the response by removing potential code fences and whitespace
         let cleanResponse = aiResponse.trim();
         if (cleanResponse.startsWith('```json')) {
           cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/```\s*$/, '');
@@ -3151,8 +3151,35 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
           cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/```\s*$/, '');
         }
         
-        // Parse the structured JSON response from AI
-        const structuredResponse = JSON.parse(cleanResponse);
+        // Safe JSON parsing with comprehensive validation
+        let structuredResponse;
+        try {
+          structuredResponse = JSON.parse(cleanResponse);
+        } catch (jsonError) {
+          console.log("❌ JSON parsing failed:", jsonError);
+          console.log("Raw response that failed to parse:", cleanResponse);
+          
+          // Robust fallback: create structured response from partial data
+          const fallbackResponse = {
+            tldr: "Unable to parse detailed analysis - raw data shows active properties and transactions",
+            bullets: [
+              `Found ${properties?.length || 0} properties with ${units?.length || 0} units`,
+              `${transactions?.filter((t: any) => t.type === 'Income')?.length || 0} revenue transactions recorded`,
+              `${tenantGroups?.filter((tg: any) => tg.status === 'Active')?.length || 0} active tenant groups`
+            ],
+            actions: [
+              { label: "Review property data for completeness", due: "This week" },
+              { label: "Ensure monthly rent amounts are set correctly", due: "Today" }
+            ],
+            caveats: "Response parsing failed - showing summary from raw data"
+          };
+          
+          return res.json({
+            answer: fallbackResponse,
+            sources: ["Property Database"],
+            confidence: 0.7
+          });
+        }
         
         // Validate required fields and structure
         const isValidStructure = 
@@ -3163,7 +3190,8 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
           Array.isArray(structuredResponse.actions);
         
         if (!isValidStructure) {
-          throw new Error("Invalid response structure");
+          console.log("❌ Invalid response structure:", structuredResponse);
+          throw new Error("Invalid response structure from AI");
         }
         
         console.log("✅ Parsed AI response:", JSON.stringify(structuredResponse, null, 2));
@@ -3175,14 +3203,20 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
         });
         
       } catch (parseError) {
-        console.log("❌ JSON parsing failed:", parseError);
-        console.log("Raw response that failed to parse:", aiResponse);
+        console.log("❌ Complete parsing failure:", parseError);
         
-        // Try to use the raw response as plain text if JSON parsing fails
+        // Final fallback for any other parsing issues
+        const emergencyFallback = {
+          tldr: "Unable to analyze data due to processing error",
+          bullets: ["Property data is available but analysis failed"],
+          actions: [{ label: "Please try your question again", due: "Now" }],
+          caveats: "AI assistant encountered a processing error"
+        };
+        
         res.json({
-          answer: aiResponse.trim(),  // Fallback to plain text
+          answer: emergencyFallback,
           sources: ["Property Database"],
-          confidence: 0.6
+          confidence: 0.5
         });
       }
 
