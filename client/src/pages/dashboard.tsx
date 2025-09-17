@@ -182,7 +182,15 @@ export default function Dashboard() {
           </div>
 
           {/* AI Property Assistant */}
-          <PropertyAssistant />
+          <PropertyAssistant 
+            context="dashboard"
+            exampleQuestions={[
+              "How are my properties performing overall?",
+              "What needs my immediate attention?",
+              "Any red flags in my portfolio?",
+              "Which property is my best performer?"
+            ]}
+          />
 
           {/* Main Dashboard Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

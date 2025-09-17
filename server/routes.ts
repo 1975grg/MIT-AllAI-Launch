@@ -3049,7 +3049,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let contextualGuidance = "";
       let fewShotExample = "";
       
-      if (context === "reminders") {
+      if (context === "dashboard") {
+        contextualGuidance = `
+
+DASHBOARD FOCUS: Provide high-level overview of portfolio performance, key metrics, urgent items needing attention, and strategic insights across all properties.`;
+        
+        fewShotExample = `
+
+EXAMPLE OUTPUT for dashboard question "How are my properties performing?":
+{
+  "tldr": "3 properties generating $3,600/month. 1 maintenance issue, 2 leases expiring soon.",
+  "bullets": [
+    "Monthly revenue: $3,600 across 3 properties",
+    "Property 1 (CA): $2,000/month, fully occupied",
+    "Property 2 (CA): $1,600/month, needs HVAC attention",
+    "2 lease renewals due in next 60 days"
+  ],
+  "actions": [
+    {"label": "Schedule HVAC inspection for Property 2", "due": "This week"},
+    {"label": "Start lease renewal conversations", "due": "Next 2 weeks"},
+    {"label": "Review market rents for potential increases", "due": "This month"}
+  ]
+}`;
+      } else if (context === "maintenance") {
+        contextualGuidance = `
+
+MAINTENANCE FOCUS: Prioritize urgent/overdue repairs, preventive maintenance schedules, contractor management, and cost optimization.`;
+        
+        fewShotExample = `
+
+EXAMPLE OUTPUT for maintenance question "What maintenance needs attention?":
+{
+  "tldr": "2 urgent repairs, 1 overdue inspection. HVAC and plumbing issues need immediate action.",
+  "bullets": [
+    "Unit A HVAC system failed - tenant without heat (URGENT)",
+    "Property 2 plumbing leak in basement (needs repair)",
+    "Annual inspection overdue for Property 1 (compliance risk)"
+  ],
+  "actions": [
+    {"label": "Call HVAC contractor for emergency Unit A repair", "due": "Today"},
+    {"label": "Schedule plumber for Property 2 basement leak", "due": "Tomorrow"},
+    {"label": "Book annual inspection for Property 1", "due": "This week"}
+  ]
+}`;
+      } else if (context === "expenses") {
+        contextualGuidance = `
+
+EXPENSES FOCUS: Analyze spending patterns, identify cost-saving opportunities, track budget vs actual, and highlight unusual expenses.`;
+        
+        fewShotExample = `
+
+EXAMPLE OUTPUT for expenses question "What are my biggest expenses?":
+{
+  "tldr": "Spent $4,200 this quarter. Maintenance up 30%, mortgage stable, utilities higher than expected.",
+  "bullets": [
+    "Maintenance: $1,800 (30% increase from last quarter)",
+    "Mortgage payments: $2,000 (on schedule)",
+    "Utilities: $400 (15% above normal due to repairs)"
+  ],
+  "actions": [
+    {"label": "Review maintenance contracts for cost optimization", "due": "This month"},
+    {"label": "Check utility bills for billing errors", "due": "This week"},
+    {"label": "Set up quarterly expense budget alerts", "due": "Next month"}
+  ]
+}`;
+      } else if (context === "reminders") {
         contextualGuidance = `
 
 REMINDERS FOCUS: Prioritize due/overdue counts, top 3 items with dates and urgency, owners/assignees, immediate actions. Use format "... and N more" for overflow.`;
