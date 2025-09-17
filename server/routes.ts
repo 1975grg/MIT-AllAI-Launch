@@ -3088,7 +3088,10 @@ RESPONSE FORMAT (JSON):
   "actions": [{"label": "Clear next step", "due": "timeframe"}]
 }
 
-IMPORTANT: Never include technical caveats or data quality notes. Keep responses clean and user-focused.
+IMPORTANT: 
+- Never include technical caveats or data quality notes. Keep responses clean and user-focused.
+- ALWAYS provide 2-4 actionable items in the "actions" array, even for status questions. Think about logical next steps, follow-ups, or proactive management tasks.
+- Actions should be specific, time-bound, and relevant to the data presented.
 
 EXAMPLE for question "How much rent did I collect in August?":
 {
@@ -3099,7 +3102,9 @@ EXAMPLE for question "How much rent did I collect in August?":
     "Both tenants are current on rent payments"
   ],
   "actions": [
-    {"label": "Set September rent collection reminders", "due": "End of month"}
+    {"label": "Send September rent collection notices", "due": "September 1st"},
+    {"label": "Schedule quarterly property inspections", "due": "This month"},
+    {"label": "Review and update rental rates for next year", "due": "October"}
   ]
 }
 
