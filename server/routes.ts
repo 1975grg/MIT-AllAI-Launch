@@ -3184,31 +3184,41 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
         model: "gpt-5",
         input: systemPrompt,
         text: { 
-          format: { type: "json_object" },
-          verbosity: "high"
+          format: { type: "json_object" }
         },
-        reasoning: { effort: "low" }, // Reduce reasoning to focus on output
-        max_output_tokens: 800, // Increased for complete JSON response
-        stream: false // Ensure complete response, no streaming
+        max_output_tokens: 1200, // Increased for dashboard complexity
+        stream: false
       });
 
-      // Robust extraction for GPT-5 Responses API - handle all possible content locations
-      const aiResponse = (response as any).output_text?.trim() ||
-        // Try extracting from response.output array
-        ((response as any).output?.map((o: any) => {
-          if (o.type === "text" && o.text) return o.text;
-          if (o.type === "content" && o.content) return o.content;
-          if (o.content && Array.isArray(o.content)) {
-            return o.content.map((c: any) => c.text || c.content || '').join('');
+      // Enhanced extraction for GPT-5 Responses API - handle both text and JSON responses
+      let aiResponse = '';
+      let isJsonResponse = false;
+      
+      if ((response as any).output_text?.trim()) {
+        aiResponse = (response as any).output_text.trim();
+      } else {
+        // Extract from response.output array with JSON support
+        const outputs = (response as any).output || [];
+        for (const output of outputs) {
+          if (output.content && Array.isArray(output.content)) {
+            for (const content of output.content) {
+              if (content.type === 'json' && content.json) {
+                // Direct JSON object from API
+                aiResponse = JSON.stringify(content.json);
+                isJsonResponse = true;
+                break;
+              } else if (content.type === 'output_text' && content.text) {
+                aiResponse = content.text.trim();
+                break;
+              } else if (content.type === 'text' && content.text) {
+                aiResponse = content.text.trim();
+                break;
+              }
+            }
+            if (aiResponse) break;
           }
-          return '';
-        }).join('')?.trim()) ||
-        // Try content array if it exists
-        ((response as any).content?.map((p: any) => 
-          (p.type === "output_text" && (p as any).text) || 
-          (p.type === "message" && (p as any).content?.map((c: any) => (c as any).text).join("")) || ""
-        ).join("")?.trim()) ||
-        '';
+        }
+      }
       
       
       console.log("🤖 Raw AI response:", aiResponse);
@@ -3228,42 +3238,48 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
       }
 
       try {
-        // Clean the response by removing potential code fences and whitespace
-        let cleanResponse = aiResponse.trim();
-        if (cleanResponse.startsWith('```json')) {
-          cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/```\s*$/, '');
-        } else if (cleanResponse.startsWith('```')) {
-          cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/```\s*$/, '');
-        }
-        
-        // Safe JSON parsing with comprehensive validation
+        // Handle response parsing - direct JSON vs. text
         let structuredResponse;
-        try {
-          structuredResponse = JSON.parse(cleanResponse);
-        } catch (jsonError) {
-          console.log("❌ JSON parsing failed:", jsonError);
-          console.log("Raw response that failed to parse:", cleanResponse);
+        
+        if (isJsonResponse) {
+          // Already parsed JSON object from API
+          structuredResponse = JSON.parse(aiResponse);
+        } else {
+          // Clean the response by removing potential code fences and whitespace
+          let cleanResponse = aiResponse.trim();
+          if (cleanResponse.startsWith('```json')) {
+            cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+          } else if (cleanResponse.startsWith('```')) {
+            cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/```\s*$/, '');
+          }
           
-          // Robust fallback: create structured response from partial data
-          const fallbackResponse = {
-            tldr: "Unable to parse detailed analysis - raw data shows active properties and transactions",
-            bullets: [
-              `Found ${properties?.length || 0} properties with ${units?.length || 0} units`,
-              `${transactions?.filter((t: any) => t.type === 'Income')?.length || 0} revenue transactions recorded`,
-              `${tenantGroups?.filter((tg: any) => tg.status === 'Active')?.length || 0} active tenant groups`
-            ],
-            actions: [
-              { label: "Review property data for completeness", due: "This week" },
-              { label: "Ensure monthly rent amounts are set correctly", due: "Today" }
-            ],
-            caveats: "Response parsing failed - showing summary from raw data"
-          };
-          
-          return res.json({
-            answer: fallbackResponse,
-            sources: ["Property Database"],
-            confidence: 0.7
-          });
+          try {
+            structuredResponse = JSON.parse(cleanResponse);
+          } catch (jsonError) {
+            console.log("❌ JSON parsing failed:", jsonError);
+            console.log("Raw response that failed to parse:", cleanResponse);
+            
+            // Robust fallback: create structured response from partial data
+            const fallbackResponse = {
+              tldr: "Unable to parse detailed analysis - raw data shows active properties and transactions",
+              bullets: [
+                `Found ${properties?.length || 0} properties with ${units?.length || 0} units`,
+                `${transactions?.filter((t: any) => t.type === 'Income')?.length || 0} revenue transactions recorded`,
+                `${tenantGroups?.filter((tg: any) => tg.status === 'Active')?.length || 0} active tenant groups`
+              ],
+              actions: [
+                { label: "Review property data for completeness", due: "This week" },
+                { label: "Ensure monthly rent amounts are set correctly", due: "Today" }
+              ],
+              caveats: "Response parsing failed - showing summary from raw data"
+            };
+            
+            return res.json({
+              answer: fallbackResponse,
+              sources: ["Property Database"],
+              confidence: 0.7
+            });
+          }
         }
         
         // Validate required fields and structure
