@@ -3049,7 +3049,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let contextualGuidance = "";
       let fewShotExample = "";
       
-      if (context === "dashboard") {
+      // Detect financial questions for specialized guidance
+      const financialKeywords = ['cash on cash', 'cash-on-cash', 'roi', 'return on investment', 'returns', 'yield', 'down payment', 'investment return', 'cash flow'];
+      const questionText = String(question || '').toLowerCase();
+      const isFinancialQuestion = financialKeywords.some(keyword => 
+        questionText.includes(keyword)
+      );
+      
+      if (isFinancialQuestion) {
+        contextualGuidance = `
+
+FINANCIAL ANALYSIS FOCUS: For return calculations, use "downPayment" field as the primary cash investment. Cash-on-cash return = (Annual Net Cash Flow ÷ Cash Invested) × 100. Net cash flow = rental income - mortgage payments - expenses. If only downPayment is available, use it as Cash Invested; otherwise include closing costs and initial repairs when available.`;
+        
+        fewShotExample = `
+
+EXAMPLE OUTPUT for financial question "What's my cash-on-cash return by property?":
+{
+  "tldr": "Property 1: 12.5% cash-on-cash return, Property 2: 8.2% return. Strong performance on both investments.",
+  "bullets": [
+    "Property 1: $2,400 annual cash flow ÷ $100,000 down payment = 12.5% return",
+    "Property 2: $1,640 annual cash flow ÷ $80,000 down payment = 8.2% return", 
+    "Combined portfolio: 10.8% average cash-on-cash return"
+  ],
+  "actions": [
+    {"label": "Review Property 2 expenses for optimization opportunities", "due": "This month"},
+    {"label": "Research comparable rents for potential increases", "due": "Next quarter"},
+    {"label": "Calculate after-tax returns for tax planning", "due": "Before year-end"}
+  ]
+}`;
+      } else if (context === "dashboard") {
         contextualGuidance = `
 
 DASHBOARD FOCUS: Provide high-level overview of portfolio performance, key metrics, urgent items needing attention, and strategic insights across all properties.`;
@@ -3143,6 +3171,7 @@ COMMUNICATION STYLE:
 - Use simple, everyday language (avoid technical jargon)
 - Focus on what matters most to busy landlords
 - Always use the actual transaction data provided, especially augustCollections for August questions
+- For financial calculations, prominently use the "downPayment" field as the cash investment
 - Give specific numbers and actionable advice${contextualGuidance}
 
 RESPONSE FORMAT (JSON):
