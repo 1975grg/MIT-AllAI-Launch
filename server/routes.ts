@@ -3179,14 +3179,15 @@ USER QUESTION: ${question}
 
 Provide helpful analysis based on the actual data. Respond with valid JSON only:`;
 
-      // Call OpenAI Responses API (GPT-5) with enforced JSON structure
+      // Call OpenAI Responses API (GPT-5) with proper input structure
       const response = await openai.responses.create({
         model: "gpt-5",
-        input: systemPrompt,
-        text: { 
-          format: { type: "json_object" }
-        },
-        max_output_tokens: 1200, // Increased for dashboard complexity
+        input: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question }
+        ],
+        response_format: { type: "json" },
+        max_output_tokens: 1200,
         stream: false
       });
 
@@ -3224,7 +3225,11 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
       console.log("🤖 Raw AI response:", aiResponse);
 
       if (!aiResponse || aiResponse.trim().length === 0) {
-        console.log("❌ Empty AI response received");
+        console.log("❌ Empty AI response received - debugging response structure:");
+        console.log("Response keys:", Object.keys(response));
+        console.log("output_text:", (response as any).output_text?.length || 'undefined');
+        console.log("output items:", (response as any).output?.length || 'undefined');
+        console.dir(response, { depth: 3 });
         return res.json({
           answer: {
             tldr: "No data available for analysis",
