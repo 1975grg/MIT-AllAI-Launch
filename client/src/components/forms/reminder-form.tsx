@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -132,18 +133,33 @@ export default function ReminderForm({ properties, entities = [], units = [], re
   const isRecurring = form.watch("isRecurring");
   const displayFrequency = form.watch("displayFrequency");
 
+  // Auto-set recurring fields when isRecurring or displayFrequency changes
+  useEffect(() => {
+    if (isRecurring && displayFrequency && displayFrequency !== "custom") {
+      const mapping = mapDisplayFrequencyToBaseUnits(displayFrequency);
+      form.setValue("recurringFrequency", mapping.recurringFrequency);
+      form.setValue("recurringInterval", mapping.recurringInterval);
+    } else if (!isRecurring) {
+      form.setValue("recurringFrequency", undefined);
+      form.setValue("recurringInterval", 1);
+    }
+  }, [isRecurring, displayFrequency, form]);
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => {
-        console.log("Form submitted with data:", data);
-        console.log("Form validation errors:", form.formState.errors);
         
         // Map display frequency to base units + intervals
-        const frequencyMapping = data.isRecurring && data.displayFrequency !== "custom" 
-          ? mapDisplayFrequencyToBaseUnits(data.displayFrequency || "monthly")
+        const frequencyMapping = data.isRecurring 
+          ? (data.displayFrequency !== "custom" 
+              ? mapDisplayFrequencyToBaseUnits(data.displayFrequency || "monthly")
+              : {
+                  recurringFrequency: data.recurringFrequency,
+                  recurringInterval: data.recurringInterval || 1
+                })
           : {
-              recurringFrequency: data.recurringFrequency,
-              recurringInterval: data.recurringInterval || 1
+              recurringFrequency: undefined,
+              recurringInterval: 1
             };
 
         // Ensure date is properly formatted and handle empty strings
@@ -153,9 +169,11 @@ export default function ReminderForm({ properties, entities = [], units = [], re
           entityId: data.entityId && data.entityId !== "" ? data.entityId : undefined,
           propertyId: data.propertyId && data.propertyId !== "" ? data.propertyId : undefined,
           scopeId: data.scopeId && data.scopeId !== "" ? data.scopeId : undefined,
-          // Apply frequency mapping for backend
-          recurringFrequency: data.isRecurring ? frequencyMapping.recurringFrequency : undefined,
-          recurringInterval: data.isRecurring ? (frequencyMapping.recurringInterval || 1) : 1,
+          // Apply frequency mapping for backend - only include if recurring
+          ...(data.isRecurring ? {
+            recurringFrequency: frequencyMapping.recurringFrequency,
+            recurringInterval: frequencyMapping.recurringInterval || 1,
+          } : {}),
           // Ensure required fields are present
           isRecurring: data.isRecurring || false,
           isBulkEntry: data.isBulkEntry || false,
@@ -170,10 +188,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
           }
         });
         
-        console.log("Formatted data being sent:", formattedData);
         onSubmit(formattedData);
-      }, (errors) => {
-        console.log("Form validation failed:", errors);
       })} className="space-y-4">
         <FormField
           control={form.control}

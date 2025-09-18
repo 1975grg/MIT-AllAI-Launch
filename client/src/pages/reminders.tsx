@@ -628,8 +628,6 @@ export default function Reminders() {
                     units={units || []}
                     reminder={editingReminder || undefined}
                     onSubmit={(data) => {
-                      console.log("onSubmit called with data:", data);
-                      console.log("editingReminder:", editingReminder);
                       createReminderMutation.mutate(data);
                     }}
                     onCancel={() => {
