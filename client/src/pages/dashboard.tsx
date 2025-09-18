@@ -100,7 +100,7 @@ export default function Dashboard() {
   const getPriorityColor = (type: string) => {
     switch (type) {
       case "rent": return "bg-red-500";
-      case "lease": return "bg-yellow-500";
+      case "housing": return "bg-yellow-500";
       case "maintenance": return "bg-blue-500";
       default: return "bg-green-500";
     }
@@ -120,7 +120,7 @@ export default function Dashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Total Properties</p>
+                    <p className="text-sm font-medium text-muted-foreground">MIT Residences</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-total-properties">
                       {statsLoading ? "..." : stats?.totalProperties || 0}
                     </p>
@@ -136,7 +136,7 @@ export default function Dashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Monthly Revenue</p>
+                    <p className="text-sm font-medium text-muted-foreground">Housing Revenue</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-monthly-revenue">
                       {statsLoading ? "..." : `$${stats?.monthlyRevenue?.toLocaleString() || 0}`}
                     </p>
@@ -152,7 +152,7 @@ export default function Dashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Open Cases</p>
+                    <p className="text-sm font-medium text-muted-foreground">Maintenance Requests</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-open-cases">
                       {statsLoading ? "..." : stats?.openCases || 0}
                     </p>
@@ -202,7 +202,7 @@ export default function Dashboard() {
               <Card data-testid="card-rent-collection">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle>Rent Collection - {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</CardTitle>
+                    <CardTitle>Housing Payments - {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</CardTitle>
                     <Button variant="ghost" size="sm" data-testid="button-view-all-rent">View All</Button>
                   </div>
                 </CardHeader>
@@ -236,8 +236,8 @@ export default function Dashboard() {
                                 {getStatusIcon(item.status)}
                               </div>
                               <div>
-                                <p className="font-medium text-foreground" data-testid={`text-property-${index}`}>{item.property}</p>
-                                <p className="text-sm text-muted-foreground" data-testid={`text-tenant-${index}`}>{item.tenant}</p>
+                                <p className="font-medium text-foreground" data-testid={`text-residence-${index}`}>{item.property}</p>
+                                <p className="text-sm text-muted-foreground" data-testid={`text-student-${index}`}>{item.tenant}</p>
                               </div>
                             </div>
                             <div className="text-right">
@@ -285,8 +285,8 @@ export default function Dashboard() {
                             </div>
                             <div>
                               <p className="font-medium text-foreground" data-testid={`text-case-title-${index}`}>{smartCase.title}</p>
-                              <p className="text-sm text-muted-foreground" data-testid={`text-case-property-${index}`}>
-                                {smartCase.propertyId ? "Property" : "General"}
+                              <p className="text-sm text-muted-foreground" data-testid={`text-case-residence-${index}`}>
+                                {smartCase.propertyId ? "Residence" : "General"}
                               </p>
                             </div>
                           </div>
@@ -377,24 +377,24 @@ export default function Dashboard() {
                       variant="ghost"
                       className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
                       onClick={() => setLocation('/properties')}
-                      data-testid="button-add-property"
+                      data-testid="button-add-residence"
                     >
                       <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                         <Building className="h-5 w-5 text-primary" />
                       </div>
-                      <span className="text-sm font-medium">Property</span>
+                      <span className="text-sm font-medium">Residence</span>
                     </Button>
 
                     <Button
                       variant="ghost"
                       className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
                       onClick={() => setLocation('/tenants')}
-                      data-testid="button-add-tenant"
+                      data-testid="button-add-student"
                     >
                       <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                         <Users className="h-5 w-5 text-green-600" />
                       </div>
-                      <span className="text-sm font-medium">Tenant</span>
+                      <span className="text-sm font-medium">Student</span>
                     </Button>
 
                     <Button

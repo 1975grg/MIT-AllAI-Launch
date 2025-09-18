@@ -353,7 +353,11 @@ export const caseEvents = pgTable("case_events", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Vendors
+// Contractor availability patterns
+export const availabilityPatternEnum = pgEnum("availability_pattern", ["weekdays", "weekends", "24_7", "emergency_only", "custom"]);
+export const prioritySchedulingEnum = pgEnum("priority_scheduling", ["standard", "priority", "emergency"]);
+
+// Vendors (Contractors for MIT)
 export const vendors = pgTable("vendors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orgId: varchar("org_id").notNull().references(() => organizations.id),
@@ -369,6 +373,20 @@ export const vendors = pgTable("vendors", {
   vendorType: vendorTypeEnum("vendor_type").default("individual"),
   w9OnFile: boolean("w9_on_file").default(false),
   taxExempt: boolean("tax_exempt").default(false),
+  // MIT Contractor Scheduling Fields
+  availabilityPattern: availabilityPatternEnum("availability_pattern").default("weekdays"),
+  availableStartTime: varchar("available_start_time").default("09:00"), // HH:MM format
+  availableEndTime: varchar("available_end_time").default("17:00"), // HH:MM format
+  availableDays: text("available_days").array().default(sql`ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday']`), // Days of week
+  responseTimeHours: integer("response_time_hours").default(24), // How quickly they respond
+  priorityScheduling: prioritySchedulingEnum("priority_scheduling").default("standard"),
+  emergencyAvailable: boolean("emergency_available").default(false),
+  emergencyPhone: varchar("emergency_phone"),
+  estimatedHourlyRate: decimal("estimated_hourly_rate", { precision: 8, scale: 2 }),
+  specializations: text("specializations").array(), // Specific skills/equipment
+  maxJobsPerDay: integer("max_jobs_per_day").default(3),
+  isActiveContractor: boolean("is_active_contractor").default(true),
+  lastScheduledDate: timestamp("last_scheduled_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
