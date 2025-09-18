@@ -193,6 +193,7 @@ export default function ReminderForm({ properties, entities = [], units = [], re
         onSubmit(formattedData);
       }, (errors) => {
         console.log("❌ Form validation failed:", errors);
+        console.log("❌ Detailed errors:", JSON.stringify(errors, null, 2));
       })} className="space-y-4">
         <FormField
           control={form.control}
