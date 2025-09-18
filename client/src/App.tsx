@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
+import StudentRequest from "@/pages/student-request";
 import Dashboard from "@/pages/dashboard";
 import Properties from "@/pages/properties";
 import Entities from "@/pages/entities";
@@ -35,6 +36,9 @@ function Router() {
 
   return (
     <Switch>
+      {/* Public routes accessible to everyone */}
+      <Route path="/student-request" component={StudentRequest} />
+      
       {!isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
