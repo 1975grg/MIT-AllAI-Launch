@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building, Users, Wrench, Receipt, Bell, Shield } from "lucide-react";
+import { GraduationCap, Brain, Clock, CheckCircle, Users, Wrench } from "lucide-react";
 
 export default function Landing() {
   return (
@@ -10,9 +10,9 @@ export default function Landing() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Building className="h-5 w-5 text-primary-foreground" />
+              <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">AllAI Property</span>
+            <span className="text-xl font-bold text-foreground">MIT Housing Maintenance AI</span>
           </div>
           <Button asChild data-testid="button-login">
             <a href="/api/login">Sign In</a>
@@ -24,16 +24,21 @@ export default function Landing() {
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
-            Simplified Property Management
-            <span className="block text-primary">For Part-Time Landlords</span>
+            AI-Powered Maintenance Automation
+            <span className="block text-primary">For University Student Housing</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Never miss another important task. Track properties, manage tenants, monitor maintenance, 
-            and get AI-powered insights with our intuitive property management platform.
+            Revolutionize student housing maintenance with intelligent triage, automated contractor coordination, 
+            and seamless request management. Reduce response times and improve student satisfaction.
           </p>
-          <Button size="lg" asChild className="text-lg px-8 py-3" data-testid="button-get-started">
-            <a href="/api/login">Get Started Free</a>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" asChild className="text-lg px-8 py-3" data-testid="button-submit-request">
+              <a href="/maintenance">Submit Maintenance Request</a>
+            </Button>
+            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3" data-testid="button-admin-login">
+              <a href="/api/login">Admin Login</a>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -41,18 +46,30 @@ export default function Landing() {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
           <h2 className="text-2xl font-bold text-center text-foreground mb-12">
-            <span className="text-primary">Unlock</span> the power of <span className="text-primary">your AI assistant</span> — and free up your time.
+            <span className="text-primary">Automate</span> maintenance workflows with <span className="text-primary">intelligent AI triage</span> — and enhance student satisfaction.
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <Card>
               <CardHeader>
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                  <Building className="h-6 w-6 text-primary" />
+                  <GraduationCap className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Property Tracking</CardTitle>
+                <CardTitle>Student Request Intake</CardTitle>
                 <CardDescription>
-                  Organize all your properties with detailed information, ownership tracking, and unit management.
+                  Simple, student-friendly maintenance request forms with photo uploads, location tracking, and priority assessment.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                  <Brain className="h-6 w-6 text-blue-600" />
+                </div>
+                <CardTitle>AI Smart Triage</CardTitle>
+                <CardDescription>
+                  Intelligent classification of maintenance requests with automatic severity assessment, safety flags, and routing decisions.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -62,9 +79,9 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
                   <Users className="h-6 w-6 text-green-600" />
                 </div>
-                <CardTitle>Tenant Management</CardTitle>
+                <CardTitle>Automated Contractor Coordination</CardTitle>
                 <CardDescription>
-                  Keep track of tenant information, lease agreements, and rent collection status.
+                  AI agents automatically contact preferred contractors, negotiate availability, and schedule appointments based on SLA requirements.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -74,33 +91,21 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mb-4">
                   <Wrench className="h-6 w-6 text-yellow-600" />
                 </div>
-                <CardTitle>Smart Maintenance</CardTitle>
+                <CardTitle>Work Order Management</CardTitle>
                 <CardDescription>
-                  Track maintenance requests, schedule repairs, and manage vendor relationships efficiently.
+                  Digital work orders with completion checklists, before/after photos, and automated student notification workflows.
                 </CardDescription>
               </CardHeader>
             </Card>
 
             <Card>
               <CardHeader>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <Receipt className="h-6 w-6 text-blue-600" />
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
+                  <Clock className="h-6 w-6 text-orange-600" />
                 </div>
-                <CardTitle>Expense Tracking</CardTitle>
+                <CardTitle>Real-Time Tracking</CardTitle>
                 <CardDescription>
-                  Log expenses, categorize costs, and generate reports for tax preparation.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
-                  <Bell className="h-6 w-6 text-red-600" />
-                </div>
-                <CardTitle>Smart Reminders</CardTitle>
-                <CardDescription>
-                  Never miss rent collection, lease renewals, maintenance schedules, or tax deadlines.
+                  Live status updates, SLA monitoring, and proactive escalation for urgent safety issues across all university housing properties.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -108,11 +113,11 @@ export default function Landing() {
             <Card>
               <CardHeader>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                  <Shield className="h-6 w-6 text-purple-600" />
+                  <CheckCircle className="h-6 w-6 text-purple-600" />
                 </div>
-                <CardTitle>Secure & Reliable</CardTitle>
+                <CardTitle>Quality Assurance</CardTitle>
                 <CardDescription>
-                  Your data is protected with enterprise-grade security and automatic backups.
+                  Automated completion verification, student satisfaction surveys, and comprehensive audit trails for housing administration.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -124,21 +129,26 @@ export default function Landing() {
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
           <h2 className="text-3xl font-bold text-foreground mb-6">
-            Ready to Simplify Your Property Management?
+            Ready to Transform Your Housing Maintenance Operations?
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of part-time landlords who trust AllAI Property to keep them organized and profitable.
+            Join leading universities using AI to reduce maintenance response times, improve student satisfaction, and optimize housing operations.
           </p>
-          <Button size="lg" asChild className="text-lg px-8 py-3" data-testid="button-start-now">
-            <a href="/api/login">Start Managing Today</a>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" asChild className="text-lg px-8 py-3" data-testid="button-demo-request">
+              <a href="/api/login">Request Demo</a>
+            </Button>
+            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3" data-testid="button-student-portal">
+              <a href="/maintenance">Student Portal</a>
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-border py-8 px-4">
         <div className="container mx-auto text-center text-muted-foreground">
-          <p>&copy; 2024 AllAI Property. All rights reserved.</p>
+          <p>&copy; 2024 MIT Housing Maintenance AI. All rights reserved.</p>
         </div>
       </footer>
     </div>
