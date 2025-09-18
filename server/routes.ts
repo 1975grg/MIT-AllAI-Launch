@@ -19,6 +19,8 @@ import {
   insertReminderSchema,
 } from "@shared/schema";
 import OpenAI from "openai";
+import { z } from "zod";
+import rateLimit from "express-rate-limit";
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
@@ -1918,6 +1920,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating case:", error);
       res.status(500).json({ message: "Failed to update case" });
+    }
+  });
+
+  // Input validation schema for public student requests
+  const publicStudentRequestSchema = z.object({
+    studentName: z.string().min(2, "Name must be at least 2 characters"),
+    studentEmail: z.string().email("Please enter a valid email address"),
+    studentPhone: z.string().optional(),
+    building: z.string().min(1, "Building is required"),
+    room: z.string().min(1, "Room number is required"),
+    title: z.string().min(5, "Title must be at least 5 characters"),
+    description: z.string().min(10, "Description must be at least 10 characters"),
+    category: z.string().min(1, "Category is required"),
+    priority: z.enum(["Low", "Medium", "High", "Critical"], {
+      errorMap: () => ({ message: "Priority must be Low, Medium, High, or Critical" })
+    })
+  });
+
+  // Rate limiter for public endpoints (protect against spam/abuse)
+  const publicRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 requests per windowMs
+    message: {
+      message: "Too many maintenance requests from this IP. Please try again in 15 minutes."
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // In-flight organization creation guard to prevent race conditions
+  let mitOrgPromise: Promise<any> | null = null;
+  let mitOrgCache: any = null;
+  
+  const getMITOrganization = async () => {
+    if (mitOrgCache) {
+      return mitOrgCache;
+    }
+    
+    if (mitOrgPromise) {
+      return mitOrgPromise;
+    }
+    
+    mitOrgPromise = (async () => {
+      try {
+        // First check if MIT organization already exists by looking for system user's org
+        let systemUser = await storage.getUser("mit-system");
+        if (!systemUser) {
+          systemUser = await storage.upsertUser({
+            id: "mit-system",
+            email: "system@mit.edu",
+            firstName: "MIT",
+            lastName: "Housing System"
+          });
+        }
+        
+        // Try to get existing organization for this user
+        const existingOrg = await storage.getUserOrganization(systemUser.id);
+        if (existingOrg) {
+          mitOrgCache = existingOrg;
+          return existingOrg;
+        }
+        
+        // Create new organization if none exists
+        const newOrg = await storage.createOrganization({
+          name: "MIT Housing Maintenance",
+          ownerId: systemUser.id,
+        });
+        
+        mitOrgCache = newOrg;
+        return newOrg;
+      } catch (error) {
+        console.error("Error initializing MIT organization:", error);
+        throw new Error("Failed to initialize MIT organization");
+      } finally {
+        mitOrgPromise = null;
+      }
+    })();
+    
+    return mitOrgPromise;
+  };
+
+  // Public student maintenance request endpoint (no authentication required)
+  app.post('/api/cases/public', publicRateLimit, async (req: any, res) => {
+    try {
+      // Add basic request size/content validation for security
+      if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({ 
+          message: "Invalid request body"
+        });
+      }
+
+      // Validate input first with Zod
+      const validatedInput = publicStudentRequestSchema.parse(req.body);
+      
+      // Limit field lengths for security (prevent abuse)
+      if (validatedInput.title.length > 200) {
+        return res.status(400).json({ 
+          message: "Title is too long (maximum 200 characters)"
+        });
+      }
+      
+      if (validatedInput.description.length > 2000) {
+        return res.status(400).json({ 
+          message: "Description is too long (maximum 2000 characters)"
+        });
+      }
+      
+      // Get MIT organization (race-condition safe)
+      const mitOrg = await getMITOrganization();
+      
+      // Create case description with student contact info
+      const studentInfo = `\n\n--- Student Information ---\nName: ${validatedInput.studentName}\nEmail: ${validatedInput.studentEmail}${validatedInput.studentPhone ? `\nPhone: ${validatedInput.studentPhone}` : ''}\nBuilding: ${validatedInput.building}\nRoom: ${validatedInput.room}`;
+      
+      // Map priority to allowed enum values
+      const priorityMap: Record<string, "Low" | "Medium" | "High" | "Urgent"> = {
+        "Low": "Low",
+        "Medium": "Medium", 
+        "High": "High",
+        "Critical": "Urgent"
+      };
+      
+      // Map student request to smart case format
+      const smartCaseData = {
+        orgId: mitOrg.id,
+        title: validatedInput.title,
+        description: validatedInput.description + studentInfo,
+        category: validatedInput.category,
+        priority: priorityMap[validatedInput.priority],
+        status: "New" as const,
+        // Omit unitId and propertyId (undefined, not null)
+        aiTriageJson: {
+          studentContact: {
+            name: validatedInput.studentName,
+            email: validatedInput.studentEmail,
+            phone: validatedInput.studentPhone,
+            building: validatedInput.building,
+            room: validatedInput.room
+          },
+          submissionSource: "public_student_portal",
+          submittedAt: new Date().toISOString()
+        }
+      };
+      
+      // Validate final case data against schema
+      const validatedCaseData = insertSmartCaseSchema.parse(smartCaseData);
+      const smartCase = await storage.createSmartCase(validatedCaseData);
+      
+      // Return 201 Created with proper response
+      res.status(201).json({ 
+        id: smartCase.id,
+        status: "submitted",
+        message: "Your maintenance request has been submitted successfully"
+      });
+      
+      // Log success with minimal PII
+      console.log(`📋 Public maintenance request created: ${smartCase.id} - ${validatedInput.title} (${validatedInput.building} ${validatedInput.room})`);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        // Return structured validation errors as 400 Bad Request
+        return res.status(400).json({ 
+          message: "Validation failed",
+          errors: error.errors.map((err: any) => ({
+            field: err.path.join('.'),
+            message: err.message
+          }))
+        });
+      } else {
+        // Log error for debugging but don't expose details to client
+        console.error("Error creating public maintenance case:", error);
+        return res.status(500).json({ 
+          message: "Failed to submit maintenance request. Please try again."
+        });
+      }
     }
   });
 
