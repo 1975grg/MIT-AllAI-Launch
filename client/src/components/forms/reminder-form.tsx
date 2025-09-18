@@ -148,6 +148,8 @@ export default function ReminderForm({ properties, entities = [], units = [], re
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => {
+        console.log("✅ Form submitted successfully with data:", data);
+        console.log("Form validation errors:", form.formState.errors);
         
         // Map display frequency to base units + intervals
         const frequencyMapping = data.isRecurring 
@@ -189,6 +191,8 @@ export default function ReminderForm({ properties, entities = [], units = [], re
         });
         
         onSubmit(formattedData);
+      }, (errors) => {
+        console.log("❌ Form validation failed:", errors);
       })} className="space-y-4">
         <FormField
           control={form.control}
