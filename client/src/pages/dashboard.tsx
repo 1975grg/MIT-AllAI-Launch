@@ -15,20 +15,20 @@ import type { SmartCase, Reminder } from "@shared/schema";
 import PropertyAssistant from "@/components/ai/property-assistant";
 
 type DashboardStats = {
-  totalProperties: number;
-  monthlyRevenue: number;
-  openCases: number;
-  dueReminders: number;
+  totalProperties: number; // Housing facilities
+  monthlyRevenue: number; // Housing revenue
+  openCases: number; // Maintenance requests
+  dueReminders: number; // System alerts
 };
 
-type RentCollectionStatus = {
+type HousingPaymentStatus = {
   collected: number;
   total: number;
   percentage: number;
   items: Array<{
     id: string;
-    property: string;
-    tenant: string;
+    property: string; // Housing facility
+    tenant: string; // Student
     amount: number;
     status: "paid" | "due" | "overdue";
     dueDate: Date;
@@ -60,7 +60,7 @@ export default function Dashboard() {
     retry: false,
   });
 
-  const { data: rentCollection, isLoading: rentLoading } = useQuery<RentCollectionStatus>({
+  const { data: housingPayments, isLoading: paymentsLoading } = useQuery<HousingPaymentStatus>({
     queryKey: ["/api/dashboard/rent-collection"],
     retry: false,
   });
@@ -181,14 +181,14 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* AI Property Assistant */}
+          {/* AI Housing Assistant */}
           <PropertyAssistant 
             context="dashboard"
             exampleQuestions={[
-              "How are my properties performing overall?",
-              "What needs my immediate attention?",
-              "Any red flags in my portfolio?",
-              "Which property is my best performer?"
+              "How are our housing facilities performing this semester?",
+              "What maintenance requests need immediate attention?", 
+              "Any urgent issues in our residence halls?",
+              "Which housing facility has the highest student satisfaction?"
             ]}
           />
 
@@ -207,29 +207,29 @@ export default function Dashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {rentLoading ? (
+                  {paymentsLoading ? (
                     <div className="space-y-4">
                       <div className="h-4 bg-muted animate-pulse rounded" />
                       <div className="h-2 bg-muted animate-pulse rounded" />
                     </div>
-                  ) : rentCollection ? (
+                  ) : housingPayments ? (
                     <>
                       {/* Progress Bar */}
                       <div className="mb-4">
                         <div className="flex justify-between text-sm mb-2">
                           <span className="text-muted-foreground" data-testid="text-rent-progress">
-                            Collected: ${rentCollection.collected?.toLocaleString()} / ${rentCollection.total?.toLocaleString()}
+                            Collected: ${housingPayments.collected?.toLocaleString()} / ${housingPayments.total?.toLocaleString()}
                           </span>
                           <span className="text-foreground font-medium" data-testid="text-rent-percentage">
-                            {rentCollection.percentage}%
+                            {housingPayments.percentage}%
                           </span>
                         </div>
-                        <Progress value={rentCollection.percentage} className="h-2" data-testid="progress-rent-collection" />
+                        <Progress value={housingPayments.percentage} className="h-2" data-testid="progress-rent-collection" />
                       </div>
                       
                       {/* Rent Status Items */}
                       <div className="space-y-3">
-                        {rentCollection.items?.slice(0, 3).map((item, index) => (
+                        {housingPayments.items?.slice(0, 3).map((item: any, index: number) => (
                           <div key={item.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-md" data-testid={`rent-item-${index}`}>
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 rounded-full flex items-center justify-center">
@@ -255,16 +255,16 @@ export default function Dashboard() {
                       </div>
                     </>
                   ) : (
-                    <p className="text-muted-foreground">No rent collection data available</p>
+                    <p className="text-muted-foreground">No housing payment data available</p>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Smart Cases Overview */}
+              {/* AI Maintenance Triage */}
               <Card data-testid="card-smart-cases">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle>Smart Cases</CardTitle>
+                    <CardTitle>AI Maintenance Triage</CardTitle>
                     <Button variant="ghost" size="sm" data-testid="button-manage-all-cases">Manage All</Button>
                   </div>
                 </CardHeader>
@@ -300,7 +300,7 @@ export default function Dashboard() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground">No active cases</p>
+                    <p className="text-muted-foreground">No active maintenance requests</p>
                   )}
                 </CardContent>
               </Card>
@@ -309,11 +309,11 @@ export default function Dashboard() {
             {/* Right Column - Sidebar widgets */}
             <div className="space-y-6">
               
-              {/* Upcoming Reminders */}
+              {/* System Alerts & Scheduling */}
               <Card data-testid="card-upcoming-reminders">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle>Upcoming Reminders</CardTitle>
+                    <CardTitle>System Alerts & Scheduling</CardTitle>
                     <Button variant="ghost" size="sm" data-testid="button-view-all-reminders">View All</Button>
                   </div>
                 </CardHeader>

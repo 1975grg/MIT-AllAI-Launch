@@ -92,8 +92,8 @@ export default function Header({ title }: HeaderProps) {
               data-testid="img-mit-logo"
             />
             <div className="flex flex-col">
-              <h1 className="text-xl font-bold text-primary mit-heading" data-testid="text-header-title">MIT Housing</h1>
-              <span className="text-xs text-muted-foreground mit-subtitle" data-testid="text-subtitle">{title}</span>
+              <h1 className="text-xl font-bold text-primary mit-heading" data-testid="text-header-title">MIT Student Housing</h1>
+              <span className="text-xs text-muted-foreground mit-subtitle" data-testid="text-subtitle">AI-Powered Campus Housing Management - {title}</span>
             </div>
           </div>
           <span className="text-sm text-muted-foreground" data-testid="text-welcome">
@@ -107,7 +107,7 @@ export default function Header({ title }: HeaderProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               type="text"
-              placeholder="Search residences, students..."
+              placeholder="Search housing facilities, students, maintenance..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 w-64"

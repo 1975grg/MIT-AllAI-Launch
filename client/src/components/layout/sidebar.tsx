@@ -15,14 +15,14 @@ export default function Sidebar() {
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
-    { name: "Residences", href: "/properties", icon: Building },
-    { name: "Housing Admin", href: "/entities", icon: Building2 },
+    { name: "Housing Facilities", href: "/properties", icon: Building },
+    { name: "Housing Administration", href: "/entities", icon: Building2 },
     { name: "Students", href: "/tenants", icon: GraduationCap },
-    { name: "Maintenance", href: "/maintenance", icon: Wrench },
-    { name: "Contractors", href: "/expenses", icon: Receipt },
-    { name: "Reports", href: "/revenue", icon: DollarSign },
-    { name: "Analytics", href: "/tax", icon: Calculator },
-    { name: "Reminders", href: "/reminders", icon: Bell },
+    { name: "Maintenance Requests", href: "/maintenance", icon: Wrench },
+    { name: "Campus Contractors", href: "/vendors", icon: Receipt },
+    { name: "Housing Payments", href: "/revenue", icon: DollarSign },
+    { name: "Occupancy Analytics", href: "/tax", icon: Calculator },
+    { name: "System Alerts", href: "/reminders", icon: Bell },
   ];
 
   const isActive = (path: string) => {
@@ -45,8 +45,8 @@ export default function Sidebar() {
                   className="h-8 w-auto"
                 />
                 <div className="flex flex-col">
-                  <span className="text-lg font-bold text-primary mit-heading">MIT Housing</span>
-                  <span className="text-xs text-muted-foreground mit-subtitle">AI Maintenance System</span>
+                  <span className="text-lg font-bold text-primary mit-heading">MIT Student Housing</span>
+                  <span className="text-xs text-muted-foreground mit-subtitle">AI-Powered Campus Management</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground ml-1" />
               </div>
