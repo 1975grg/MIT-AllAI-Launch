@@ -3280,7 +3280,7 @@ Provide helpful analysis based on the actual data. Respond with valid JSON only:
               ...aiData.financials,
               augustCollections: aiData.financials?.augustCollections?.slice(0, 5) || []
             },
-            cases: aiData.cases?.slice(0, 5) || [],
+            cases: aiData.maintenanceCases?.slice(0, 5) || [],
             reminders: aiData.reminders?.slice(0, 5) || []
           };
 
