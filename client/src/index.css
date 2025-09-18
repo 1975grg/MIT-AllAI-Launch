@@ -3,38 +3,43 @@
 @tailwind utilities;
 
 :root {
+  /* MIT Official Color Scheme */
+  /* MIT Red #A31F34 - Primary brand color */
+  /* Silver Gray #8A8B8C - Secondary brand color */ 
+  /* Light Gray #C2C0BF - Tertiary brand color */
+  
   --background: hsl(0 0% 100%);
   --foreground: hsl(210 25% 7.8431%);
-  --card: hsl(180 6.6667% 97.0588%);
+  --card: hsl(30 4% 95%);
   --card-foreground: hsl(210 25% 7.8431%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(210 25% 7.8431%);
-  --primary: hsl(203.8863 88.2845% 53.1373%);
+  --primary: hsl(349.5 67.5% 38%); /* MIT Red */
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(210 25% 7.8431%);
+  --secondary: hsl(220 1% 54.5%); /* MIT Silver Gray */
   --secondary-foreground: hsl(0 0% 100%);
-  --muted: hsl(240 1.9608% 90%);
-  --muted-foreground: hsl(210 25% 7.8431%);
-  --accent: hsl(211.5789 51.3514% 92.7451%);
-  --accent-foreground: hsl(203.8863 88.2845% 53.1373%);
+  --muted: hsl(30 4% 75.5%); /* MIT Light Gray */
+  --muted-foreground: hsl(220 1% 40%);
+  --accent: hsl(30 4% 92%); /* Light MIT Gray tint */
+  --accent-foreground: hsl(349.5 67.5% 38%); /* MIT Red for accent text */
   --destructive: hsl(356.3033 90.5579% 54.3137%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(201.4286 30.4348% 90.9804%);
-  --input: hsl(200 23.0769% 97.4510%);
-  --ring: hsl(202.8169 89.1213% 53.1373%);
-  --chart-1: hsl(203.8863 88.2845% 53.1373%);
-  --chart-2: hsl(159.7826 100% 36.0784%);
-  --chart-3: hsl(42.0290 92.8251% 56.2745%);
-  --chart-4: hsl(147.1429 78.5047% 41.9608%);
-  --chart-5: hsl(341.4894 75.2000% 50.9804%);
-  --sidebar: hsl(180 6.6667% 97.0588%);
+  --border: hsl(30 4% 88%);
+  --input: hsl(30 4% 96%);
+  --ring: hsl(349.5 67.5% 38%); /* MIT Red for focus rings */
+  --chart-1: hsl(349.5 67.5% 38%); /* MIT Red */
+  --chart-2: hsl(220 1% 54.5%); /* MIT Silver Gray */
+  --chart-3: hsl(30 4% 75.5%); /* MIT Light Gray */
+  --chart-4: hsl(349.5 67.5% 58%); /* Lighter MIT Red */
+  --chart-5: hsl(220 1% 74.5%); /* Lighter MIT Silver */
+  --sidebar: hsl(30 4% 97%);
   --sidebar-foreground: hsl(210 25% 7.8431%);
-  --sidebar-primary: hsl(203.8863 88.2845% 53.1373%);
+  --sidebar-primary: hsl(349.5 67.5% 38%); /* MIT Red */
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(211.5789 51.3514% 92.7451%);
-  --sidebar-accent-foreground: hsl(203.8863 88.2845% 53.1373%);
-  --sidebar-border: hsl(205.0000 25.0000% 90.5882%);
-  --sidebar-ring: hsl(202.8169 89.1213% 53.1373%);
+  --sidebar-accent: hsl(30 4% 92%);
+  --sidebar-accent-foreground: hsl(349.5 67.5% 38%); /* MIT Red */
+  --sidebar-border: hsl(30 4% 88%);
+  --sidebar-ring: hsl(349.5 67.5% 38%); /* MIT Red */
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -52,38 +57,39 @@
 }
 
 .dark {
+  /* MIT Dark Mode Color Scheme */
   --background: hsl(0 0% 0%);
   --foreground: hsl(200 6.6667% 91.1765%);
-  --card: hsl(228 9.8039% 10%);
+  --card: hsl(220 1% 12%);
   --card-foreground: hsl(0 0% 85.0980%);
   --popover: hsl(0 0% 0%);
   --popover-foreground: hsl(200 6.6667% 91.1765%);
-  --primary: hsl(203.7736 87.6033% 52.5490%);
+  --primary: hsl(349.5 67.5% 48%); /* Lighter MIT Red for dark mode */
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(195.0000 15.3846% 94.9020%);
+  --secondary: hsl(220 1% 64.5%); /* Lighter MIT Silver Gray for dark mode */
   --secondary-foreground: hsl(210 25% 7.8431%);
-  --muted: hsl(0 0% 9.4118%);
-  --muted-foreground: hsl(210 3.3898% 46.2745%);
-  --accent: hsl(205.7143 70% 7.8431%);
-  --accent-foreground: hsl(203.7736 87.6033% 52.5490%);
+  --muted: hsl(220 1% 18%);
+  --muted-foreground: hsl(220 1% 60%);
+  --accent: hsl(220 1% 15%);
+  --accent-foreground: hsl(349.5 67.5% 58%); /* Lighter MIT Red for accent text */
   --destructive: hsl(356.3033 90.5579% 54.3137%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(210 5.2632% 14.9020%);
-  --input: hsl(207.6923 27.6596% 18.4314%);
-  --ring: hsl(202.8169 89.1213% 53.1373%);
-  --chart-1: hsl(203.8863 88.2845% 53.1373%);
-  --chart-2: hsl(159.7826 100% 36.0784%);
-  --chart-3: hsl(42.0290 92.8251% 56.2745%);
-  --chart-4: hsl(147.1429 78.5047% 41.9608%);
-  --chart-5: hsl(341.4894 75.2000% 50.9804%);
-  --sidebar: hsl(228 9.8039% 10%);
+  --border: hsl(220 1% 20%);
+  --input: hsl(220 1% 15%);
+  --ring: hsl(349.5 67.5% 48%); /* MIT Red for focus rings */
+  --chart-1: hsl(349.5 67.5% 48%); /* MIT Red */
+  --chart-2: hsl(220 1% 64.5%); /* MIT Silver Gray */
+  --chart-3: hsl(30 4% 75.5%); /* MIT Light Gray */
+  --chart-4: hsl(349.5 67.5% 68%); /* Lighter MIT Red */
+  --chart-5: hsl(220 1% 84.5%); /* Lighter MIT Silver */
+  --sidebar: hsl(220 1% 10%);
   --sidebar-foreground: hsl(0 0% 85.0980%);
-  --sidebar-primary: hsl(202.8169 89.1213% 53.1373%);
+  --sidebar-primary: hsl(349.5 67.5% 48%); /* MIT Red */
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(205.7143 70% 7.8431%);
-  --sidebar-accent-foreground: hsl(203.7736 87.6033% 52.5490%);
-  --sidebar-border: hsl(205.7143 15.7895% 26.0784%);
-  --sidebar-ring: hsl(202.8169 89.1213% 53.1373%);
+  --sidebar-accent: hsl(220 1% 15%);
+  --sidebar-accent-foreground: hsl(349.5 67.5% 58%); /* MIT Red */
+  --sidebar-border: hsl(220 1% 25%);
+  --sidebar-ring: hsl(349.5 67.5% 48%); /* MIT Red */
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -119,5 +125,43 @@
   .dark textarea::placeholder {
     opacity: 0.5;
     color: hsl(var(--muted-foreground));
+  }
+
+  /* MIT-specific styling */
+  .mit-red {
+    color: #A31F34;
+  }
+  
+  .mit-red-bg {
+    background-color: #A31F34;
+  }
+  
+  .mit-gray {
+    color: #8A8B8C;
+  }
+  
+  .mit-gray-bg {
+    background-color: #8A8B8C;
+  }
+  
+  .mit-light-gray {
+    color: #C2C0BF;
+  }
+  
+  .mit-light-gray-bg {
+    background-color: #C2C0BF;
+  }
+  
+  /* MIT branding typography */
+  .mit-heading {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  
+  .mit-subtitle {
+    font-family: var(--font-sans);
+    font-weight: 400;
+    letter-spacing: -0.01em;
   }
 }

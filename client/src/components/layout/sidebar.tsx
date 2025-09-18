@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import UserProfileForm from "@/components/forms/user-profile-form";
-import { Building, Home, Users, Wrench, Receipt, DollarSign, Bell, Settings, Building2, User, LogOut, ChevronDown, Calculator } from "lucide-react";
+import { Building, Home, Users, Wrench, Receipt, DollarSign, Bell, Settings, Building2, User, LogOut, ChevronDown, Calculator, GraduationCap, HomeIcon } from "lucide-react";
+import mitLogoUrl from "@assets/generated_images/MIT_logo_black_transparent_d4456daa.png";
 
 export default function Sidebar() {
   const [location] = useLocation();
@@ -14,13 +15,13 @@ export default function Sidebar() {
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
-    { name: "My Properties", href: "/properties", icon: Building },
-    { name: "Entities", href: "/entities", icon: Building2 },
-    { name: "Tenants", href: "/tenants", icon: Users },
+    { name: "Residences", href: "/properties", icon: Building },
+    { name: "Housing Admin", href: "/entities", icon: Building2 },
+    { name: "Students", href: "/tenants", icon: GraduationCap },
     { name: "Maintenance", href: "/maintenance", icon: Wrench },
-    { name: "Expenses", href: "/expenses", icon: Receipt },
-    { name: "Revenue", href: "/revenue", icon: DollarSign },
-    { name: "Tax", href: "/tax", icon: Calculator },
+    { name: "Contractors", href: "/expenses", icon: Receipt },
+    { name: "Reports", href: "/revenue", icon: DollarSign },
+    { name: "Analytics", href: "/tax", icon: Calculator },
     { name: "Reminders", href: "/reminders", icon: Bell },
   ];
 
@@ -37,11 +38,16 @@ export default function Sidebar() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full p-0 h-auto justify-start hover:bg-muted/50" data-testid="button-brand-menu">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Building className="h-5 w-5 text-primary-foreground" />
+              <div className="flex items-center space-x-3">
+                <img 
+                  src={mitLogoUrl} 
+                  alt="MIT" 
+                  className="h-8 w-auto"
+                />
+                <div className="flex flex-col">
+                  <span className="text-lg font-bold text-primary mit-heading">MIT Housing</span>
+                  <span className="text-xs text-muted-foreground mit-subtitle">AI Maintenance System</span>
                 </div>
-                <span className="text-xl font-bold text-foreground">AllAI Property</span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground ml-1" />
               </div>
             </Button>

@@ -12,6 +12,7 @@ import ReminderForm from "@/components/forms/reminder-form";
 import { useAuth } from "@/hooks/useAuth";
 import { Search, Bell, Plus } from "lucide-react";
 import type { Notification, Property, OwnershipEntity, Unit } from "@shared/schema";
+import mitLogoUrl from "@assets/generated_images/MIT_logo_black_transparent_d4456daa.png";
 
 interface HeaderProps {
   title: string;
@@ -83,7 +84,18 @@ export default function Header({ title }: HeaderProps) {
     <>
       <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6" data-testid="header">
         <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold text-foreground" data-testid="text-header-title">{title}</h1>
+          <div className="flex items-center space-x-3">
+            <img 
+              src={mitLogoUrl} 
+              alt="MIT" 
+              className="h-8 w-auto"
+              data-testid="img-mit-logo"
+            />
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold text-primary mit-heading" data-testid="text-header-title">MIT Housing</h1>
+              <span className="text-xs text-muted-foreground mit-subtitle" data-testid="text-subtitle">{title}</span>
+            </div>
+          </div>
           <span className="text-sm text-muted-foreground" data-testid="text-welcome">
             Welcome back, {user?.firstName || "User"}
           </span>
@@ -95,7 +107,7 @@ export default function Header({ title }: HeaderProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               type="text"
-              placeholder="Search properties, tenants..."
+              placeholder="Search residences, students..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 w-64"
