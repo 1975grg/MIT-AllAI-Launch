@@ -135,6 +135,9 @@ export default function ReminderForm({ properties, entities = [], units = [], re
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => {
+        console.log("Form submitted with data:", data);
+        console.log("Form validation errors:", form.formState.errors);
+        
         // Map display frequency to base units + intervals
         const frequencyMapping = data.isRecurring && data.displayFrequency !== "custom" 
           ? mapDisplayFrequencyToBaseUnits(data.displayFrequency || "monthly")
@@ -167,7 +170,10 @@ export default function ReminderForm({ properties, entities = [], units = [], re
           }
         });
         
+        console.log("Formatted data being sent:", formattedData);
         onSubmit(formattedData);
+      }, (errors) => {
+        console.log("Form validation failed:", errors);
       })} className="space-y-4">
         <FormField
           control={form.control}
