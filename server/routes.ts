@@ -2690,15 +2690,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      // Handle date conversions for recurring reminders
-      const requestData = {
+      // Clean the data: convert empty strings to null for optional fields
+      const cleanedData = {
         ...req.body,
         orgId: org.id,
         dueAt: req.body.dueAt ? new Date(req.body.dueAt) : undefined,
         recurringEndDate: req.body.recurringEndDate ? new Date(req.body.recurringEndDate) : undefined,
+        // Convert empty strings to null for optional fields
+        type: req.body.type === "" ? null : req.body.type,
+        scope: req.body.scope === "" ? null : req.body.scope,
+        scopeId: req.body.scopeId === "" ? null : req.body.scopeId,
+        entityId: req.body.entityId === "" ? null : req.body.entityId,
+        recurringFrequency: req.body.recurringFrequency === "" ? null : req.body.recurringFrequency,
       };
       
-      const validatedData = insertReminderSchema.parse(requestData);
+      const validatedData = insertReminderSchema.parse(cleanedData);
       
       // storage.createReminder already handles recurring reminder creation
       const reminder = await storage.createReminder(validatedData);
