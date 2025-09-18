@@ -26,8 +26,42 @@ const frontendOnlyFields = z.object({
   displayFrequency: z.enum(["monthly", "quarterly", "annually", "weekly", "daily", "custom"]).optional(),
 });
 
-// Combine shared schema with frontend-only fields using intersection
-const reminderFormSchema = z.intersection(insertReminderSchema, frontendOnlyFields);
+// Create a simpler frontend schema that includes all required fields
+const reminderFormSchema = z.object({
+  // Core required fields
+  title: z.string().min(1, "Title is required"),
+  dueAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  leadDays: z.number().min(0).default(0),
+  
+  // Optional backend fields (orgId will be set by server)
+  orgId: z.string().optional(),
+  type: z.enum(["rent", "lease", "regulatory", "maintenance", "custom"]).optional(),
+  scope: z.enum(["entity", "property", "lease", "asset"]).optional(),
+  scopeId: z.string().optional(),
+  entityId: z.string().optional(),
+  channels: z.array(z.enum(["inapp", "email", "sms", "push"])).default(["inapp"]),
+  
+  // Recurring fields
+  isRecurring: z.boolean().optional().default(false),
+  recurringFrequency: z.enum(["days", "weeks", "months", "years"]).optional(),
+  recurringInterval: z.number().min(1).optional().default(1),
+  recurringEndDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  isBulkEntry: z.boolean().optional().default(false),
+  
+  // Frontend-only fields
+  propertyId: z.string().optional(),
+  unitIds: z.array(z.string()).optional(),
+  saveAsDefault: z.boolean().optional(),
+  displayFrequency: z.enum(["monthly", "quarterly", "annually", "weekly", "daily", "custom"]).optional(),
+}).refine((data) => {
+  if (data.isRecurring && !data.recurringFrequency) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Recurring frequency is required for recurring reminders",
+  path: ["recurringFrequency"],
+});
 
 // Helper functions for frequency mapping (matching expense form pattern)
 const mapDisplayFrequencyToBaseUnits = (displayFreq: string) => {
@@ -148,8 +182,6 @@ export default function ReminderForm({ properties, entities = [], units = [], re
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => {
-        console.log("✅ Form submitted successfully with data:", data);
-        console.log("Form validation errors:", form.formState.errors);
         
         // Map display frequency to base units + intervals
         const frequencyMapping = data.isRecurring 
@@ -191,9 +223,6 @@ export default function ReminderForm({ properties, entities = [], units = [], re
         });
         
         onSubmit(formattedData);
-      }, (errors) => {
-        console.log("❌ Form validation failed:", errors);
-        console.log("❌ Detailed errors:", JSON.stringify(errors, null, 2));
       })} className="space-y-4">
         <FormField
           control={form.control}
