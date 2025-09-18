@@ -436,7 +436,7 @@ export default function Maintenance() {
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Maintenance" />
+        <Header title={viewMode === "student" ? "Submit Maintenance Request" : "AI Maintenance Triage"} />
         
         <main className="flex-1 overflow-auto p-6 bg-muted/30">
           {/* View Mode Toggle */}
