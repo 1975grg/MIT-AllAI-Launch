@@ -408,7 +408,7 @@ export default function Reminders() {
 
   const reminderTypes = Array.from(new Set(reminders?.map(r => r.type).filter(Boolean))) || [];
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string | null) => {
     switch (type) {
       case "rent": return <DollarSign className="h-4 w-4 text-green-600" />;
       case "lease": return <FileText className="h-4 w-4 text-blue-600" />;
@@ -428,14 +428,14 @@ export default function Reminders() {
     }
   };
 
-  const getTypeBadge = (type: string) => {
+  const getTypeBadge = (type: string | null) => {
     switch (type) {
       case "rent": return <Badge className="bg-green-100 text-green-800">Rent</Badge>;
       case "lease": return <Badge className="bg-blue-100 text-blue-800">Lease</Badge>;
       case "maintenance": return <Badge className="bg-yellow-100 text-yellow-800">Maintenance</Badge>;
       case "regulatory": return <Badge className="bg-purple-100 text-purple-800">Regulatory</Badge>;
       case "custom": return <Badge className="bg-gray-100 text-gray-800">Custom</Badge>;
-      default: return <Badge variant="secondary">{type}</Badge>;
+      default: return <Badge variant="secondary">{type || "Unknown"}</Badge>;
     }
   };
 
