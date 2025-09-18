@@ -19,22 +19,26 @@ import { Calendar } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, Bell } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, Bell, GraduationCap } from "lucide-react";
 import ReminderForm from "@/components/forms/reminder-form";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 import PropertyAssistant from "@/components/ai/property-assistant";
 
-// Predefined maintenance categories
+// Student Housing Maintenance Categories
 const MAINTENANCE_CATEGORIES = [
   "HVAC / Heating & Cooling",
-  "Plumbing (Water, Drains, Sewer)",
+  "Plumbing (Water, Drains, Sewer)", 
   "Electrical & Lighting",
-  "Appliances (Kitchen, Laundry, etc.)",
-  "Roof / Structure / Exterior",
+  "Dormitory Appliances (Kitchen, Laundry, etc.)",
+  "Building Structure / Exterior",
   "Pest & Odor Issues",
-  "Safety & Security (locks, alarms, smoke detectors, windows/doors)",
-  "General Interior (walls, ceilings, flooring, paint, cabinets)",
-  "Outdoor / Landscaping (yard, snow removal, fencing, gutters)",
+  "Safety & Security (locks, alarms, smoke detectors, room access)",
+  "Room Interior (walls, ceilings, flooring, paint, furniture)",
+  "Common Areas (lounges, study rooms, bathrooms)",
+  "Campus Grounds / Landscaping",
+  "Network/Internet Connectivity",
+  "Student Life / Accessibility",
+  "Emergency Response",
   "Other / Miscellaneous"
 ];
 
@@ -61,6 +65,7 @@ export default function Maintenance() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [reminderCaseContext, setReminderCaseContext] = useState<{caseId: string; caseTitle: string} | null>(null);
+  const [viewMode, setViewMode] = useState<"admin" | "student">("admin");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -434,13 +439,220 @@ export default function Maintenance() {
         <Header title="Maintenance" />
         
         <main className="flex-1 overflow-auto p-6 bg-muted/30">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">Smart Cases</h1>
-              <p className="text-muted-foreground">Track and manage maintenance requests</p>
+          {/* View Mode Toggle */}
+          <div className="flex justify-center mb-6">
+            <div className="bg-card border rounded-lg p-1 flex space-x-1">
+              <Button
+                variant={viewMode === "student" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("student")}
+                data-testid="button-student-mode"
+                className="flex items-center space-x-2"
+              >
+                <GraduationCap className="h-4 w-4" />
+                <span>Student View</span>
+              </Button>
+              <Button
+                variant={viewMode === "admin" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("admin")}
+                data-testid="button-admin-mode"
+                className="flex items-center space-x-2"
+              >
+                <Wrench className="h-4 w-4" />
+                <span>Admin View</span>
+              </Button>
             </div>
-            
-            <div className="flex items-center space-x-3">
+          </div>
+
+          {viewMode === "student" ? (
+            /* Student Interface */
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-foreground mb-2">Submit a Maintenance Request</h1>
+                <p className="text-lg text-muted-foreground">Having trouble with something in your room or building? Let us know and we'll take care of it!</p>
+              </div>
+
+              {/* Quick Request Form */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Plus className="h-5 w-5" />
+                    <span>New Maintenance Request</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Left Column - Issue Details */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">What's the problem?</label>
+                        <select className="w-full p-3 border rounded-lg bg-background" data-testid="select-student-issue-type">
+                          <option value="">Choose an issue type...</option>
+                          <option value="HVAC / Heating & Cooling">🌡️ Temperature/Heating/AC not working</option>
+                          <option value="Plumbing (Water, Drains, Sewer)">🚿 Water/Plumbing/Bathroom issues</option>
+                          <option value="Electrical & Lighting">💡 Lights/Electrical outlets not working</option>
+                          <option value="Appliances (Kitchen, Laundry, etc.)">🍳 Appliances not working (fridge, microwave, etc.)</option>
+                          <option value="Safety & Security (locks, alarms, smoke detectors, windows/doors)">🔒 Door/Window/Lock/Safety issues</option>
+                          <option value="General Interior (walls, ceilings, flooring, paint, cabinets)">🏠 Wall/Floor/Ceiling damage</option>
+                          <option value="Network/Internet Connectivity">📱 Internet/WiFi not working</option>
+                          <option value="Common Areas (lounges, study rooms, bathrooms)">🏢 Common area issues</option>
+                          <option value="Other / Miscellaneous">❓ Something else</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Describe the issue</label>
+                        <textarea 
+                          className="w-full p-3 border rounded-lg bg-background min-h-[100px]" 
+                          placeholder="Please describe what's wrong and any details that might help..."
+                          data-testid="textarea-student-description"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">How urgent is this?</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 border-green-200 bg-green-50">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                              <span className="font-medium">Not urgent</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">Can wait a few days</p>
+                          </div>
+                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                              <span className="font-medium">Needs attention</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">Should be fixed soon</p>
+                          </div>
+                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                              <span className="font-medium">Important</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">Affecting daily life</p>
+                          </div>
+                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 border-red-200 bg-red-50">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                              <span className="font-medium">Emergency</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">Safety concern/urgent</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column - Location & Photos */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Where is the problem?</label>
+                        <select className="w-full p-3 border rounded-lg bg-background mb-3" data-testid="select-student-building">
+                          <option value="">Select your building...</option>
+                          {properties?.map((property) => (
+                            <option key={property.id} value={property.id}>
+                              {property.name || `${property.street}, ${property.city}`}
+                            </option>
+                          ))}
+                        </select>
+                        <input 
+                          type="text" 
+                          className="w-full p-3 border rounded-lg bg-background" 
+                          placeholder="Room number (e.g., 204A, or 'Common Area')"
+                          data-testid="input-student-room"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Add photos (optional)</label>
+                        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                          <div className="flex flex-col items-center space-y-2">
+                            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                              📸
+                            </div>
+                            <p className="text-sm font-medium">Click to upload photos</p>
+                            <p className="text-xs text-muted-foreground">Photos help us understand the problem better</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Your contact info</label>
+                        <input 
+                          type="email" 
+                          className="w-full p-3 border rounded-lg bg-background mb-3" 
+                          placeholder="Your email address"
+                          data-testid="input-student-email"
+                        />
+                        <input 
+                          type="tel" 
+                          className="w-full p-3 border rounded-lg bg-background" 
+                          placeholder="Phone number (optional)"
+                          data-testid="input-student-phone"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 text-center">
+                    <Button size="lg" className="px-8" data-testid="button-submit-student-request">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Submit Request
+                    </Button>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      You'll receive an email confirmation and updates on your request
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI Assistant for Students */}
+              <PropertyAssistant 
+                context="student-maintenance"
+                exampleQuestions={[
+                  "My heater isn't working, what should I do?",
+                  "How long does it usually take to fix plumbing issues?",
+                  "Who should I contact for emergency maintenance?",
+                  "Can I track the status of my maintenance request?"
+                ]}
+              />
+
+              {/* Recent Requests */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your Recent Requests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {smartCases?.slice(0, 3).map((request, index) => (
+                      <div key={request.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{request.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : 'Unknown date'}
+                          </p>
+                        </div>
+                        {getStatusBadge(request.status)}
+                      </div>
+                    )) || (
+                      <p className="text-muted-foreground text-center py-4">No recent requests</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            /* Admin Interface */
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">AI Maintenance Triage</h1>
+                  <p className="text-muted-foreground">AI-powered maintenance request management and contractor coordination</p>
+                </div>
+                
+                <div className="flex items-center space-x-3">
               {/* Entity Filter */}
               <Select value={entityFilter} onValueChange={(value) => {
                 setEntityFilter(value);
@@ -554,6 +766,8 @@ export default function Maintenance() {
                   <SelectItem value="Closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
+                </div>
+              </div>
 
               <Dialog open={showCaseForm} onOpenChange={handleDialogChange}>
                 <DialogTrigger asChild>
@@ -781,10 +995,8 @@ export default function Maintenance() {
                   </Form>
                 </DialogContent>
               </Dialog>
-            </div>
-          </div>
 
-          {/* Mailla AI Assistant */}
+              {/* Mailla AI Assistant */}
           <PropertyAssistant 
             context="maintenance"
             exampleQuestions={[
@@ -939,6 +1151,8 @@ export default function Maintenance() {
                 </Button>
               </CardContent>
             </Card>
+          )}
+            </div>
           )}
         </main>
       </div>
