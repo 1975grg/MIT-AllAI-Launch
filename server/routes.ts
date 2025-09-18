@@ -1891,10 +1891,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const validatedData = insertSmartCaseSchema.parse({
+      // Clean the data: convert empty strings to null for optional fields
+      const cleanedData = {
         ...req.body,
         orgId: org.id,
-      });
+        unitId: req.body.unitId === "" ? null : req.body.unitId,
+        propertyId: req.body.propertyId === "" ? null : req.body.propertyId,
+        description: req.body.description === "" ? null : req.body.description,
+        category: req.body.category === "" ? null : req.body.category,
+      };
+      
+      const validatedData = insertSmartCaseSchema.parse(cleanedData);
       
       const smartCase = await storage.createSmartCase(validatedData);
       res.json(smartCase);
