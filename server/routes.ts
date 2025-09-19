@@ -21,6 +21,7 @@ import {
 import OpenAI from "openai";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
+import { aiTriageService } from "./aiTriage";
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
@@ -2030,27 +2031,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get MIT organization (race-condition safe)
       const mitOrg = await getMITOrganization();
       
+      // Run AI triage analysis on the maintenance request
+      console.log(`🤖 Running AI triage analysis for: ${validatedInput.title}`);
+      const aiTriage = await aiTriageService.analyzeMaintenanceRequest({
+        title: validatedInput.title,
+        description: validatedInput.description,
+        category: validatedInput.category,
+        priority: validatedInput.priority,
+        building: validatedInput.building,
+        room: validatedInput.room,
+        studentContact: {
+          name: validatedInput.studentName,
+          email: validatedInput.studentEmail,
+          phone: validatedInput.studentPhone,
+          building: validatedInput.building,
+          room: validatedInput.room
+        }
+      });
+      
+      console.log(`🎯 AI Analysis complete - Category: ${aiTriage.category}, Urgency: ${aiTriage.urgency}, Contractor: ${aiTriage.contractorType}`);
+      
       // Create case description with student contact info
       const studentInfo = `\n\n--- Student Information ---\nName: ${validatedInput.studentName}\nEmail: ${validatedInput.studentEmail}${validatedInput.studentPhone ? `\nPhone: ${validatedInput.studentPhone}` : ''}\nBuilding: ${validatedInput.building}\nRoom: ${validatedInput.room}`;
       
-      // Map priority to allowed enum values
-      const priorityMap: Record<string, "Low" | "Medium" | "High" | "Urgent"> = {
+      // Map AI urgency to schema-compatible priority enum
+      const urgencyToPriorityMap: Record<string, "Low" | "Medium" | "High" | "Urgent"> = {
         "Low": "Low",
         "Medium": "Medium", 
         "High": "High",
-        "Critical": "Urgent"
+        "Critical": "Urgent" // Map AI "Critical" to schema "Urgent"
       };
       
-      // Map student request to smart case format
+      const finalPriority = urgencyToPriorityMap[aiTriage.urgency] || "Medium";
+      
+      // Intelligent routing based on AI analysis
+      let assignedContractor = null;
+      let routingNotes = "";
+      let escalationFlag = false;
+      
+      // Auto-assign based on contractor type and urgency
+      if (aiTriage.contractorType && aiTriage.urgency !== "Low") {
+        assignedContractor = aiTriage.contractorType;
+        routingNotes = `Auto-assigned to ${aiTriage.contractorType} based on AI analysis. Estimated duration: ${aiTriage.estimatedDuration}`;
+        
+        // Escalate for safety risks or critical issues
+        if (aiTriage.safetyRisk === "High" || aiTriage.urgency === "Critical") {
+          escalationFlag = true;
+          routingNotes += " | ESCALATED: High priority or safety risk detected";
+        }
+      }
+      
+      // Map student request to smart case format with AI triage results
       const smartCaseData = {
         orgId: mitOrg.id,
         title: validatedInput.title,
         description: validatedInput.description + studentInfo,
-        category: validatedInput.category,
-        priority: priorityMap[validatedInput.priority],
+        category: aiTriage.category, // Use AI-determined category
+        priority: finalPriority, // Use schema-compatible priority 
         status: "New" as const,
         // Omit unitId and propertyId (undefined, not null)
         aiTriageJson: {
+          // Original student submission
           studentContact: {
             name: validatedInput.studentName,
             email: validatedInput.studentEmail,
@@ -2059,7 +2100,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             room: validatedInput.room
           },
           submissionSource: "public_student_portal",
-          submittedAt: new Date().toISOString()
+          submittedAt: new Date().toISOString(),
+          // AI Triage Analysis Results with Routing
+          aiAnalysis: {
+            ...aiTriage,
+            analysisCompletedAt: new Date().toISOString(),
+            version: "1.0"
+          },
+          // Intelligent routing results
+          routing: {
+            assignedContractor,
+            routingNotes,
+            escalationFlag,
+            autoRouted: true,
+            routingCompletedAt: new Date().toISOString()
+          },
+          // Original student submission preserved
+          originalSubmission: {
+            title: validatedInput.title,
+            description: validatedInput.description,
+            category: validatedInput.category,
+            priority: validatedInput.priority,
+            submittedAt: new Date().toISOString()
+          }
         }
       };
       
@@ -2067,15 +2130,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedCaseData = insertSmartCaseSchema.parse(smartCaseData);
       const smartCase = await storage.createSmartCase(validatedCaseData);
       
-      // Return 201 Created with proper response
+      // Return 201 Created with enhanced response including AI insights
       res.status(201).json({ 
         id: smartCase.id,
         status: "submitted",
-        message: "Your maintenance request has been submitted successfully"
+        message: "Your maintenance request has been submitted and analyzed by our AI system",
+        aiInsights: {
+          category: aiTriage.category,
+          urgency: aiTriage.urgency,
+          priority: finalPriority,
+          estimatedDuration: aiTriage.estimatedDuration,
+          preliminaryDiagnosis: aiTriage.preliminaryDiagnosis,
+          troubleshootingSteps: aiTriage.troubleshootingSteps,
+          recommendedContractor: aiTriage.contractorType,
+          complexity: aiTriage.estimatedComplexity,
+          safetyRisk: aiTriage.safetyRisk,
+          safetyNote: aiTriage.safetyRisk !== "None" ? 
+            "⚠️ Safety risk identified. Please contact MIT Housing immediately if you feel unsafe." : null,
+          routing: {
+            assignedTo: assignedContractor,
+            notes: routingNotes,
+            escalated: escalationFlag
+          }
+        }
       });
       
-      // Log success with minimal PII
-      console.log(`📋 Public maintenance request created: ${smartCase.id} - ${validatedInput.title} (${validatedInput.building} ${validatedInput.room})`);
+      // Log success with AI analysis details
+      console.log(`📋 AI-triaged maintenance request created: ${smartCase.id} - ${validatedInput.title} (${validatedInput.building} ${validatedInput.room}) | Category: ${aiTriage.category} | Urgency: ${aiTriage.urgency} | Contractor: ${aiTriage.contractorType}`);
     } catch (error) {
       if (error instanceof z.ZodError) {
         // Return structured validation errors as 400 Bad Request
