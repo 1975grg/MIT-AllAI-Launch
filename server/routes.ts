@@ -22,6 +22,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { aiTriageService } from "./aiTriage";
+import { aiCoordinatorService } from "./aiCoordinator";
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
@@ -2064,20 +2065,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const finalPriority = urgencyToPriorityMap[aiTriage.urgency] || "Medium";
       
-      // Intelligent routing based on AI analysis
+      // AI-Powered Contractor Coordination (Phase 3)
       let assignedContractor = null;
       let routingNotes = "";
       let escalationFlag = false;
+      let contractorRecommendations = [];
       
-      // Auto-assign based on contractor type and urgency
-      if (aiTriage.contractorType && aiTriage.urgency !== "Low") {
-        assignedContractor = aiTriage.contractorType;
-        routingNotes = `Auto-assigned to ${aiTriage.contractorType} based on AI analysis. Estimated duration: ${aiTriage.estimatedDuration}`;
+      try {
+        // Get available contractors from database
+        const availableVendors = await storage.getVendors(validatedInput.orgId);
+        const activeContractors = availableVendors.filter(v => v.isActiveContractor);
         
-        // Escalate for safety risks or critical issues
-        if (aiTriage.safetyRisk === "High" || aiTriage.urgency === "Critical") {
-          escalationFlag = true;
-          routingNotes += " | ESCALATED: High priority or safety risk detected";
+        if (activeContractors.length > 0) {
+          // Use AI coordinator to find optimal contractor match
+          const coordinationRequest = {
+            caseData: {
+              id: 'temp-id', // Will be replaced with actual case ID
+              category: aiTriage.category,
+              priority: finalPriority,
+              description: validatedInput.description,
+              location: validatedInput.unit || 'MIT Campus',
+              urgency: aiTriage.urgency,
+              estimatedDuration: aiTriage.estimatedDuration,
+              safetyRisk: aiTriage.safetyRisk,
+              contractorType: aiTriage.contractorType
+            },
+            availableContractors: activeContractors.map(c => ({
+              id: c.id,
+              name: c.name,
+              category: c.category,
+              specializations: c.specializations || [],
+              availabilityPattern: c.availabilityPattern,
+              responseTimeHours: c.responseTimeHours,
+              estimatedHourlyRate: c.estimatedHourlyRate,
+              rating: c.rating,
+              maxJobsPerDay: c.maxJobsPerDay,
+              currentWorkload: 0, // TODO: Calculate from current cases
+              emergencyAvailable: c.emergencyAvailable,
+              isActiveContractor: c.isActiveContractor
+            }))
+          };
+          
+          contractorRecommendations = await aiCoordinatorService.findOptimalContractor(coordinationRequest);
+          
+          if (contractorRecommendations.length > 0) {
+            const bestMatch = contractorRecommendations[0];
+            assignedContractor = bestMatch.contractorId;
+            routingNotes = `AI Coordinator assigned to ${bestMatch.contractorName} (Score: ${bestMatch.matchScore}%) - ${bestMatch.reasoning}`;
+            
+            // Auto-escalate based on AI coordinator recommendations
+            if (bestMatch.riskFactors && bestMatch.riskFactors.length > 0) {
+              escalationFlag = true;
+              routingNotes += ` | ESCALATED: ${bestMatch.riskFactors.join(', ')}`;
+            }
+            
+            // Escalate for safety risks or critical issues
+            if (aiTriage.safetyRisk === "High" || aiTriage.urgency === "Critical") {
+              escalationFlag = true;
+              routingNotes += " | HIGH PRIORITY: Safety risk or critical issue detected";
+            }
+          }
+        }
+      } catch (coordinationError) {
+        console.error('AI coordination failed, falling back to basic routing:', coordinationError);
+        
+        // Fallback to basic routing
+        if (aiTriage.contractorType && aiTriage.urgency !== "Low") {
+          assignedContractor = aiTriage.contractorType;
+          routingNotes = `Fallback routing to ${aiTriage.contractorType} based on AI triage. Estimated duration: ${aiTriage.estimatedDuration}`;
+          
+          if (aiTriage.safetyRisk === "High" || aiTriage.urgency === "Critical") {
+            escalationFlag = true;
+            routingNotes += " | ESCALATED: High priority or safety risk detected";
+          }
         }
       }
       
@@ -3797,6 +3857,180 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     } catch (error) {
       console.error("Error generating missing lease revenues:", error);
       res.status(500).json({ message: "Failed to generate missing lease revenues" });
+    }
+  });
+
+  // =================== PHASE 3: AI AGENT-CONTRACTOR COORDINATION ENDPOINTS ===================
+  
+  // Get contractors for a case assignment
+  app.get('/api/contractors/recommendations/:caseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const caseId = req.params.caseId;
+      const smartCase = await storage.getSmartCase(caseId);
+      if (!smartCase) return res.status(404).json({ message: "Case not found" });
+      
+      // Get AI coordinator recommendations from stored data
+      const aiData = smartCase.aiTriageJson as any;
+      const recommendations = aiData?.routing?.contractorRecommendations || [];
+      
+      res.json({
+        caseId,
+        recommendations,
+        aiCoordinatorUsed: recommendations.length > 0
+      });
+    } catch (error) {
+      console.error("Error fetching contractor recommendations:", error);
+      res.status(500).json({ message: "Failed to fetch contractor recommendations" });
+    }
+  });
+  
+  // Manual contractor assignment (override AI)
+  app.post('/api/contractors/assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { caseId, contractorId, notes } = req.body;
+      
+      const smartCase = await storage.getSmartCase(caseId);
+      if (!smartCase) return res.status(404).json({ message: "Case not found" });
+      
+      const contractor = await storage.getVendor(contractorId);
+      if (!contractor) return res.status(404).json({ message: "Contractor not found" });
+      
+      // Update case with manual assignment
+      const updatedAiData = {
+        ...(smartCase.aiTriageJson as any),
+        routing: {
+          ...(smartCase.aiTriageJson as any)?.routing,
+          assignedContractor: contractorId,
+          routingNotes: `Manual assignment to ${contractor.name}: ${notes}`,
+          manualOverride: true,
+          overrideBy: userId,
+          overrideAt: new Date().toISOString()
+        }
+      };
+      
+      await storage.updateSmartCase(caseId, {
+        aiTriageJson: updatedAiData,
+        status: 'Scheduled'
+      });
+      
+      // Generate contractor notification
+      const notification = await aiCoordinatorService.generateContractorNotification(
+        smartCase, contractor, {
+          contractorId: contractor.id,
+          contractorName: contractor.name,
+          matchScore: 100, // Manual assignment = perfect match
+          reasoning: `Manual assignment: ${notes}`,
+          estimatedResponseTime: `${contractor.responseTimeHours} hours`,
+          availability: {
+            contractorId: contractor.id,
+            isAvailable: true,
+            currentWorkload: 0,
+            maxCapacity: contractor.maxJobsPerDay,
+            availabilityReason: contractor.availabilityPattern
+          }
+        }
+      );
+      
+      res.json({
+        success: true,
+        assignedContractor: {
+          id: contractor.id,
+          name: contractor.name,
+          category: contractor.category,
+          responseTime: contractor.responseTimeHours
+        },
+        notification,
+        caseStatus: 'Scheduled'
+      });
+    } catch (error) {
+      console.error("Error assigning contractor:", error);
+      res.status(500).json({ message: "Failed to assign contractor" });
+    }
+  });
+  
+  // Contractor availability update endpoint
+  app.post('/api/contractors/:contractorId/availability', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const contractorId = req.params.contractorId;
+      const { available, notes, emergencyAvailable } = req.body;
+      
+      const contractor = await storage.getVendor(contractorId);
+      if (!contractor) return res.status(404).json({ message: "Contractor not found" });
+      
+      // Update contractor availability
+      await storage.updateVendor(contractorId, {
+        isActiveContractor: available,
+        emergencyAvailable: emergencyAvailable !== undefined ? emergencyAvailable : contractor.emergencyAvailable,
+        notes: notes ? `${contractor.notes || ''}\n[${new Date().toISOString()}] Availability update: ${notes}` : contractor.notes
+      });
+      
+      res.json({
+        success: true,
+        contractorId,
+        availability: {
+          available,
+          emergencyAvailable: emergencyAvailable !== undefined ? emergencyAvailable : contractor.emergencyAvailable,
+          updatedAt: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Error updating contractor availability:", error);
+      res.status(500).json({ message: "Failed to update contractor availability" });
+    }
+  });
+  
+  // Get contractor workload and assignments
+  app.get('/api/contractors/:contractorId/workload', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const contractorId = req.params.contractorId;
+      const contractor = await storage.getVendor(contractorId);
+      if (!contractor) return res.status(404).json({ message: "Contractor not found" });
+      
+      // Get all active cases for this contractor
+      const allCases = await storage.getSmartCases(org.id);
+      const contractorCases = allCases.filter(c => {
+        const aiData = c.aiTriageJson as any;
+        return aiData?.routing?.assignedContractor === contractorId && 
+               ['New', 'In Review', 'Scheduled', 'In Progress'].includes(c.status);
+      });
+      
+      const workload = {
+        contractorId,
+        contractorName: contractor.name,
+        maxJobsPerDay: contractor.maxJobsPerDay,
+        currentAssignments: contractorCases.length,
+        availableCapacity: contractor.maxJobsPerDay - contractorCases.length,
+        utilizationPercentage: Math.round((contractorCases.length / contractor.maxJobsPerDay) * 100),
+        activeCases: contractorCases.map(c => ({
+          id: c.id,
+          title: c.title,
+          priority: c.priority,
+          status: c.status,
+          category: c.category,
+          createdAt: c.createdAt
+        }))
+      };
+      
+      res.json(workload);
+    } catch (error) {
+      console.error("Error fetching contractor workload:", error);
+      res.status(500).json({ message: "Failed to fetch contractor workload" });
     }
   });
 
