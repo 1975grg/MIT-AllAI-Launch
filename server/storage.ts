@@ -15,6 +15,7 @@ import {
   caseMedia,
   caseEvents,
   vendors,
+  appointments,
   camCategories,
   transactions,
   transactionLineItems,
@@ -46,6 +47,8 @@ import {
   type InsertSmartCase,
   type Vendor,
   type InsertVendor,
+  type Appointment,
+  type InsertAppointment,
   type Transaction,
   type TransactionLineItem,
   type InsertTransaction,
@@ -56,7 +59,7 @@ import {
   type Notification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, asc, sql, gte, lte, count, like } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lte, lt, gt, count, like, ne, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -130,6 +133,18 @@ export interface IStorage {
   getVendor(id: string): Promise<Vendor | undefined>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor>;
+  
+  // Appointment operations with multi-tenant security
+  getAppointments(orgId: string): Promise<Appointment[]>;
+  getAppointment(id: string): Promise<Appointment | undefined>;
+  getContractorAppointments(contractorId: string, orgId: string): Promise<Appointment[]>;
+  createAppointment(appointment: InsertAppointment): Promise<Appointment>;
+  updateAppointment(id: string, appointment: Partial<InsertAppointment>): Promise<Appointment>;
+  deleteAppointment(id: string): Promise<void>;
+  
+  // Application-level security guards as per architect Phase 1 plan
+  checkAppointmentOrgConsistency(caseId: string, contractorId: string, orgId: string): Promise<boolean>;
+  checkAppointmentOverlap(contractorId: string, startTime: Date, endTime: Date, excludeId?: string): Promise<boolean>;
   
   // Transaction operations
   getTransactions(orgId: string, type?: "Income" | "Expense"): Promise<Transaction[]>;
@@ -1464,6 +1479,96 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedVendor;
+  }
+
+  // Appointment operations with multi-tenant security
+  async getAppointments(orgId: string): Promise<Appointment[]> {
+    return await db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.orgId, orgId))
+      .orderBy(appointments.scheduledStartAt);
+  }
+
+  async getAppointment(id: string): Promise<Appointment | undefined> {
+    const [appointment] = await db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.id, id))
+      .limit(1);
+    return appointment;
+  }
+
+  async getContractorAppointments(contractorId: string, orgId: string): Promise<Appointment[]> {
+    return await db
+      .select()
+      .from(appointments)
+      .where(and(
+        eq(appointments.contractorId, contractorId),
+        eq(appointments.orgId, orgId)
+      ))
+      .orderBy(appointments.scheduledStartAt);
+  }
+
+  async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
+    const [newAppointment] = await db.insert(appointments).values(appointment).returning();
+    return newAppointment;
+  }
+
+  async updateAppointment(id: string, appointment: Partial<InsertAppointment>): Promise<Appointment> {
+    const [updatedAppointment] = await db
+      .update(appointments)
+      .set(appointment)
+      .where(eq(appointments.id, id))
+      .returning();
+    
+    return updatedAppointment;
+  }
+
+  async deleteAppointment(id: string): Promise<void> {
+    await db.delete(appointments).where(eq(appointments.id, id));
+  }
+
+  // Application-level security guards as per architect Phase 1 plan
+  async checkAppointmentOrgConsistency(caseId: string, contractorId: string, orgId: string): Promise<boolean> {
+    // Check if case and contractor belong to the same org as the appointment
+    const [caseCheck] = await db
+      .select({ orgId: smartCases.orgId })
+      .from(smartCases)
+      .where(eq(smartCases.id, caseId))
+      .limit(1);
+    
+    const [contractorCheck] = await db
+      .select({ orgId: vendors.orgId })
+      .from(vendors)
+      .where(eq(vendors.id, contractorId))
+      .limit(1);
+    
+    return (caseCheck?.orgId === orgId && contractorCheck?.orgId === orgId);
+  }
+
+  async checkAppointmentOverlap(contractorId: string, startTime: Date, endTime: Date, excludeId?: string): Promise<boolean> {
+    let query = db
+      .select()
+      .from(appointments)
+      .where(and(
+        eq(appointments.contractorId, contractorId),
+        // Check for time overlap: (start1 < end2) AND (start2 < end1)
+        and(
+          lt(appointments.scheduledStartAt, endTime),
+          gt(appointments.scheduledEndAt, startTime)
+        ),
+        // Only check active appointment statuses - exclude cancelled/completed
+        inArray(appointments.status, ['Pending', 'Confirmed', 'In Progress', 'Rescheduled'])
+      ));
+    
+    // Exclude the current appointment if updating
+    if (excludeId) {
+      query = query.where(ne(appointments.id, excludeId));
+    }
+    
+    const overlapping = await query.limit(1);
+    return overlapping.length > 0;
   }
 
   // Transaction operations

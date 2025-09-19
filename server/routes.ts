@@ -14,6 +14,7 @@ import {
   insertAssetSchema,
   insertSmartCaseSchema,
   insertVendorSchema,
+  insertAppointmentSchema,
   insertTransactionSchema,
   insertExpenseSchema,
   insertReminderSchema,
@@ -2285,6 +2286,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching depreciation assets:", error);
       res.status(500).json({ message: "Failed to fetch depreciation assets" });
+    }
+  });
+
+  // Appointment routes with Phase 1 application-level security guards
+  app.get('/api/appointments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const appointments = await storage.getAppointments(org.id);
+      res.json(appointments);
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      res.status(500).json({ message: "Failed to fetch appointments" });
+    }
+  });
+
+  app.get('/api/appointments/contractor/:contractorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { contractorId } = req.params;
+      const appointments = await storage.getContractorAppointments(contractorId, org.id);
+      res.json(appointments);
+    } catch (error) {
+      console.error("Error fetching contractor appointments:", error);
+      res.status(500).json({ message: "Failed to fetch contractor appointments" });
+    }
+  });
+
+  app.post('/api/appointments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Validate appointment data with orgId
+      const validatedData = insertAppointmentSchema.parse({
+        ...req.body,
+        orgId: org.id,
+      });
+
+      // Phase 1 Security Guard: Check org consistency
+      const isOrgConsistent = await storage.checkAppointmentOrgConsistency(
+        validatedData.caseId, 
+        validatedData.contractorId, 
+        org.id
+      );
+      
+      if (!isOrgConsistent) {
+        return res.status(409).json({ 
+          message: "Case and contractor must belong to the same organization",
+          error: "org_mismatch"
+        });
+      }
+
+      // Phase 1 Security Guard: Check appointment overlap
+      const hasOverlap = await storage.checkAppointmentOverlap(
+        validatedData.contractorId,
+        validatedData.scheduledStartAt,
+        validatedData.scheduledEndAt
+      );
+      
+      if (hasOverlap) {
+        return res.status(409).json({ 
+          message: "Contractor has a conflicting appointment during this time period",
+          error: "time_conflict"
+        });
+      }
+
+      const appointment = await storage.createAppointment(validatedData);
+      res.status(201).json(appointment);
+    } catch (error) {
+      console.error("Error creating appointment:", error);
+      res.status(500).json({ message: "Failed to create appointment" });
+    }
+  });
+
+  app.put('/api/appointments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { id } = req.params;
+      
+      // Check if appointment exists and belongs to the organization
+      const existingAppointment = await storage.getAppointment(id);
+      if (!existingAppointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      if (existingAppointment.orgId !== org.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Validate update data (no orgId override for updates)
+      const validatedData = insertAppointmentSchema.omit({ orgId: true }).parse(req.body);
+
+      // If updating case or contractor, check org consistency
+      if (validatedData.caseId || validatedData.contractorId) {
+        const caseId = validatedData.caseId || existingAppointment.caseId;
+        const contractorId = validatedData.contractorId || existingAppointment.contractorId;
+        
+        const isOrgConsistent = await storage.checkAppointmentOrgConsistency(
+          caseId, 
+          contractorId, 
+          org.id
+        );
+        
+        if (!isOrgConsistent) {
+          return res.status(409).json({ 
+            message: "Case and contractor must belong to the same organization",
+            error: "org_mismatch"
+          });
+        }
+      }
+
+      // If updating times, check for overlaps (excluding current appointment)
+      if (validatedData.scheduledStartAt || validatedData.scheduledEndAt) {
+        const contractorId = validatedData.contractorId || existingAppointment.contractorId;
+        const startTime = validatedData.scheduledStartAt || existingAppointment.scheduledStartAt;
+        const endTime = validatedData.scheduledEndAt || existingAppointment.scheduledEndAt;
+        
+        const hasOverlap = await storage.checkAppointmentOverlap(
+          contractorId,
+          startTime,
+          endTime,
+          id // Exclude current appointment from overlap check
+        );
+        
+        if (hasOverlap) {
+          return res.status(409).json({ 
+            message: "Contractor has a conflicting appointment during this time period",
+            error: "time_conflict"
+          });
+        }
+      }
+
+      const updatedAppointment = await storage.updateAppointment(id, validatedData);
+      res.json(updatedAppointment);
+    } catch (error) {
+      console.error("Error updating appointment:", error);
+      res.status(500).json({ message: "Failed to update appointment" });
+    }
+  });
+
+  app.delete('/api/appointments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      const { id } = req.params;
+      
+      // Check if appointment exists and belongs to the organization
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      if (appointment.orgId !== org.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      await storage.deleteAppointment(id);
+      res.json({ message: "Appointment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      res.status(500).json({ message: "Failed to delete appointment" });
     }
   });
 
