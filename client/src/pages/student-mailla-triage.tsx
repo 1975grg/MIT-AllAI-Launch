@@ -114,18 +114,27 @@ export default function StudentMaillaTriagePage() {
             onTriageComplete={handleTriageComplete}
           />
           
-          {/* MIT Housing Information */}
-          <Card className="mt-6 bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="pt-6">
-              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">What to expect:</h3>
-              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
-                <p>• <strong>Location questions:</strong> We'll ask which building and room you're in</p>
-                <p>• <strong>Issue details:</strong> Help us understand the problem and timeline</p>
-                <p>• <strong>Safety check:</strong> We prioritize urgent safety issues</p>
-                <p>• <strong>Photos helpful:</strong> Visual documentation speeds up repairs</p>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Compact Info Panel */}
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="text-sm text-gray-600 flex flex-wrap gap-4 justify-center">
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3 text-red-600" />
+                Location & room
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3 text-orange-600" />
+                Timeline & severity
+              </span>
+              <span className="flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 text-yellow-600" />
+                Safety priority
+              </span>
+              <span className="flex items-center gap-1">
+                <Upload className="h-3 w-3 text-blue-600" />
+                Photos help
+              </span>
+            </div>
+          </div>
 
           {/* Emergency Notice */}
           <Card className="mt-4 bg-red-50 border-red-200">
