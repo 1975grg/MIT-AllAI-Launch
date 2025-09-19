@@ -199,21 +199,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userOrg = await storage.getUserOrganization(userId);
         let userRole = userOrg?.role;
         
-        // If no organization role, check if user is linked to a vendor profile
-        if (!userRole) {
-          try {
-            const allOrgs = await storage.getOrganizations();
-            for (const org of allOrgs) {
-              const vendors = await storage.getVendors(org.id);
-              const linkedVendor = vendors.find(v => v.userId === userId);
-              if (linkedVendor) {
-                userRole = 'vendor';
-                break;
-              }
-            }
-          } catch (error) {
-            console.error("Error checking vendor linkage:", error);
-          }
+        // For now, if user has an organization but no role, default to admin
+        // This handles the case where existing users don't have roles assigned yet
+        if (userOrg && !userRole) {
+          userRole = 'admin';
         }
         
         if (!userRole) {
@@ -250,26 +239,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Get user's role from organization membership or vendor linkage
+      // Get user's role from organization membership
       const userOrg = await storage.getUserOrganization(userId);
       let userRole = userOrg?.role;
       
-      // If no organization role, check if user is linked to a vendor profile
-      if (!userRole) {
-        try {
-          // Check if user is linked to any vendor profile
-          const allOrgs = await storage.getOrganizations();
-          for (const org of allOrgs) {
-            const vendors = await storage.getVendors(org.id);
-            const linkedVendor = vendors.find(v => v.userId === userId);
-            if (linkedVendor) {
-              userRole = 'vendor';
-              break;
-            }
-          }
-        } catch (error) {
-          console.error("Error checking vendor linkage:", error);
-        }
+      // For now, if user has an organization but no role, default to admin
+      // This handles the case where existing users don't have roles assigned yet
+      if (userOrg && !userRole) {
+        userRole = 'admin';
       }
       
       if (!userRole) {
