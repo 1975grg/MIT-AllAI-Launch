@@ -653,6 +653,50 @@ export const caseAiRecommendations = pgTable("case_ai_recommendations", {
   implementedAt: timestamp("implemented_at"),
 });
 
+// ========================================
+// ✅ Mailla AI Triage Agent Schema  
+// ========================================
+
+export const triageConversations = pgTable("triage_conversations", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  studentId: varchar("student_id", { length: 255 }).notNull(),
+  orgId: varchar("org_id", { length: 255 }).notNull(),
+  initialRequest: text("initial_request").notNull(),
+  currentPhase: varchar("current_phase", { length: 50 }).notNull().default("gathering_info"), // gathering_info, safety_check, urgency_assessment, final_triage
+  urgencyLevel: varchar("urgency_level", { length: 20 }).default("normal"), // emergency, urgent, normal, low
+  safetyFlags: text("safety_flags").array().default(sql`'{}'::text[]`), // gas_smell, electrical_water, sparking, etc
+  conversationHistory: jsonb("conversation_history").notNull().default('[]'),
+  mediaUploads: jsonb("media_uploads").default('[]'), // photos, videos, audio files
+  triageData: jsonb("triage_data").default('{}'), // collected context
+  isComplete: boolean("is_complete").default(false),
+  smartCaseId: varchar("smart_case_id", { length: 255 }), // final case created
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const triageSafetyProtocols = pgTable("triage_safety_protocols", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  category: varchar("category", { length: 100 }).notNull(), // electrical, plumbing, gas, hvac
+  keywords: text("keywords").array().notNull(), // trigger words
+  severity: varchar("severity", { length: 20 }).notNull(), // emergency, urgent, warning
+  action: varchar("action", { length: 50 }).notNull(), // escalate_immediate, ask_followup, add_warning
+  message: text("message").notNull(), // what Mailla says
+  followupQuestions: text("followup_questions").array().default(sql`'{}'::text[]`),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+export const triageQuestionRules = pgTable("triage_question_rules", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  category: varchar("category", { length: 100 }).notNull(), // electrical, plumbing, hvac, general
+  condition: jsonb("condition").notNull(), // when to ask this question
+  question: text("question").notNull(),
+  questionType: varchar("question_type", { length: 50 }).notNull(), // safety, urgency, context, media_request
+  priority: integer("priority").notNull().default(5), // 1=highest, 10=lowest
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
 // CAM Categories
 export const camCategories = pgTable("cam_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1119,6 +1163,19 @@ export type InsertReminder = z.infer<typeof insertReminderSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type RentPayment = typeof rentPayments.$inferSelect;
 export type InsertRentPayment = typeof rentPayments.$inferInsert;
+
+// ✅ Mailla AI Triage Agent Types
+export const insertTriageConversationSchema = createInsertSchema(triageConversations).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTriageConversation = z.infer<typeof insertTriageConversationSchema>;
+export type TriageConversationSelect = typeof triageConversations.$inferSelect;
+
+export const insertTriageSafetyProtocolSchema = createInsertSchema(triageSafetyProtocols).omit({ id: true, createdAt: true });
+export type InsertTriageSafetyProtocol = z.infer<typeof insertTriageSafetyProtocolSchema>;
+export type TriageSafetyProtocolSelect = typeof triageSafetyProtocols.$inferSelect;
+
+export const insertTriageQuestionRuleSchema = createInsertSchema(triageQuestionRules).omit({ id: true, createdAt: true });
+export type InsertTriageQuestionRule = z.infer<typeof insertTriageQuestionRuleSchema>;
+export type TriageQuestionRuleSelect = typeof triageQuestionRules.$inferSelect;
 
 // Tax-related insert schemas
 export const insertDepreciationAssetSchema = createInsertSchema(depreciationAssets).omit({ id: true, createdAt: true }).extend({
