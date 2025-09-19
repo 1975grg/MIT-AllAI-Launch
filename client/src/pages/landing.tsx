@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Brain, Clock, CheckCircle, Users, Wrench } from "lucide-react";
+import { GraduationCap, Brain, Clock, CheckCircle, Users, Wrench, Bot, FileText } from "lucide-react";
 
 export default function Landing() {
   return (
@@ -38,12 +38,40 @@ export default function Landing() {
               <GraduationCap className="h-6 w-6 text-blue-600 mr-2" />
               <h2 className="text-2xl font-bold text-blue-600">For Students</h2>
             </div>
-            <p className="text-muted-foreground mb-4 max-w-lg mx-auto">
+            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
               Submit maintenance requests quickly and track their progress. No account required.
             </p>
-            <Button size="lg" asChild className="text-lg px-8 py-3 bg-blue-600 hover:bg-blue-700" data-testid="button-submit-request">
-              <a href="/student-request">🏠 Submit Maintenance Request</a>
-            </Button>
+            
+            {/* Primary AI Chat Option */}
+            <div className="space-y-4">
+              <Button size="lg" asChild className="text-lg px-8 py-3 bg-blue-600 hover:bg-blue-700" data-testid="button-ai-chat">
+                <a href="/student-mailla-triage">
+                  <Bot className="h-5 w-5 mr-2" />
+                  Chat with AI Assistant
+                </a>
+              </Button>
+              
+              <p className="text-sm text-muted-foreground">
+                Get instant help with our AI-powered triage system
+              </p>
+              
+              {/* Alternative Options */}
+              <div className="pt-2 space-y-2">
+                <Button size="sm" variant="outline" asChild className="text-sm px-4 py-2" data-testid="button-traditional-form">
+                  <a href="/student-request">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Use Traditional Form Instead
+                  </a>
+                </Button>
+                
+                <div className="text-sm text-muted-foreground">
+                  Already submitted a request?{" "}
+                  <a href="/student-tracking" className="text-blue-600 hover:underline" data-testid="link-track-request">
+                    Track your request here
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Separator */}
