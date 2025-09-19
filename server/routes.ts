@@ -4931,6 +4931,162 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     }
   });
 
+  // =================== PHASE 3: AI SCHEDULING ORCHESTRATOR ===================
+  
+  app.post('/api/cases/:caseId/schedule', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { caseId } = req.params;
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      // Validate case belongs to organization
+      const smartCase = await storage.getSmartCase(caseId);
+      if (!smartCase || smartCase.orgId !== org.id) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // Import and initialize AI scheduling orchestrator
+      const { AISchedulingOrchestrator } = await import("./aiSchedulingOrchestrator.js");
+      const scheduler = new AISchedulingOrchestrator(storage);
+      
+      // Parse and validate request
+      const schedulingRequest = {
+        caseId,
+        contractorId: req.body.contractorId,
+        urgency: smartCase.priority || 'Medium',
+        estimatedDuration: req.body.estimatedDuration || smartCase.aiTriageJson?.aiAnalysis?.estimatedDuration || '2-4 hours',
+        requiresTenantAccess: req.body.requiresTenantAccess || false,
+        preferredTimeSlots: req.body.preferredTimeSlots,
+        mustCompleteBy: req.body.mustCompleteBy,
+        specialRequirements: req.body.specialRequirements
+      };
+
+      // Get AI scheduling recommendations
+      const schedulingResult = await scheduler.scheduleAppointment(schedulingRequest);
+      
+      console.log(`🤖 AI Scheduling completed for case ${caseId}:`, {
+        success: schedulingResult.success,
+        recommendations: schedulingResult.recommendations.length,
+        optimizationScore: schedulingResult.optimizationScore
+      });
+
+      res.json(schedulingResult);
+    } catch (error) {
+      console.error('AI Scheduling error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'AI scheduling failed',
+        recommendations: [],
+        reasoning: 'Internal server error during scheduling optimization',
+        totalOptions: 0,
+        analysisCompletedAt: new Date().toISOString(),
+        optimizationScore: 0.0
+      });
+    }
+  });
+
+  // Smart appointment creation from scheduling recommendations
+  app.post('/api/appointments/from-recommendation', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      const {
+        caseId,
+        contractorId,
+        scheduledStartAt,
+        scheduledEndAt,
+        title,
+        description,
+        requiresTenantAccess,
+        priority = 'Medium'
+      } = req.body;
+
+      // Validate inputs
+      if (!caseId || !contractorId || !scheduledStartAt || !scheduledEndAt) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Verify case and contractor belong to organization
+      const smartCase = await storage.getSmartCase(caseId);
+      const contractor = await storage.getVendor(contractorId);
+      
+      if (!smartCase || smartCase.orgId !== org.id) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      if (!contractor || contractor.orgId !== org.id) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
+
+      // Check for appointment overlaps
+      const hasOverlap = await storage.checkAppointmentOverlap(
+        contractorId,
+        new Date(scheduledStartAt),
+        new Date(scheduledEndAt)
+      );
+
+      if (hasOverlap) {
+        return res.status(409).json({ 
+          message: "Appointment conflicts with existing contractor schedule" 
+        });
+      }
+
+      // Generate approval token for tenant access if required
+      const appointmentData: any = {
+        orgId: org.id,
+        caseId,
+        contractorId,
+        title: title || `${smartCase.category} - ${smartCase.title}`,
+        description: description || smartCase.description,
+        scheduledStartAt: new Date(scheduledStartAt),
+        scheduledEndAt: new Date(scheduledEndAt),
+        status: requiresTenantAccess ? "Proposed" : "Confirmed",
+        priority,
+        requiresTenantAccess,
+        proposedBy: "system"
+      };
+
+      // Add approval workflow for tenant access
+      if (requiresTenantAccess) {
+        const { nanoid } = await import("nanoid");
+        appointmentData.approvalToken = nanoid(32);
+        appointmentData.approvalExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h expiry
+      }
+
+      const appointment = await storage.createAppointment(appointmentData);
+      
+      // Update case with assigned contractor if not already assigned
+      if (!smartCase.contractorId) {
+        await storage.updateSmartCase(caseId, {
+          contractorId,
+          status: "In Progress"
+        });
+      }
+
+      console.log(`📅 Smart appointment created: ${appointment.id}`, {
+        contractor: contractor.name,
+        scheduledStart: scheduledStartAt,
+        requiresApproval: requiresTenantAccess
+      });
+
+      res.json({
+        appointment,
+        contractor: {
+          id: contractor.id,
+          name: contractor.name,
+          phone: contractor.phone,
+          email: contractor.email
+        }
+      });
+    } catch (error) {
+      console.error('Smart appointment creation error:', error);
+      res.status(500).json({ message: 'Failed to create appointment from recommendation' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

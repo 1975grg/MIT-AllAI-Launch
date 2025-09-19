@@ -16,6 +16,8 @@ import {
   caseEvents,
   vendors,
   appointments,
+  contractorAvailability,
+  contractorBlackouts,
   camCategories,
   transactions,
   transactionLineItems,
@@ -1592,6 +1594,64 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return overlapping.length > 0;
+  }
+
+  // ===== AI SCHEDULING METHODS =====
+
+  async getContractorAvailability(contractorId: string) {
+    return db.select()
+      .from(contractorAvailability)
+      .where(eq(contractorAvailability.contractorId, contractorId))
+      .execute();
+  }
+
+  async getContractorBlackouts(contractorId: string) {
+    const now = new Date();
+    return db.select()
+      .from(contractorBlackouts)
+      .where(
+        and(
+          eq(contractorBlackouts.contractorId, contractorId),
+          eq(contractorBlackouts.isActive, true),
+          gte(contractorBlackouts.endDate, now) // Only active/future blackouts
+        )
+      )
+      .execute();
+  }
+
+  // Overload existing getContractorAppointments to support date range
+  async getContractorAppointments(contractorId: string, orgId: string): Promise<Appointment[]>;
+  async getContractorAppointments(contractorId: string, startDate: Date, endDate: Date): Promise<Appointment[]>;
+  async getContractorAppointments(contractorId: string, orgIdOrStartDate: string | Date, endDate?: Date): Promise<Appointment[]> {
+    if (typeof orgIdOrStartDate === 'string') {
+      // Original method signature
+      return await db
+        .select()
+        .from(appointments)
+        .where(
+          and(
+            eq(appointments.contractorId, contractorId),
+            eq(appointments.orgId, orgIdOrStartDate)
+          )
+        )
+        .orderBy(asc(appointments.scheduledStartAt));
+    } else {
+      // New method signature for date range
+      const startDate = orgIdOrStartDate;
+      return db.select()
+        .from(appointments)
+        .where(
+          and(
+            eq(appointments.contractorId, contractorId),
+            gte(appointments.scheduledStartAt, startDate),
+            lte(appointments.scheduledStartAt, endDate!),
+            ne(appointments.status, "Cancelled"),
+            ne(appointments.status, "Completed"),
+            ne(appointments.status, "No Show")
+          )
+        )
+        .execute();
+    }
   }
 
   // Transaction operations
