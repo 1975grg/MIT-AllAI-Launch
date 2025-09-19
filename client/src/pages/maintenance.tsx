@@ -14,8 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sidebar } from "@/components/sidebar";
-import { Header } from "@/components/header";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Header } from "@/components/layout/header";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Form, 
@@ -121,7 +121,7 @@ export default function MaintenancePage() {
     queryKey: ["/api/entities"],
   });
 
-  const { data: units } = useQuery({
+  const { data: units = [] } = useQuery({
     queryKey: ["/api/units"],
   });
 
