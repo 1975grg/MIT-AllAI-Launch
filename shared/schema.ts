@@ -39,23 +39,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Organizations
-export const organizations = pgTable("organizations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  ownerId: varchar("owner_id").notNull().references(() => users.id),
-  timezone: varchar("timezone").default("America/New_York"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Organization members
-export const organizationMembers = pgTable("organization_members", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  orgId: varchar("org_id").notNull().references(() => organizations.id),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  role: varchar("role").notNull().default("admin"), // admin, manager, tenant, vendor, accountant
-  createdAt: timestamp("created_at").defaultNow(),
-});
+// Note: Organizations and OrganizationMembers moved after enum declarations
 
 // Ownership entities
 export const ownershipEntityTypeEnum = pgEnum("ownership_entity_type", ["LLC", "Individual"]);
@@ -73,6 +57,30 @@ export const vendorTypeEnum = pgEnum("vendor_type", ["individual", "corporation"
 export const depreciationMethodEnum = pgEnum("depreciation_method", ["straight_line", "accelerated"]);
 
 export const assetTypeEnum = pgEnum("asset_type", ["building", "improvement", "equipment", "furniture"]);
+
+// Enhanced Enums for Contractor-First Scheduling
+export const schedulingModeEnum = pgEnum("scheduling_mode", ["contractor_first", "mutual_availability"]);
+export const contractorAvailabilityEnum = pgEnum("contractor_availability", ["available", "busy", "unavailable"]);
+
+// Organizations (moved here to resolve enum dependency)
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  ownerId: varchar("owner_id").notNull().references(() => users.id),
+  timezone: varchar("timezone").default("America/New_York"),
+  schedulingMode: schedulingModeEnum("scheduling_mode").default("contractor_first"), // ✅ Enhanced scheduling system
+  defaultAccessApprovalHours: integer("default_access_approval_hours").default(24), // ✅ Lead time for approvals
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Organization members
+export const organizationMembers = pgTable("organization_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  role: varchar("role").notNull().default("admin"), // admin, manager, tenant, vendor, accountant
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 export const ownershipEntities = pgTable("ownership_entities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -328,10 +336,42 @@ export const smartCases = pgTable("smart_cases", {
   priority: casePriorityEnum("priority").default("Medium"),
   category: varchar("category"),
   aiTriageJson: jsonb("ai_triage_json"),
+  // ✅ Enhanced AI context extraction fields
+  locationText: text("location_text"), // Original location description from chat
+  buildingName: varchar("building_name"), // Extracted building name (e.g., "Baker House")
+  roomNumber: varchar("room_number"), // Extracted room number (e.g., "305")
+  aiConfidence: decimal("ai_confidence", { precision: 3, scale: 2 }), // AI confidence score (0.00-1.00)
   estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
   actualCost: decimal("actual_cost", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Contractor Availability for Auto-Scheduling
+export const contractorAvailability = pgTable("contractor_availability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id), // Multi-tenant security
+  contractorId: varchar("contractor_id").notNull().references(() => vendors.id),
+  // Weekly availability pattern
+  dayOfWeek: integer("day_of_week").notNull(), // 0=Sunday, 1=Monday, etc.
+  startTime: varchar("start_time").notNull(), // "09:00" format
+  endTime: varchar("end_time").notNull(), // "17:00" format
+  timezone: varchar("timezone").default("America/New_York"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Contractor Unavailable Periods (blackouts, vacations, etc.)
+export const contractorBlackouts = pgTable("contractor_blackouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  contractorId: varchar("contractor_id").notNull().references(() => vendors.id),
+  startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+  endDate: timestamp("end_date", { withTimezone: true }).notNull(),
+  reason: varchar("reason"), // "vacation", "sick", "training", etc.
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Case media
@@ -392,7 +432,7 @@ export const vendors = pgTable("vendors", {
 });
 
 // Appointments for AI-powered scheduling
-export const appointmentStatusEnum = pgEnum("appointment_status", ["Pending", "Confirmed", "In Progress", "Completed", "Cancelled", "No Show", "Rescheduled"]);
+export const appointmentStatusEnum = pgEnum("appointment_status", ["Pending", "Proposed", "Confirmed", "Approved", "In Progress", "Completed", "Cancelled", "No Show", "Rescheduled"]);
 
 export const appointments = pgTable("appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -413,6 +453,11 @@ export const appointments = pgTable("appointments", {
   isEmergency: boolean("is_emergency").notNull().default(false), // Emergency flag
   requiresTenantAccess: boolean("requires_tenant_access").notNull().default(false), // Tenant access required
   requiresSpecialEquipment: boolean("requires_special_equipment").notNull().default(false), // Special equipment required
+  // ✅ Enhanced approval workflow for contractor-first scheduling
+  approvalToken: varchar("approval_token").unique(), // Secure token for student approval
+  approvalExpiresAt: timestamp("approval_expires_at", { withTimezone: true }), // When approval expires
+  accessApproved: boolean("access_approved").default(false), // Student approved room access
+  proposedBy: varchar("proposed_by").default("system"), // "system" | "contractor" | "admin"
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -716,6 +761,8 @@ export const insertLeaseSchema = createInsertSchema(leases).omit({ id: true, cre
 export const insertAssetSchema = createInsertSchema(assets).omit({ id: true, createdAt: true });
 export const insertSmartCaseSchema = createInsertSchema(smartCases).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
+export const insertContractorAvailabilitySchema = createInsertSchema(contractorAvailability).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertContractorBlackoutSchema = createInsertSchema(contractorBlackouts).omit({ id: true, createdAt: true });
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   scheduledStartAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
   scheduledEndAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
