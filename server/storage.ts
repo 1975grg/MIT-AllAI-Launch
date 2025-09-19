@@ -61,6 +61,10 @@ import {
   type Notification,
   type CaseMediaInsert,
   type CaseMediaSelect,
+  // ✅ Mailla AI Triage Agent tables
+  triageConversations,
+  triageSafetyProtocols,
+  triageQuestionRules,
   // ✅ Phase 4: AI Maintenance Copilot tables
   maintenanceKnowledgeBase,
   troubleshootingDecisionTrees,
@@ -231,6 +235,14 @@ export interface IStorage {
   createCaseAiRecommendation(recommendation: any): Promise<string>;
   getCaseAiRecommendations(caseId: string): Promise<any[]>;
   updateCaseAiRecommendation(id: string, updates: any): Promise<any>;
+
+  // ✅ Mailla AI Triage Agent methods
+  createTriageConversation(conversation: any): Promise<string>;
+  getTriageConversation(id: string): Promise<any | undefined>;
+  updateTriageConversation(id: string, updates: any): Promise<any>;
+  getActiveTriageConversations(studentId: string): Promise<any[]>;
+  getTriageSafetyProtocols(category?: string): Promise<any[]>;
+  getTriageQuestionRules(category?: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2929,6 +2941,69 @@ export class DatabaseStorage implements IStorage {
       .where(eq(caseAiRecommendations.id, id))
       .returning();
     return updated;
+  }
+
+  // ✅ Mailla AI Triage Agent methods
+  async createTriageConversation(conversation: any): Promise<string> {
+    const [newConversation] = await db.insert(triageConversations).values({
+      id: nanoid(),
+      ...conversation
+    }).returning();
+    return newConversation.id;
+  }
+
+  async getTriageConversation(id: string): Promise<any | undefined> {
+    const [conversation] = await db.select().from(triageConversations).where(eq(triageConversations.id, id));
+    return conversation;
+  }
+
+  async updateTriageConversation(id: string, updates: any): Promise<any> {
+    const [updated] = await db
+      .update(triageConversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(triageConversations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getActiveTriageConversations(studentId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(triageConversations)
+      .where(and(
+        eq(triageConversations.studentId, studentId),
+        eq(triageConversations.isComplete, false)
+      ))
+      .orderBy(desc(triageConversations.createdAt));
+  }
+
+  async getTriageSafetyProtocols(category?: string): Promise<any[]> {
+    if (category) {
+      return await db
+        .select()
+        .from(triageSafetyProtocols)
+        .where(and(
+          eq(triageSafetyProtocols.category, category),
+          eq(triageSafetyProtocols.isActive, true)
+        ));
+    }
+    return await db
+      .select()
+      .from(triageSafetyProtocols)
+      .where(eq(triageSafetyProtocols.isActive, true));
+  }
+
+  async getTriageQuestionRules(category?: string): Promise<any[]> {
+    const conditions = [eq(triageQuestionRules.isActive, true)];
+    if (category) {
+      conditions.push(eq(triageQuestionRules.category, category));
+    }
+    
+    return await db
+      .select()
+      .from(triageQuestionRules)
+      .where(and(...conditions))
+      .orderBy(asc(triageQuestionRules.priority));
   }
 }
 
