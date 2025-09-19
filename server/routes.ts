@@ -191,19 +191,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start cron jobs
   startCronJobs();
 
+  // Role-based authorization middleware
+  function requireRole(allowedRoles: string[]) {
+    return async (req: any, res: any, next: any) => {
+      try {
+        const userId = req.user.claims.sub;
+        const userOrg = await storage.getUserOrganization(userId);
+        let userRole = userOrg?.role;
+        
+        // If no organization role, check if user is linked to a vendor profile
+        if (!userRole) {
+          try {
+            const allOrgs = await storage.getOrganizations();
+            for (const org of allOrgs) {
+              const vendors = await storage.getVendors(org.id);
+              const linkedVendor = vendors.find(v => v.userId === userId);
+              if (linkedVendor) {
+                userRole = 'vendor';
+                break;
+              }
+            }
+          } catch (error) {
+            console.error("Error checking vendor linkage:", error);
+          }
+        }
+        
+        if (!userRole) {
+          return res.status(403).json({ 
+            message: "User not assigned to organization or role. Please contact administrator." 
+          });
+        }
+        
+        if (!allowedRoles.includes(userRole)) {
+          return res.status(403).json({ 
+            message: "Insufficient permissions for this operation." 
+          });
+        }
+        
+        // Add user role to request for further use
+        req.userRole = userRole;
+        next();
+      } catch (error) {
+        console.error("Error checking user role:", error);
+        res.status(500).json({ message: "Failed to verify permissions" });
+      }
+    };
+  }
+
+  // Convenience middleware for admin/manager/staff only
+  const requireAdmin = requireRole(['admin', 'manager', 'staff']);
+  
+  // Convenience middleware for vendors only
+  const requireVendor = requireRole(['vendor']);
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Get user's role from organization membership
+      // Get user's role from organization membership or vendor linkage
       const userOrg = await storage.getUserOrganization(userId);
-      const role = userOrg?.role || 'admin'; // Default to admin if no org found
+      let userRole = userOrg?.role;
+      
+      // If no organization role, check if user is linked to a vendor profile
+      if (!userRole) {
+        try {
+          // Check if user is linked to any vendor profile
+          const allOrgs = await storage.getOrganizations();
+          for (const org of allOrgs) {
+            const vendors = await storage.getVendors(org.id);
+            const linkedVendor = vendors.find(v => v.userId === userId);
+            if (linkedVendor) {
+              userRole = 'vendor';
+              break;
+            }
+          }
+        } catch (error) {
+          console.error("Error checking vendor linkage:", error);
+        }
+      }
+      
+      if (!userRole) {
+        return res.status(403).json({ 
+          message: "User not assigned to organization or role. Please contact administrator." 
+        });
+      }
+      
+      // Validate role is one of expected values
+      const validRoles = ['admin', 'manager', 'staff', 'vendor'];
+      if (!validRoles.includes(userRole)) {
+        return res.status(403).json({ 
+          message: "Invalid user role. Please contact administrator." 
+        });
+      }
       
       res.json({
         ...user,
-        role: role
+        role: userRole
       });
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -212,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Organization routes
-  app.get('/api/organizations/current', isAuthenticated, async (req: any, res) => {
+  app.get('/api/organizations/current', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       let org = await storage.getUserOrganization(userId);
@@ -276,7 +361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Backfill reminders for existing entities
-  app.post('/api/entities/backfill-reminders', isAuthenticated, async (req: any, res) => {
+  app.post('/api/entities/backfill-reminders', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -311,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Ownership entity routes
-  app.get('/api/entities', isAuthenticated, async (req: any, res) => {
+  app.get('/api/entities', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -325,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/entities', isAuthenticated, async (req: any, res) => {
+  app.post('/api/entities', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -348,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/entities/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/entities/:id', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -419,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Archive an entity (set status to "Archived")  
-  app.patch('/api/entities/:id/archive', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/entities/:id/archive', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -453,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unarchive an entity (set status to "Active")
-  app.patch('/api/entities/:id/unarchive', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/entities/:id/unarchive', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -475,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Permanently delete an entity
-  app.delete('/api/entities/:id/permanent', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/entities/:id/permanent', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -552,7 +637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch property performance" });
     }
   });
-  app.get('/api/properties', isAuthenticated, async (req: any, res) => {
+  app.get('/api/properties', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -587,7 +672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/properties', isAuthenticated, async (req: any, res) => {
+  app.post('/api/properties', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -713,7 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/properties/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/properties/:id', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -972,7 +1057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Archive a property (set status to "Archived")
-  app.patch('/api/properties/:id/archive', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/properties/:id/archive', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -993,7 +1078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unarchive a property (set status back to "Active")
-  app.patch('/api/properties/:id/unarchive', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/properties/:id/unarchive', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -1014,7 +1099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Permanently delete a property
-  app.delete('/api/properties/:id/permanent', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/properties/:id/permanent', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -4396,7 +4481,7 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
   });
 
   // Contractor-specific API routes
-  app.get('/api/contractor/cases', isAuthenticated, async (req: any, res) => {
+  app.get('/api/contractor/cases', isAuthenticated, requireVendor, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);
@@ -4433,7 +4518,7 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     }
   });
 
-  app.get('/api/contractor/appointments', isAuthenticated, async (req: any, res) => {
+  app.get('/api/contractor/appointments', isAuthenticated, requireVendor, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const org = await storage.getUserOrganization(userId);

@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import StudentRequest from "@/pages/student-request";
@@ -54,8 +55,8 @@ function Router() {
           <Route path="/contractor" component={ContractorDashboard} />
           <Route component={ContractorDashboard} />
         </>
-      ) : (
-        /* Admin/Manager routes */
+      ) : user?.role && ["admin", "manager", "staff"].includes(user.role) ? (
+        /* Admin/Manager/Staff routes */
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/properties" component={Properties} />
@@ -71,6 +72,36 @@ function Router() {
           <Route path="/reminders" component={Reminders} />
           <Route path="/contractor" component={ContractorDashboard} />
           <Route component={NotFound} />
+        </>
+      ) : (
+        /* Invalid or unknown role - show access denied */
+        <>
+          <Route path="/" component={() => (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+                <p className="text-muted-foreground mb-4">
+                  Your account is not properly configured. Please contact your administrator.
+                </p>
+                <Button onClick={() => window.location.href = "/api/logout"}>
+                  Logout
+                </Button>
+              </div>
+            </div>
+          )} />
+          <Route component={() => (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+                <p className="text-muted-foreground mb-4">
+                  Your account is not properly configured. Please contact your administrator.
+                </p>
+                <Button onClick={() => window.location.href = "/api/logout"}>
+                  Logout
+                </Button>
+              </div>
+            </div>
+          )} />
         </>
       )}
     </Switch>
