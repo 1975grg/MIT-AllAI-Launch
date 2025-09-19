@@ -27,11 +27,28 @@ import { aiTriageService } from "./aiTriage";
 import { aiCoordinatorService } from "./aiCoordinator";
 import { aiDuplicateDetectionService } from "./aiDuplicateDetection";
 import { dataAuditService } from "./dataAudit";
-import { maillaAIService } from "./maillaAIService";
+// Mailla AI service import handled dynamically in endpoints
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
 import { startCronJobs } from "./cronJobs";
+
+// ✅ Mailla AI Triage validation schemas
+const startTriageSchema = z.object({
+  studentId: z.string().min(1).max(100),
+  orgId: z.string().min(1).max(100), 
+  initialRequest: z.string().min(10).max(2000)
+});
+
+const continueTriageSchema = z.object({
+  conversationId: z.string().min(1).max(100),
+  studentMessage: z.string().min(1).max(1000),
+  mediaUrls: z.array(z.string().url()).optional()
+});
+
+const completeTriageSchema = z.object({
+  conversationId: z.string().min(1).max(100)
+});
 
 // Helper function to create equipment reminders
 async function createEquipmentReminders({
@@ -2175,6 +2192,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     return mitOrgPromise;
   };
+
+  // ✅ Mailla AI Triage Agent endpoints (public for students)
+  app.post('/api/mailla/start-triage', publicRateLimit, async (req: any, res) => {
+    try {
+      // ✅ Strict validation with Zod
+      const validatedInput = startTriageSchema.parse(req.body);
+      
+      const { maillaAIService } = await import('./maillaAIService');
+      const response = await maillaAIService.startTriageConversation(
+        validatedInput.studentId, 
+        validatedInput.orgId, 
+        validatedInput.initialRequest
+      );
+      
+      res.json(response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid input', details: error.errors });
+      }
+      console.error('Error starting Mailla triage:', error);
+      res.status(500).json({ error: 'Failed to start triage conversation' });
+    }
+  });
+
+  app.post('/api/mailla/continue-triage', publicRateLimit, async (req: any, res) => {
+    try {
+      // ✅ Fix API parameter mismatch - service expects object format
+      const validatedInput = continueTriageSchema.parse(req.body);
+      
+      const { maillaAIService } = await import('./maillaAIService');
+      const response = await maillaAIService.continueTriageConversation({
+        conversationId: validatedInput.conversationId,
+        studentMessage: validatedInput.studentMessage,
+        mediaUrls: validatedInput.mediaUrls
+      });
+      
+      res.json(response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid input', details: error.errors });
+      }
+      console.error('Error continuing Mailla triage:', error);
+      res.status(500).json({ error: 'Failed to continue triage conversation' });
+    }
+  });
+
+  app.post('/api/mailla/complete-triage', publicRateLimit, async (req: any, res) => {
+    try {
+      // ✅ Strict validation with Zod
+      const validatedInput = completeTriageSchema.parse(req.body);
+      
+      const { maillaAIService } = await import('./maillaAIService');
+      const response = await maillaAIService.completeTriageConversation(validatedInput.conversationId);
+      
+      res.json(response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid input', details: error.errors });
+      }
+      console.error('Error completing Mailla triage:', error);
+      res.status(500).json({ error: 'Failed to complete triage conversation' });
+    }
+  });
+
+  // ✅ REMOVED: GET conversation endpoint for security
+  // The architect identified this as a critical security vulnerability (IDOR)
+  // Students should only access their conversations through the startTriage response
+  // which includes the conversation ID for subsequent continue/complete calls
 
   // Public student maintenance request endpoint (no authentication required)
   app.post('/api/cases/public', publicRateLimit, async (req: any, res) => {

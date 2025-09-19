@@ -1,12 +1,12 @@
 import OpenAI from 'openai';
-import { storage } from './storage.js';
+import { storage } from './storage';
 import { nanoid } from 'nanoid';
 import type { 
   TriageConversationSelect, 
   InsertTriageConversation,
   TriageSafetyProtocolSelect,
   TriageQuestionRuleSelect 
-} from '@shared/schema.ts';
+} from '@shared/schema';
 
 // ========================================
 // 🛡️ Mailla AI Triage Agent Service
@@ -451,6 +451,62 @@ Always be empathetic, clear, and focused on student safety and getting the right
       throw new Error("Failed to complete triage and create case");
     }
   }
+
+  // ✅ Implementation for complete triage conversation (required by API)
+  async completeTriageConversation(conversationId: string) {
+    try {
+      console.log(`🤖 Mailla completing triage for conversation: ${conversationId}`);
+      
+      const conversation = await storage.getTriageConversation(conversationId);
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
+
+      // Create smart case with rich triage context
+      const caseData = {
+        orgId: conversation.orgId,
+        title: `Maintenance Request: ${conversation.initialRequest.substring(0, 50)}...`,
+        description: conversation.initialRequest,
+        category: "general", // Will be updated by AI
+        priority: conversation.urgencyLevel as any,
+        status: "Open" as any,
+        reportedBy: conversation.studentId,
+        propertyId: null, // Will be set during AI triage
+        unitId: null,
+        metadata: {
+          triageConversationId: conversationId,
+          safetyFlags: conversation.safetyFlags,
+          triageData: conversation.triageData,
+          urgencyLevel: conversation.urgencyLevel
+        }
+      };
+
+      const newCase = await storage.createSmartCase(caseData);
+      const caseId = newCase.id;
+
+      // Update conversation as complete (consistent with schema)
+      await storage.updateTriageConversation(conversationId, {
+        isComplete: true,
+        currentPhase: "final_triage",
+        smartCaseId: caseId,
+        completedAt: new Date()
+      });
+
+      return {
+        success: true,
+        conversationId,
+        caseId,
+        message: "Triage completed successfully. A maintenance case has been created.",
+        triageData: conversation.triageData,
+        safetyFlags: conversation.safetyFlags
+      };
+
+    } catch (error) {
+      console.error('Error completing Mailla triage:', error);
+      throw error;
+    }
+  }
 }
 
+// ✅ Export singleton instance for consistent usage
 export const maillaAIService = new MaillaAIService();
