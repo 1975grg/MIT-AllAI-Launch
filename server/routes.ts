@@ -1939,7 +1939,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     category: z.string().min(1, "Category is required"),
     priority: z.enum(["Low", "Medium", "High", "Critical"], {
       errorMap: () => ({ message: "Priority must be Low, Medium, High, or Critical" })
-    })
+    }),
+    photos: z.array(z.string()).max(3, "Maximum 3 photos allowed").optional() // Base64 encoded images for AI analysis (max 3)
   });
 
   // Rate limiter for public endpoints (protect against spam/abuse)
@@ -2031,11 +2032,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // SECURITY: Validate photo uploads to prevent DoS attacks
+      if (validatedInput.photos && validatedInput.photos.length > 0) {
+        for (let i = 0; i < validatedInput.photos.length; i++) {
+          const photo = validatedInput.photos[i];
+          
+          // Check if it's a valid base64 string
+          if (!/^data:image\/(jpeg|jpg|png|gif|webp);base64,/.test(photo)) {
+            return res.status(400).json({
+              message: "Invalid photo format. Only JPEG, PNG, GIF, and WebP images are allowed."
+            });
+          }
+          
+          // Check file size (2MB limit per photo)
+          const base64Data = photo.split(',')[1];
+          if (base64Data && base64Data.length > 2.8 * 1024 * 1024) { // ~2MB in base64
+            return res.status(413).json({
+              message: `Photo ${i + 1} is too large. Maximum size is 2MB per photo.`
+            });
+          }
+        }
+      }
+      
       // Get MIT organization (race-condition safe)
       const mitOrg = await getMITOrganization();
       
       // Run AI triage analysis on the maintenance request
-      console.log(`🤖 Running AI triage analysis for: ${validatedInput.title}`);
+      console.log(`🤖 Running AI triage analysis for: ${validatedInput.title}${validatedInput.photos ? ` (with ${validatedInput.photos.length} photos)` : ''}`);
       const aiTriage = await aiTriageService.analyzeMaintenanceRequest({
         title: validatedInput.title,
         description: validatedInput.description,
@@ -2043,6 +2066,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         priority: validatedInput.priority,
         building: validatedInput.building,
         room: validatedInput.room,
+        photos: validatedInput.photos, // Pass photos for AI vision analysis
+        orgId: mitOrg.id, // SECURITY: Always use MIT org for public requests
         studentContact: {
           name: validatedInput.studentName,
           email: validatedInput.studentEmail,

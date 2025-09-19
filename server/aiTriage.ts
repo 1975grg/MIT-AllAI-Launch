@@ -142,32 +142,41 @@ Consider factors like:
       // Analyze the first photo (most platforms limit to 1 image per analysis)
       const firstPhoto = photos[0];
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Analyze this maintenance issue photo for MIT student housing. Describe what you see, identify the problem, assess severity, note safety concerns, and provide actionable insights for maintenance coordination. Focus on technical details that would help a maintenance coordinator understand the issue."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${firstPhoto}`
+      // SECURITY: Add timeout protection and data extraction from base64
+      const base64Data = firstPhoto.includes(',') ? firstPhoto.split(',')[1] : firstPhoto;
+      
+      const response = await Promise.race([
+        openai.chat.completions.create({
+          model: "gpt-5",
+          messages: [{
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Analyze this maintenance issue photo for MIT student housing. Describe what you see, identify the problem, assess severity, note safety concerns, and provide actionable insights for maintenance coordination. Focus on technical details that would help a maintenance coordinator understand the issue."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Data}`
+                }
               }
-            }
-          ],
-        }],
-        max_completion_tokens: 500,
-      });
+            ],
+          }],
+          max_completion_tokens: 500,
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Photo analysis timeout")), 10000)
+        )
+      ]) as any;
 
       const analysis = response.choices[0].message.content || 'Unable to analyze image';
-      console.log(`🤖 Photo Analysis: ${analysis.substring(0, 100)}...`);
+      // PRIVACY: Remove sensitive content logging - just log completion
+      console.log(`🤖 Photo Analysis: Completed successfully`);
       return analysis;
       
     } catch (error) {
-      console.error('🚨 Photo Analysis Error:', error);
+      console.error('🚨 Photo Analysis Error:', error instanceof Error ? error.message : 'Unknown error');
       return 'Photo analysis unavailable - proceeding with text-based triage';
     }
   }
