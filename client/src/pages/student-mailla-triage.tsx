@@ -5,17 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import MaillaTriageChat from "@/components/maintenance/mailla-triage-chat";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function StudentMaillaTriagePage() {
   const [triageCompleted, setTriageCompleted] = useState(false);
   const [caseId, setCaseId] = useState<string>("");
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
 
-  // ✅ Use real authentication context - server validates these
-  const studentId = user?.id || "anonymous-" + Date.now();
-  const orgId = "mit-housing"; // Server-side validation ensures proper org access
+  // ✅ Remove useAuth() call to prevent 401 error loops on public route
+  // The backend now handles authentication and derives identity from session
+  const studentId = "public-student"; // Server will derive real identity from session
+  const orgId = "mit-housing"; // Server validates org access
 
   const handleTriageComplete = (completedCaseId: string) => {
     setTriageCompleted(true);
