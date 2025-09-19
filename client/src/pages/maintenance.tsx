@@ -19,7 +19,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, Bell, GraduationCap } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, Bell, GraduationCap, Grid3X3, List, Map, Columns3, Edit, MapPin } from "lucide-react";
 import ReminderForm from "@/components/forms/reminder-form";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 import PropertyAssistant from "@/components/ai/property-assistant";
@@ -67,6 +67,7 @@ export default function Maintenance() {
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [reminderCaseContext, setReminderCaseContext] = useState<{caseId: string; caseTitle: string} | null>(null);
   const [viewMode, setViewMode] = useState<"admin" | "student">("admin");
+  const [smartCasesViewMode, setSmartCasesViewMode] = useState<"cards" | "list" | "heatmap" | "kanban">("cards");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -432,6 +433,528 @@ export default function Maintenance() {
     }
   };
 
+  // Safe render function to avoid nested ternaries
+  const renderSmartCases = () => {
+    if (casesLoading) {
+      return (
+        <div className="grid grid-cols-1 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} data-testid={`skeleton-case-${i}`}>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="h-6 bg-muted animate-pulse rounded" />
+                  <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                  <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    if (filteredCases.length === 0) {
+      return (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2" data-testid="text-no-cases">No Maintenance Cases</h3>
+            <p className="text-muted-foreground mb-4">Create your first maintenance case to start tracking issues and repairs.</p>
+            <Button onClick={() => setShowCaseForm(true)} data-testid="button-add-first-case">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Your First Case
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Render based on selected view mode
+    switch (smartCasesViewMode) {
+      case 'cards':
+        return (
+          <div className="grid grid-cols-1 gap-6">
+            {filteredCases.map((smartCase, index) => (
+              <Card key={smartCase.id} className="hover:shadow-md transition-shadow" data-testid={`card-case-${index}`}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-12 h-12 ${getPriorityCircleColor(smartCase.priority)} rounded-lg flex items-center justify-center`}>
+                        {getStatusIcon(smartCase.status)}
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg" data-testid={`text-case-title-${index}`}>{smartCase.title}</CardTitle>
+                        {smartCase.category && (
+                          <p className="text-sm text-muted-foreground" data-testid={`text-case-category-${index}`}>
+                            {smartCase.category}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {getPriorityBadge(smartCase.priority)}
+                      {getStatusBadge(smartCase.status)}
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                <CardContent>
+                  {smartCase.description && (
+                    <p className="text-sm text-muted-foreground mb-4" data-testid={`text-case-description-${index}`}>
+                      {smartCase.description}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                    <div>
+                      <span data-testid={`text-case-created-${index}`}>
+                        Created {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
+                      </span>
+                      {smartCase.propertyId && (
+                        <div className="mt-1">
+                          <span className="text-blue-600 font-medium">Property:</span>
+                          <span className="ml-1" data-testid={`text-case-property-${index}`}>
+                            {(() => {
+                              const property = properties?.find(p => p.id === smartCase.propertyId);
+                              return property ? (property.name || `${property.street}, ${property.city}`) : 'Property';
+                            })()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {smartCase.estimatedCost && (
+                      <span data-testid={`text-case-cost-${index}`}>
+                        Est. Cost: ${Number(smartCase.estimatedCost).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Select
+                      value={smartCase.status}
+                      onValueChange={(value: SmartCase["status"]) => {
+                        updateCaseStatusMutation.mutate({
+                          id: smartCase.id,
+                          status: value,
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="w-40" data-testid={`select-case-status-${index}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="New">New</SelectItem>
+                        <SelectItem value="In Review">In Review</SelectItem>
+                        <SelectItem value="Scheduled">Scheduled</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="On Hold">On Hold</SelectItem>
+                        <SelectItem value="Resolved">Resolved</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditCase(smartCase)}
+                        data-testid={`button-edit-case-${index}`}
+                      >
+                        Edit
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setReminderCaseContext({
+                            caseId: smartCase.id,
+                            caseTitle: smartCase.title
+                          });
+                          setShowReminderForm(true);
+                        }}
+                        data-testid={`button-remind-case-${index}`}
+                      >
+                        <Bell className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this case? This action cannot be undone.")) {
+                            deleteCaseMutation.mutate(smartCase.id);
+                          }
+                        }}
+                        data-testid={`button-delete-case-${index}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+
+      case 'list':
+        return (
+          <div className="bg-card rounded-lg border">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="text-left p-4 font-medium">Title</th>
+                    <th className="text-left p-4 font-medium">Property/Unit</th>
+                    <th className="text-left p-4 font-medium">Category</th>
+                    <th className="text-left p-4 font-medium">Priority</th>
+                    <th className="text-left p-4 font-medium">Status</th>
+                    <th className="text-left p-4 font-medium">Created</th>
+                    <th className="text-left p-4 font-medium">Est. Cost</th>
+                    <th className="text-left p-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCases.map((smartCase, index) => (
+                    <tr key={smartCase.id} className="border-b hover:bg-muted/25" data-testid={`row-case-${index}`}>
+                      <td className="p-4 text-sm font-medium" data-testid={`cell-title-${index}`}>
+                        {smartCase.title}
+                      </td>
+                      <td className="p-4 text-sm" data-testid={`cell-property-${index}`}>
+                        {smartCase.propertyId ? (() => {
+                          const property = properties?.find(p => p.id === smartCase.propertyId);
+                          const unit = smartCase.unitId ? units?.find(u => u.id === smartCase.unitId) : null;
+                          const propertyName = property ? (property.name || property.street) : 'Unknown';
+                          const unitName = unit?.label;
+                          return unitName ? `${propertyName} / ${unitName}` : propertyName;
+                        })() : 'N/A'}
+                      </td>
+                      <td className="p-4 text-sm" data-testid={`cell-category-${index}`}>
+                        {smartCase.category || 'N/A'}
+                      </td>
+                      <td className="p-4" data-testid={`cell-priority-${index}`}>
+                        {getPriorityBadge(smartCase.priority)}
+                      </td>
+                      <td className="p-4" data-testid={`cell-status-${index}`}>
+                        <Select
+                          value={smartCase.status}
+                          onValueChange={(value: SmartCase["status"]) => {
+                            updateCaseStatusMutation.mutate({
+                              id: smartCase.id,
+                              status: value,
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="w-32" data-testid={`select-status-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="New">New</SelectItem>
+                            <SelectItem value="In Review">In Review</SelectItem>
+                            <SelectItem value="Scheduled">Scheduled</SelectItem>
+                            <SelectItem value="In Progress">In Progress</SelectItem>
+                            <SelectItem value="On Hold">On Hold</SelectItem>
+                            <SelectItem value="Resolved">Resolved</SelectItem>
+                            <SelectItem value="Closed">Closed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="p-4 text-sm text-muted-foreground" data-testid={`cell-created-${index}`}>
+                        {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
+                      </td>
+                      <td className="p-4 text-sm" data-testid={`cell-cost-${index}`}>
+                        {smartCase.estimatedCost ? `$${Number(smartCase.estimatedCost).toLocaleString()}` : 'N/A'}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center space-x-1">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleEditCase(smartCase)}
+                            data-testid={`button-edit-list-${index}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setReminderCaseContext({
+                                caseId: smartCase.id,
+                                caseTitle: smartCase.title
+                              });
+                              setShowReminderForm(true);
+                            }}
+                            data-testid={`button-remind-list-${index}`}
+                          >
+                            <Bell className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to delete this case?")) {
+                                deleteCaseMutation.mutate(smartCase.id);
+                              }
+                            }}
+                            data-testid={`button-delete-list-${index}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      case 'heatmap':
+        const propertyStats = (() => {
+          const stats = new Map();
+          filteredCases.forEach(smartCase => {
+            const propertyId = smartCase.propertyId || 'unassigned';
+            if (!stats.has(propertyId)) {
+              stats.set(propertyId, { count: 0, highestPriority: 'Low' });
+            }
+            const current = stats.get(propertyId);
+            current.count += 1;
+            
+            // Determine highest priority
+            const priorities = ['Low', 'Medium', 'High', 'Critical'];
+            const currentPriorityIndex = priorities.indexOf(smartCase.priority || 'Low');
+            const highestPriorityIndex = priorities.indexOf(current.highestPriority);
+            if (currentPriorityIndex > highestPriorityIndex) {
+              current.highestPriority = smartCase.priority || 'Low';
+            }
+          });
+          return stats;
+        })();
+
+        const getHeatColor = (priority: string) => {
+          const baseColors = {
+            'Low': 'bg-green-100 border-green-300 text-green-800',
+            'Medium': 'bg-yellow-100 border-yellow-300 text-yellow-800',
+            'High': 'bg-orange-100 border-orange-300 text-orange-800',
+            'Critical': 'bg-red-100 border-red-300 text-red-800'
+          };
+          return baseColors[priority as keyof typeof baseColors] || baseColors['Low'];
+        };
+
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Cases by Property</h3>
+              <div className="flex items-center space-x-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+                  <span>Low Priority</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
+                  <span>Medium Priority</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
+                  <span>High Priority</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+                  <span>Critical Priority</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {Array.from(propertyStats.entries()).map(([propertyId, stats], index) => {
+                const property = properties?.find(p => p.id === propertyId);
+                const propertyName = propertyId === 'unassigned' 
+                  ? 'Unassigned Property' 
+                  : (property?.name || property?.street || 'Unknown Property');
+                
+                return (
+                  <Card 
+                    key={propertyId} 
+                    className={`${getHeatColor(stats.highestPriority)} hover:shadow-md transition-shadow cursor-pointer`}
+                    data-testid={`heatmap-property-${index}`}
+                    onClick={() => {
+                      // Focus on this property by setting property filter
+                      if (propertyId !== 'unassigned') {
+                        setPropertyFilter(propertyId);
+                      }
+                    }}
+                  >
+                    <CardContent className="p-4">
+                      <div className="text-center">
+                        <MapPin className="h-6 w-6 mx-auto mb-2 opacity-60" />
+                        <h4 className="font-semibold text-sm mb-2" data-testid={`text-property-name-${index}`}>
+                          {propertyName}
+                        </h4>
+                        <div className="text-2xl font-bold mb-1" data-testid={`text-case-count-${index}`}>
+                          {stats.count}
+                        </div>
+                        <div className="text-xs opacity-75 mb-2">
+                          {stats.count === 1 ? 'Case' : 'Cases'}
+                        </div>
+                        <div className="text-xs">
+                          <span className="font-medium">Highest Priority:</span>
+                          <div className="mt-1" data-testid={`text-highest-priority-${index}`}>
+                            {getPriorityBadge(stats.highestPriority)}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            
+            {propertyStats.size === 0 && (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Property Data</h3>
+                  <p className="text-muted-foreground">Cases need property assignments to display heat map.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+
+      case 'kanban':
+        const COLUMNS = ['New', 'In Review', 'Scheduled', 'In Progress', 'On Hold', 'Resolved', 'Closed'];
+        
+        const groupedCases = (() => {
+          const groups: Record<string, SmartCase[]> = {};
+          COLUMNS.forEach(status => { groups[status] = []; });
+          
+          filteredCases.forEach(smartCase => {
+            const status = smartCase.status || 'New';
+            if (groups[status]) {
+              groups[status].push(smartCase);
+            }
+          });
+          
+          return groups;
+        })();
+
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Cases by Status</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 min-h-[600px]">
+              {COLUMNS.map((status, columnIndex) => (
+                <div key={status} className="bg-muted/30 rounded-lg p-3" data-testid={`kanban-column-${columnIndex}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-sm" data-testid={`text-column-title-${columnIndex}`}>
+                      {status}
+                    </h4>
+                    <span className="text-xs bg-muted px-2 py-1 rounded" data-testid={`text-column-count-${columnIndex}`}>
+                      {groupedCases[status].length}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {groupedCases[status].map((smartCase, index) => (
+                      <Card key={smartCase.id} className="bg-card hover:shadow-sm transition-shadow" data-testid={`kanban-card-${columnIndex}-${index}`}>
+                        <CardContent className="p-3">
+                          <div className="space-y-2">
+                            <h5 className="font-medium text-sm line-clamp-2" data-testid={`text-kanban-title-${columnIndex}-${index}`}>
+                              {smartCase.title}
+                            </h5>
+                            
+                            {smartCase.category && (
+                              <p className="text-xs text-muted-foreground" data-testid={`text-kanban-category-${columnIndex}-${index}`}>
+                                {smartCase.category}
+                              </p>
+                            )}
+                            
+                            <div className="flex items-center justify-between">
+                              {getPriorityBadge(smartCase.priority)}
+                              <div className="flex space-x-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => handleEditCase(smartCase)}
+                                  data-testid={`button-edit-kanban-${columnIndex}-${index}`}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => {
+                                    setReminderCaseContext({
+                                      caseId: smartCase.id,
+                                      caseTitle: smartCase.title
+                                    });
+                                    setShowReminderForm(true);
+                                  }}
+                                  data-testid={`button-remind-kanban-${columnIndex}-${index}`}
+                                >
+                                  <Bell className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => {
+                                    if (confirm("Delete this case?")) {
+                                      deleteCaseMutation.mutate(smartCase.id);
+                                    }
+                                  }}
+                                  data-testid={`button-delete-kanban-${columnIndex}-${index}`}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            {smartCase.propertyId && (
+                              <p className="text-xs text-blue-600" data-testid={`text-kanban-property-${columnIndex}-${index}`}>
+                                {(() => {
+                                  const property = properties?.find(p => p.id === smartCase.propertyId);
+                                  return property ? (property.name || property.street) : 'Property';
+                                })()}
+                              </p>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    
+                    {groupedCases[status].length === 0 && (
+                      <div className="text-center text-muted-foreground text-xs py-8" data-testid={`text-empty-column-${columnIndex}`}>
+                        No cases
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="grid grid-cols-1 gap-6">
+            {/* Default to cards view */}
+            {filteredCases.map((smartCase, index) => (
+              <Card key={smartCase.id} className="hover:shadow-md transition-shadow" data-testid={`card-case-${index}`}>
+                {/* Cards view content */}
+              </Card>
+            ))}
+          </div>
+        );
+    }
+  };
+
+
   return (
     <div className="flex h-screen bg-background" data-testid="page-maintenance">
       <Sidebar />
@@ -495,9 +1018,9 @@ export default function Maintenance() {
                         if (request.roomNumber && units) {
                           const matchedUnit = units.find(u => 
                             u.propertyId === propertyId && 
-                            (u.unitNumber === request.roomNumber || 
-                             u.unitNumber?.includes(request.roomNumber) ||
-                             request.roomNumber.includes(u.unitNumber || ""))
+                            (u.label === request.roomNumber || 
+                             u.label?.includes(request.roomNumber) ||
+                             request.roomNumber.includes(u.label || ""))
                           );
                           if (matchedUnit) {
                             unitId = matchedUnit.id;
@@ -688,6 +1211,56 @@ export default function Maintenance() {
                   <SelectItem value="Closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
+                </div>
+              </div>
+
+              {/* Smart Cases View Toggle */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Smart Cases</h2>
+                  <p className="text-sm text-muted-foreground">AI-powered maintenance case management</p>
+                </div>
+                <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg">
+                  <Button
+                    variant={smartCasesViewMode === "cards" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSmartCasesViewMode("cards")}
+                    data-testid="button-cards-view"
+                    className="flex items-center space-x-1"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                    <span>Cards</span>
+                  </Button>
+                  <Button
+                    variant={smartCasesViewMode === "list" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSmartCasesViewMode("list")}
+                    data-testid="button-list-view"
+                    className="flex items-center space-x-1"
+                  >
+                    <List className="h-4 w-4" />
+                    <span>List</span>
+                  </Button>
+                  <Button
+                    variant={smartCasesViewMode === "heatmap" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSmartCasesViewMode("heatmap")}
+                    data-testid="button-heatmap-view"
+                    className="flex items-center space-x-1"
+                  >
+                    <Map className="h-4 w-4" />
+                    <span>Heat Map</span>
+                  </Button>
+                  <Button
+                    variant={smartCasesViewMode === "kanban" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSmartCasesViewMode("kanban")}
+                    data-testid="button-kanban-view"
+                    className="flex items-center space-x-1"
+                  >
+                    <Columns3 className="h-4 w-4" />
+                    <span>Kanban</span>
+                  </Button>
                 </div>
               </div>
 
@@ -919,163 +1492,18 @@ export default function Maintenance() {
               </Dialog>
 
               {/* Mailla AI Assistant */}
-          <PropertyAssistant 
-            context="maintenance"
-            exampleQuestions={[
-              "What maintenance is overdue or urgent?",
-              "Which property needs the most attention?",
-              "Any recurring maintenance patterns I should address?",
-              "What repairs are costing me the most?"
-            ]}
-          />
+              <PropertyAssistant 
+                context="maintenance"
+                exampleQuestions={[
+                  "What maintenance is overdue or urgent?",
+                  "Which property needs the most attention?",
+                  "Any recurring maintenance patterns I should address?",
+                  "What repairs are costing me the most?"
+                ]}
+              />
 
-          {casesLoading ? (
-            <div className="grid grid-cols-1 gap-6">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} data-testid={`skeleton-case-${i}`}>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div className="h-6 bg-muted animate-pulse rounded" />
-                      <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
-                      <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : filteredCases.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {filteredCases.map((smartCase, index) => (
-                <Card key={smartCase.id} className="hover:shadow-md transition-shadow" data-testid={`card-case-${index}`}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-12 h-12 ${getPriorityCircleColor(smartCase.priority)} rounded-lg flex items-center justify-center`}>
-                          {getStatusIcon(smartCase.status)}
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg" data-testid={`text-case-title-${index}`}>{smartCase.title}</CardTitle>
-                          {smartCase.category && (
-                            <p className="text-sm text-muted-foreground" data-testid={`text-case-category-${index}`}>
-                              {smartCase.category}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {getPriorityBadge(smartCase.priority)}
-                        {getStatusBadge(smartCase.status)}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent>
-                    {smartCase.description && (
-                      <p className="text-sm text-muted-foreground mb-4" data-testid={`text-case-description-${index}`}>
-                        {smartCase.description}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                      <div>
-                        <span data-testid={`text-case-created-${index}`}>
-                          Created {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
-                        </span>
-                        {smartCase.propertyId && (
-                          <div className="mt-1">
-                            <span className="text-blue-600 font-medium">Property:</span>
-                            <span className="ml-1" data-testid={`text-case-property-${index}`}>
-                              {(() => {
-                                const property = properties?.find(p => p.id === smartCase.propertyId);
-                                return property ? (property.name || `${property.street}, ${property.city}`) : 'Property';
-                              })()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      {smartCase.estimatedCost && (
-                        <span data-testid={`text-case-cost-${index}`}>
-                          Est. Cost: ${Number(smartCase.estimatedCost).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      {/* Status Dropdown */}
-                      <Select 
-                        value={smartCase.status || "New"} 
-                        onValueChange={(newStatus) => updateCaseStatusMutation.mutate({ id: smartCase.id, status: newStatus })}
-                      >
-                        <SelectTrigger className="w-32" data-testid={`select-case-status-${index}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="New">New</SelectItem>
-                          <SelectItem value="In Review">In Review</SelectItem>
-                          <SelectItem value="Scheduled">Scheduled</SelectItem>
-                          <SelectItem value="In Progress">In Progress</SelectItem>
-                          <SelectItem value="On Hold">On Hold</SelectItem>
-                          <SelectItem value="Resolved">Resolved</SelectItem>
-                          <SelectItem value="Closed">Closed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleEditCase(smartCase)}
-                        data-testid={`button-edit-case-${index}`}
-                      >
-                        Edit
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setReminderCaseContext({
-                            caseId: smartCase.id,
-                            caseTitle: smartCase.title
-                          });
-                          setShowReminderForm(true);
-                        }}
-                        data-testid={`button-remind-case-${index}`}
-                      >
-                        <Bell className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          if (confirm("Are you sure you want to delete this case? This action cannot be undone.")) {
-                            deleteCaseMutation.mutate(smartCase.id);
-                          }
-                        }}
-                        data-testid={`button-delete-case-${index}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2" data-testid="text-no-cases">No Maintenance Cases</h3>
-                <p className="text-muted-foreground mb-4">Create your first maintenance case to start tracking issues and repairs.</p>
-                <Button onClick={() => setShowCaseForm(true)} data-testid="button-add-first-case">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Case
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-            </div>
-          )}
+              {/* Single source of truth for case rendering; do not add rendering here */}
+              {renderSmartCases()}
         </main>
       </div>
       
