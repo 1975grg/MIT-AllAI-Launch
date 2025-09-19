@@ -202,8 +202,10 @@ export class AIMaintenanceCopilot {
             content: this.formatTroubleshootingPrompt(validatedRequest, historicalContext, knowledgeContext, photoInsights)
           }
         ],
-        functions: [{
-          name: "provide_troubleshooting_guidance",
+        tools: [{
+          type: "function",
+          function: {
+            name: "provide_troubleshooting_guidance",
           description: "Provide structured troubleshooting guidance for maintenance issues",
           parameters: {
             type: "object",
@@ -236,16 +238,17 @@ export class AIMaintenanceCopilot {
             },
             required: ["nextSteps", "procedures", "confidence", "reasoning"]
           }
+          }
         }],
-        function_call: { name: "provide_troubleshooting_guidance" }
+        tool_choice: { type: "function", function: { name: "provide_troubleshooting_guidance" } }
       });
 
-      const functionCall = aiResponse.choices[0]?.message?.function_call;
-      if (!functionCall) {
+      const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
+      if (!toolCall || toolCall.type !== "function") {
         throw new Error("AI failed to provide structured troubleshooting guidance");
       }
 
-      const aiGuidance = JSON.parse(functionCall.arguments);
+      const aiGuidance = JSON.parse(toolCall.function.arguments);
 
       // 5. Create troubleshooting session record
       const sessionId = await this.storage.createAiTroubleshootingSession({
@@ -351,8 +354,10 @@ export class AIMaintenanceCopilot {
             ]
           }
         ],
-        functions: [{
-          name: "analyze_maintenance_photo",
+        tools: [{
+          type: "function",
+          function: {
+            name: "analyze_maintenance_photo",
           description: "Comprehensive analysis of maintenance photo for damage assessment",
           parameters: {
             type: "object",
@@ -407,16 +412,17 @@ export class AIMaintenanceCopilot {
             },
             required: ["damage", "safety", "repair", "parts"]
           }
+          }
         }],
-        function_call: { name: "analyze_maintenance_photo" }
+        tool_choice: { type: "function", function: { name: "analyze_maintenance_photo" } }
       });
 
-      const functionCall = visionResponse.choices[0]?.message?.function_call;
-      if (!functionCall) {
+      const toolCall = visionResponse.choices[0]?.message?.tool_calls?.[0];
+      if (!toolCall || toolCall.type !== "function") {
         throw new Error("AI failed to analyze photo");
       }
 
-      const analysisResult = JSON.parse(functionCall.arguments);
+      const analysisResult = JSON.parse(toolCall.function.arguments);
 
       // Store analysis results
       const analysisId = await this.storage.createPhotoAnalysisResult({
@@ -495,8 +501,10 @@ export class AIMaintenanceCopilot {
             Recommend the best parts and provide reasoning.`
           }
         ],
-        functions: [{
-          name: "recommend_parts_and_tools",
+        tools: [{
+          type: "function",
+          function: {
+            name: "recommend_parts_and_tools",
           description: "Recommend parts and tools for maintenance repair",
           parameters: {
             type: "object",
@@ -528,16 +536,17 @@ export class AIMaintenanceCopilot {
             },
             required: ["recommendations", "totalEstimate"]
           }
+          }
         }],
-        function_call: { name: "recommend_parts_and_tools" }
+        tool_choice: { type: "function", function: { name: "recommend_parts_and_tools" } }
       });
 
-      const functionCall = aiResponse.choices[0]?.message?.function_call;
-      if (!functionCall) {
+      const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
+      if (!toolCall || toolCall.type !== "function") {
         throw new Error("AI failed to recommend parts");
       }
 
-      const aiRecommendations = JSON.parse(functionCall.arguments);
+      const aiRecommendations = JSON.parse(toolCall.function.arguments);
 
       // Enhance with real catalog data
       const enhancedRecommendations = aiRecommendations.recommendations.map((rec: any) => {

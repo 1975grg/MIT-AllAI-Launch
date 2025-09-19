@@ -1548,16 +1548,6 @@ export class DatabaseStorage implements IStorage {
     return appointment;
   }
 
-  async getContractorAppointments(contractorId: string, orgId: string): Promise<Appointment[]> {
-    return await db
-      .select()
-      .from(appointments)
-      .where(and(
-        eq(appointments.contractorId, contractorId),
-        eq(appointments.orgId, orgId)
-      ))
-      .orderBy(appointments.scheduledStartAt);
-  }
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
     const [newAppointment] = await db.insert(appointments).values(appointment).returning();
@@ -2842,16 +2832,19 @@ export class DatabaseStorage implements IStorage {
       return await db.select().from(maintenanceKnowledgeBase);
     }
 
-    let query = db.select().from(maintenanceKnowledgeBase);
-    
+    const conditions = [];
     if (filters.category) {
-      query = query.where(eq(maintenanceKnowledgeBase.category, filters.category));
+      conditions.push(eq(maintenanceKnowledgeBase.category, filters.category));
     }
     if (filters.type) {
-      query = query.where(eq(maintenanceKnowledgeBase.type, filters.type));
+      conditions.push(eq(maintenanceKnowledgeBase.type, filters.type));
     }
     
-    return await query;
+    if (conditions.length === 0) {
+      return await db.select().from(maintenanceKnowledgeBase);
+    }
+    
+    return await db.select().from(maintenanceKnowledgeBase).where(and(...conditions));
   }
 
   async searchMaintenanceKnowledge(searchQuery: string, category?: string): Promise<any[]> {
@@ -2867,7 +2860,17 @@ export class DatabaseStorage implements IStorage {
       );
 
     if (category) {
-      query = query.where(eq(maintenanceKnowledgeBase.category, category));
+      query = db
+        .select()
+        .from(maintenanceKnowledgeBase)
+        .where(and(
+          or(
+            like(maintenanceKnowledgeBase.title, `%${searchQuery}%`),
+            like(maintenanceKnowledgeBase.description, `%${searchQuery}%`),
+            like(maintenanceKnowledgeBase.content, `%${searchQuery}%`)
+          ),
+          eq(maintenanceKnowledgeBase.category, category)
+        ));
     }
 
     return await query.orderBy(desc(maintenanceKnowledgeBase.lastUsedAt));
@@ -2878,19 +2881,22 @@ export class DatabaseStorage implements IStorage {
       return await db.select().from(partsToolsCatalog);
     }
 
-    let query = db.select().from(partsToolsCatalog);
-    
+    const conditions = [];
     if (filters.category) {
-      query = query.where(eq(partsToolsCatalog.category, filters.category));
+      conditions.push(eq(partsToolsCatalog.category, filters.category));
     }
     if (filters.type) {
-      query = query.where(eq(partsToolsCatalog.type, filters.type));
+      conditions.push(eq(partsToolsCatalog.type, filters.type));
     }
     if (filters.isActive !== undefined) {
-      query = query.where(eq(partsToolsCatalog.isActive, filters.isActive));
+      conditions.push(eq(partsToolsCatalog.isActive, filters.isActive));
     }
     
-    return await query;
+    if (conditions.length === 0) {
+      return await db.select().from(partsToolsCatalog);
+    }
+    
+    return await db.select().from(partsToolsCatalog).where(and(...conditions));
   }
 
   async createPartsToolsCatalogItem(item: any): Promise<string> {
