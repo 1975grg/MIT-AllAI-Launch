@@ -589,7 +589,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
             data-testid="quick-replies"
           >
             {/* Essential Info - Two Column Layout */}
-            {needsEssentialInfo() && (
+            {needsEssentialInfo && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Building</label>
@@ -656,7 +656,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
             )}
 
             {/* Timeline & Severity - Two Column Layout */}
-            {needsTimelineInfo() && (
+            {needsTimelineInfo && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-gray-600 dark:text-gray-400">When did this start?</label>
@@ -700,7 +700,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
             )}
 
             {/* Single Question Quick Replies (fallback) */}
-            {!needsEssentialInfo() && !needsTimelineInfo() && (
+            {!needsEssentialInfo && !needsTimelineInfo && (
               <div className="space-y-2">
                 <div className="text-xs text-gray-600 dark:text-gray-400">Quick replies:</div>
                 <div className="flex flex-wrap gap-2">
