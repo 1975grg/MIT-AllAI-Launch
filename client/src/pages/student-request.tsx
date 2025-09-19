@@ -8,8 +8,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GraduationCap, CheckCircle, ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { GraduationCap, CheckCircle, ArrowLeft, Camera, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 const MAINTENANCE_CATEGORIES = [
   "HVAC / Heating & Cooling",
@@ -39,7 +41,8 @@ const studentRequestSchema = z.object({
   room: z.string().min(1, "Please enter your room number"),
   studentEmail: z.string().email("Please enter a valid email address"),
   studentPhone: z.string().optional(),
-  studentName: z.string().min(2, "Please enter your name")
+  studentName: z.string().min(2, "Please enter your name"),
+  photos: z.array(z.string()).max(5, "Maximum 5 photos allowed").optional().default([])
 });
 
 type StudentRequestForm = z.infer<typeof studentRequestSchema>;
@@ -49,6 +52,8 @@ export default function StudentRequest() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [requestId, setRequestId] = useState<string>("");
   const [selectedPriority, setSelectedPriority] = useState<string>("");
+  const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
+  const [showTrackingDialog, setShowTrackingDialog] = useState(false);
   const { toast } = useToast();
   
   const form = useForm<StudentRequestForm>({
@@ -62,17 +67,23 @@ export default function StudentRequest() {
       room: "",
       studentEmail: "",
       studentPhone: "",
-      studentName: ""
+      studentName: "",
+      photos: []
     }
   });
 
   const onSubmit = async (data: StudentRequestForm) => {
     setIsSubmitting(true);
     try {
+      const submissionData = {
+        ...data,
+        photos: uploadedPhotos
+      };
+      
       const response = await fetch("/api/cases/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify(submissionData)
       });
 
       if (!response.ok) {
@@ -95,6 +106,38 @@ export default function StudentRequest() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Photo upload handlers
+  const getUploadParameters = async () => {
+    try {
+      const response = await fetch("/api/upload/presigned", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileType: "image" })
+      });
+      const data = await response.json();
+      return { method: "PUT" as const, url: data.uploadUrl };
+    } catch (error) {
+      console.error("Failed to get upload parameters:", error);
+      throw error;
+    }
+  };
+
+  const handlePhotoUploadComplete = (result: any) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadedUrl = result.successful[0].uploadURL;
+      const photoUrl = uploadedUrl.split('?')[0]; // Remove query parameters
+      setUploadedPhotos(prev => [...prev, photoUrl]);
+      toast({
+        title: "Photo Uploaded",
+        description: "Your photo has been attached to the request."
+      });
+    }
+  };
+
+  const removePhoto = (photoUrl: string) => {
+    setUploadedPhotos(prev => prev.filter(url => url !== photoUrl));
   };
 
   if (isSubmitted) {
@@ -332,6 +375,62 @@ export default function StudentRequest() {
                     </FormItem>
                   )}
                 />
+
+                {/* Photo Upload Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Camera className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-medium">Add Photos (Optional)</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Photos help us understand the issue better and can speed up the repair process.
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-4">
+                    <ObjectUploader
+                      maxNumberOfFiles={5}
+                      maxFileSize={10485760} // 10MB
+                      onGetUploadParameters={getUploadParameters}
+                      onComplete={handlePhotoUploadComplete}
+                      buttonClassName="flex-shrink-0"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Add Photos
+                    </ObjectUploader>
+                    
+                    {uploadedPhotos.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {uploadedPhotos.map((photoUrl, index) => (
+                          <div key={index} className="relative group">
+                            <div 
+                              className="w-20 h-20 bg-muted border border-border rounded-lg flex items-center justify-center cursor-pointer hover:bg-muted/80"
+                              onClick={() => window.open(photoUrl, '_blank')}
+                              data-testid={`photo-preview-${index}`}
+                            >
+                              <Eye className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute -top-2 -right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removePhoto(photoUrl)}
+                              data-testid={`remove-photo-${index}`}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {uploadedPhotos.length > 0 && (
+                    <Badge variant="secondary" className="w-fit">
+                      {uploadedPhotos.length} photo{uploadedPhotos.length !== 1 ? 's' : ''} attached
+                    </Badge>
+                  )}
+                </div>
 
                 {/* Priority Selection */}
                 <FormField

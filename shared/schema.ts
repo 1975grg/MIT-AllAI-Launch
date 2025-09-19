@@ -873,6 +873,11 @@ export type Asset = typeof assets.$inferSelect;
 export type InsertAsset = z.infer<typeof insertAssetSchema>;
 export type SmartCase = typeof smartCases.$inferSelect;
 export type InsertSmartCase = z.infer<typeof insertSmartCaseSchema>;
+
+// Schema for case media
+export const caseMediaInsertSchema = createInsertSchema(caseMedia).omit({ id: true, createdAt: true });
+export type CaseMediaInsert = z.infer<typeof caseMediaInsertSchema>;
+export type CaseMediaSelect = typeof caseMedia.$inferSelect;
 export type Vendor = typeof vendors.$inferSelect;
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Appointment = typeof appointments.$inferSelect;

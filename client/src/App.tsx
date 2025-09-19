@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import StudentRequest from "@/pages/student-request";
+import StudentTracking from "@/pages/student-tracking";
 import Dashboard from "@/pages/dashboard";
 import Properties from "@/pages/properties";
 import Entities from "@/pages/entities";
@@ -39,6 +40,7 @@ function Router() {
     <Switch>
       {/* Public routes accessible to everyone */}
       <Route path="/student-request" component={StudentRequest} />
+      <Route path="/student-tracking" component={StudentTracking} />
       
       {!isAuthenticated ? (
         <>

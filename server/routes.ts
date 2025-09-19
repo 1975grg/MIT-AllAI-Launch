@@ -1941,7 +1941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     priority: z.enum(["Low", "Medium", "High", "Critical"], {
       errorMap: () => ({ message: "Priority must be Low, Medium, High, or Critical" })
     }),
-    photos: z.array(z.string()).max(3, "Maximum 3 photos allowed").optional() // Base64 encoded images for AI analysis (max 3)
+    photos: z.array(z.string()).max(5, "Maximum 5 photos allowed").optional() // Base64 encoded images for AI analysis (max 5)
   });
 
   // Rate limiter for public endpoints (protect against spam/abuse)
@@ -2217,6 +2217,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate final case data against schema
       const validatedCaseData = insertSmartCaseSchema.parse(smartCaseData);
       const smartCase = await storage.createSmartCase(validatedCaseData);
+      
+      // Store photos in caseMedia table if provided (enforce max 5)
+      if (validatedInput.photos && validatedInput.photos.length > 0) {
+        const photosToStore = validatedInput.photos.slice(0, 5); // Enforce max 5 photos server-side
+        for (const photoUrl of photosToStore) {
+          if (typeof photoUrl === 'string' && photoUrl.length > 0) {
+            try {
+              await storage.createCaseMedia({
+                caseId: smartCase.id,
+                url: photoUrl,
+                type: 'image'
+              });
+            } catch (error) {
+              console.error('Failed to store photo for case:', smartCase.id, error);
+              // Continue processing - don't fail the entire request for photo storage issues
+            }
+          }
+        }
+        console.log(`📷 Stored ${photosToStore.length} photos for case ${smartCase.id}`);
+      }
       
       // 🚀 ENHANCED: Initialize smart case workflow with automation
       console.log(`🔄 Initializing smart case workflow for: ${smartCase.id}`);
@@ -4575,6 +4595,78 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     } catch (error) {
       console.error("Error updating case:", error);
       res.status(500).json({ message: "Failed to update case" });
+    }
+  });
+
+  // Student request tracking endpoint (public) - requires BOTH requestId AND email for security
+  app.get('/api/student/cases', async (req: any, res) => {
+    try {
+      const { requestId, email } = req.query;
+      
+      if (!requestId || !email) {
+        return res.status(400).json({ message: "Both request ID and email are required" });
+      }
+      
+      // Validate inputs
+      if (typeof requestId !== 'string' || typeof email !== 'string') {
+        return res.status(400).json({ message: "Invalid request parameters" });
+      }
+      
+      if (!email.includes('@') || email.length > 100) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+      
+      let cases = [];
+      
+      // Search by case ID first
+      try {
+        const caseById = await storage.getSmartCase(requestId.toString());
+        if (caseById && caseById.studentEmail && caseById.studentEmail.toLowerCase() === email.toLowerCase()) {
+          cases = [caseById];
+        }
+      } catch (error) {
+        console.log("Case not found or email mismatch:", requestId, email);
+      }
+      
+      // Enhance cases with contractor information
+      const enhancedCases = await Promise.all(cases.map(async (smartCase) => {
+        let contractorName = null;
+        
+        // Try to get contractor info if assigned
+        if (smartCase.contractorId) {
+          try {
+            const vendors = await storage.getVendors(smartCase.orgId);
+            const contractor = vendors.find(v => v.id === smartCase.contractorId);
+            if (contractor) {
+              contractorName = contractor.name;
+            }
+          } catch (error) {
+            console.log("Error getting contractor info:", error);
+          }
+        }
+        
+        // Parse AI triage data for additional info
+        let aiData = null;
+        try {
+          aiData = typeof smartCase.aiTriageJson === 'string' 
+            ? JSON.parse(smartCase.aiTriageJson) 
+            : smartCase.aiTriageJson;
+        } catch (error) {
+          console.log("Error parsing AI triage data:", error);
+        }
+        
+        return {
+          ...smartCase,
+          contractorName,
+          estimatedCompletionDate: aiData?.scheduling?.estimatedCompletionDate,
+          photos: smartCase.photoUrls || []
+        };
+      }));
+      
+      res.json(enhancedCases);
+    } catch (error) {
+      console.error("Error searching student cases:", error);
+      res.status(500).json({ message: "Failed to search requests" });
     }
   });
 

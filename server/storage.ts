@@ -57,6 +57,9 @@ import {
   type Reminder,
   type InsertReminder,
   type Notification,
+  type CaseMediaInsert,
+  type CaseMediaSelect,
+  caseMedia,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, gte, lte, lt, gt, count, like, ne, inArray } from "drizzle-orm";
@@ -123,6 +126,10 @@ export interface IStorage {
   getSmartCase(id: string): Promise<SmartCase | undefined>;
   createSmartCase(smartCase: InsertSmartCase): Promise<SmartCase>;
   updateSmartCase(id: string, smartCase: Partial<InsertSmartCase>): Promise<SmartCase>;
+  
+  // Case Media operations
+  createCaseMedia(media: CaseMediaInsert): Promise<CaseMediaSelect>;
+  getCaseMedia(caseId: string): Promise<CaseMediaSelect[]>;
   
   // Asset operations
   getAssets(propertyId?: string, unitId?: string): Promise<Asset[]>;
@@ -1410,6 +1417,19 @@ export class DatabaseStorage implements IStorage {
   async createSmartCase(smartCase: InsertSmartCase): Promise<SmartCase> {
     const [newCase] = await db.insert(smartCases).values(smartCase).returning();
     return newCase;
+  }
+
+  async createCaseMedia(media: CaseMediaInsert): Promise<CaseMediaSelect> {
+    const [newMedia] = await db.insert(caseMedia).values(media).returning();
+    return newMedia;
+  }
+
+  async getCaseMedia(caseId: string): Promise<CaseMediaSelect[]> {
+    return await db
+      .select()
+      .from(caseMedia)
+      .where(eq(caseMedia.caseId, caseId))
+      .orderBy(asc(caseMedia.createdAt));
   }
 
   async updateSmartCase(id: string, smartCase: Partial<InsertSmartCase>): Promise<SmartCase> {
