@@ -318,18 +318,6 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
     }
   };
 
-  // Helper functions to determine which layout to show
-  const needsEssentialInfo = () => {
-    if (!conversation) return true; // Always show for initial conversation
-    const slots = (conversation as any)?.triageData?.conversationSlots || {};
-    return !slots.buildingName || !slots.roomNumber;
-  };
-
-  const needsTimelineInfo = () => {
-    if (!conversation) return false; // Don't show initially
-    const slots = (conversation as any)?.triageData?.conversationSlots || {};
-    return slots.buildingName && slots.roomNumber && (!slots.timeline || !slots.severity);
-  };
 
   const handleQuickReply = async (reply: string) => {
     // Hide quick replies immediately for better UX
@@ -579,159 +567,50 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Smart Quick Reply Layout */}
+        {/* Natural Quick Replies */}
         {showQuickReplies && currentQuickReplies.length > 0 && !isEmergencyMode && !conversation?.isComplete && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border space-y-3"
+            className="flex flex-wrap gap-2 p-3 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
             data-testid="quick-replies"
           >
-            {/* Essential Info - Two Column Layout */}
-            {needsEssentialInfo && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Building</label>
-                  <div className="flex flex-wrap gap-1">
-                    {['Next House', 'Simmons Hall', 'MacGregor House', 'Burton Conner'].map((building) => (
-                      <Button
-                        key={building}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleQuickReply(building)}
-                        disabled={isLoading}
-                        className="text-xs h-7 bg-white dark:bg-gray-800"
-                        data-testid={`quick-reply-building-${building}`}
-                      >
-                        <Home className="h-3 w-3 mr-1" />
-                        {building}
-                      </Button>
-                    ))}
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Or type building name..."
-                    className="w-full px-2 py-1 text-xs border rounded bg-white dark:bg-gray-800"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        handleQuickReply(e.currentTarget.value.trim());
-                        e.currentTarget.value = '';
-                      }
-                    }}
-                    data-testid="input-building-freetext"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Room/Unit</label>
-                  <div className="flex flex-wrap gap-1">
-                    {['100', '200', '300', '400'].map((room) => (
-                      <Button
-                        key={room}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleQuickReply(room)}
-                        disabled={isLoading}
-                        className="text-xs h-7 bg-white dark:bg-gray-800"
-                        data-testid={`quick-reply-room-${room}`}
-                      >
-                        {room}
-                      </Button>
-                    ))}
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Enter your room number..."
-                    className="w-full px-2 py-1 text-xs border rounded bg-white dark:bg-gray-800"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        handleQuickReply(e.currentTarget.value.trim());
-                        e.currentTarget.value = '';
-                      }
-                    }}
-                    data-testid="input-room-freetext"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Timeline & Severity - Two Column Layout */}
-            {needsTimelineInfo && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">When did this start?</label>
-                  <div className="flex flex-wrap gap-1">
-                    {['Just now', 'Today', 'Yesterday', 'Few days ago'].map((time) => (
-                      <Button
-                        key={time}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleQuickReply(time)}
-                        disabled={isLoading}
-                        className="text-xs h-7 bg-white dark:bg-gray-800"
-                        data-testid={`quick-reply-time-${time}`}
-                      >
-                        <Clock className="h-3 w-3 mr-1" />
-                        {time}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">How severe?</label>
-                  <div className="flex flex-wrap gap-1">
-                    {['Dripping', 'Steady flow', 'Gushing', 'Emergency'].map((severity) => (
-                      <Button
-                        key={severity}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleQuickReply(severity)}
-                        disabled={isLoading}
-                        className={`text-xs h-7 ${severity === 'Emergency' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white dark:bg-gray-800'}`}
-                        data-testid={`quick-reply-severity-${severity}`}
-                      >
-                        {severity === 'Emergency' && <AlertTriangle className="h-3 w-3 mr-1" />}
-                        {severity}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Single Question Quick Replies (fallback) */}
-            {!needsEssentialInfo && !needsTimelineInfo && (
-              <div className="space-y-2">
-                <div className="text-xs text-gray-600 dark:text-gray-400">Quick replies:</div>
-                <div className="flex flex-wrap gap-2">
-                  {currentQuickReplies.map((reply, idx) => (
-                    <Button
-                      key={`${reply}-${idx}`}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuickReply(reply)}
-                      disabled={isLoading}
-                      className="text-xs h-7 bg-white dark:bg-gray-800"
-                      data-testid={`quick-reply-${idx}`}
-                    >
-                      {reply === 'Skip for now' ? (
-                        <>
-                          <X className="h-3 w-3 mr-1" />
-                          {reply}
-                        </>
-                      ) : reply.includes('House') || reply.includes('Hall') ? (
-                        <>
-                          <Home className="h-3 w-3 mr-1" />
-                          {reply}
-                        </>
-                      ) : (
-                        reply
-                      )}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {currentQuickReplies.map((reply, idx) => (
+              <Button
+                key={`${reply}-${idx}`}
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickReply(reply)}
+                disabled={isLoading}
+                className="text-sm px-3 py-1 bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 transition-colors"
+                data-testid={`quick-reply-${idx}`}
+              >
+                {reply === 'Skip for now' ? (
+                  <>
+                    <X className="h-3 w-3 mr-1" />
+                    {reply}
+                  </>
+                ) : reply.includes('House') || reply.includes('Hall') ? (
+                  <>
+                    <Home className="h-3 w-3 mr-1" />
+                    {reply}
+                  </>
+                ) : reply.includes('Emergency') ? (
+                  <>
+                    <AlertTriangle className="h-3 w-3 mr-1 text-red-500" />
+                    {reply}
+                  </>
+                ) : reply.includes('Just now') || reply.includes('Today') || reply.includes('Yesterday') ? (
+                  <>
+                    <Clock className="h-3 w-3 mr-1" />
+                    {reply}
+                  </>
+                ) : (
+                  reply
+                )}
+              </Button>
+            ))}
           </motion.div>
         )}
 
