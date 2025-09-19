@@ -75,6 +75,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, gte, lte, lt, gt, count, like, ne, inArray } from "drizzle-orm";
+import { nanoid } from 'nanoid';
 
 export interface IStorage {
   // User operations (required for Replit Auth)

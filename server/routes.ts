@@ -27,6 +27,7 @@ import { aiTriageService } from "./aiTriage";
 import { aiCoordinatorService } from "./aiCoordinator";
 import { aiDuplicateDetectionService } from "./aiDuplicateDetection";
 import { dataAuditService } from "./dataAudit";
+import { maillaAIService } from "./maillaAIService";
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
