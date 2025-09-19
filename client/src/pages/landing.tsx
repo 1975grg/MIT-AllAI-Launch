@@ -27,16 +27,43 @@ export default function Landing() {
             AI-Powered Maintenance Automation
             <span className="block text-primary">For University Student Housing</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto">
             Revolutionize student housing maintenance with intelligent triage, automated contractor coordination, 
             and seamless request management. Reduce response times and improve student satisfaction.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild className="text-lg px-8 py-3" data-testid="button-submit-request">
-              <a href="/maintenance">Submit Maintenance Request</a>
+          
+          {/* Student Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-center mb-4">
+              <GraduationCap className="h-6 w-6 text-blue-600 mr-2" />
+              <h2 className="text-2xl font-bold text-blue-600">For Students</h2>
+            </div>
+            <p className="text-muted-foreground mb-4 max-w-lg mx-auto">
+              Submit maintenance requests quickly and track their progress. No account required.
+            </p>
+            <Button size="lg" asChild className="text-lg px-8 py-3 bg-blue-600 hover:bg-blue-700" data-testid="button-submit-request">
+              <a href="/student-request">🏠 Submit Maintenance Request</a>
             </Button>
-            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3" data-testid="button-admin-login">
-              <a href="/api/login">Admin Login</a>
+          </div>
+
+          {/* Separator */}
+          <div className="flex items-center justify-center my-8 max-w-md mx-auto">
+            <div className="flex-1 border-t border-muted"></div>
+            <span className="px-4 text-sm text-muted-foreground">OR</span>
+            <div className="flex-1 border-t border-muted"></div>
+          </div>
+
+          {/* Admin/Contractor Section */}
+          <div>
+            <div className="flex items-center justify-center mb-4">
+              <Wrench className="h-6 w-6 text-orange-600 mr-2" />
+              <h2 className="text-2xl font-bold text-orange-600">For Staff & Contractors</h2>
+            </div>
+            <p className="text-muted-foreground mb-4 max-w-lg mx-auto">
+              Access the management dashboard to view requests, coordinate contractors, and track maintenance operations.
+            </p>
+            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3 border-orange-600 text-orange-600 hover:bg-orange-50" data-testid="button-admin-login">
+              <a href="/api/login">🔧 Staff & Contractor Login</a>
             </Button>
           </div>
         </div>
