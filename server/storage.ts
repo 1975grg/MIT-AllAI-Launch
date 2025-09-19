@@ -61,7 +61,13 @@ import {
   type Notification,
   type CaseMediaInsert,
   type CaseMediaSelect,
-  caseMedia,
+  // ✅ Phase 4: AI Maintenance Copilot tables
+  maintenanceKnowledgeBase,
+  troubleshootingDecisionTrees,
+  photoAnalysisResults,
+  partsToolsCatalog,
+  aiTroubleshootingSessions,
+  caseAiRecommendations,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, gte, lte, lt, gt, count, like, ne, inArray } from "drizzle-orm";
@@ -204,6 +210,27 @@ export interface IStorage {
       dueDate: Date;
     }>;
   }>;
+
+  // ✅ Phase 4: AI Maintenance Copilot operations
+  createAiTroubleshootingSession(session: any): Promise<string>;
+  getAiTroubleshootingSession(id: string): Promise<any | undefined>;
+  updateAiTroubleshootingSession(id: string, updates: any): Promise<any>;
+  
+  createPhotoAnalysisResult(analysis: any): Promise<string>;
+  getPhotoAnalysisResult(id: string): Promise<any | undefined>;
+  getPhotoAnalysisResultsByCase(caseId: string): Promise<any[]>;
+  
+  createMaintenanceKnowledge(knowledge: any): Promise<string>;
+  getMaintenanceKnowledge(filters?: any): Promise<any[]>;
+  searchMaintenanceKnowledge(query: string, category?: string): Promise<any[]>;
+  
+  getPartsToolsCatalog(filters?: any): Promise<any[]>;
+  createPartsToolsCatalogItem(item: any): Promise<string>;
+  updatePartsToolsCatalogItem(id: string, updates: any): Promise<any>;
+  
+  createCaseAiRecommendation(recommendation: any): Promise<string>;
+  getCaseAiRecommendations(caseId: string): Promise<any[]>;
+  updateCaseAiRecommendation(id: string, updates: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2766,6 +2793,136 @@ export class DatabaseStorage implements IStorage {
         console.log(`Generated missing ${recurringTransaction.type} for ${expectedDate.toISOString().split('T')[0]}: ${recurringTransaction.description}`);
       }
     }
+  }
+
+  // ========================================
+  // ✅ Phase 4: AI Maintenance Copilot implementations
+  // ========================================
+
+  async createAiTroubleshootingSession(session: any): Promise<string> {
+    const [newSession] = await db.insert(aiTroubleshootingSessions).values(session).returning();
+    return newSession.id;
+  }
+
+  async getAiTroubleshootingSession(id: string): Promise<any | undefined> {
+    const [session] = await db.select().from(aiTroubleshootingSessions).where(eq(aiTroubleshootingSessions.id, id));
+    return session;
+  }
+
+  async updateAiTroubleshootingSession(id: string, updates: any): Promise<any> {
+    const [updated] = await db
+      .update(aiTroubleshootingSessions)
+      .set(updates)
+      .where(eq(aiTroubleshootingSessions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createPhotoAnalysisResult(analysis: any): Promise<string> {
+    const [newAnalysis] = await db.insert(photoAnalysisResults).values(analysis).returning();
+    return newAnalysis.id;
+  }
+
+  async getPhotoAnalysisResult(id: string): Promise<any | undefined> {
+    const [analysis] = await db.select().from(photoAnalysisResults).where(eq(photoAnalysisResults.id, id));
+    return analysis;
+  }
+
+  async getPhotoAnalysisResultsByCase(caseId: string): Promise<any[]> {
+    return await db.select().from(photoAnalysisResults).where(eq(photoAnalysisResults.caseId, caseId));
+  }
+
+  async createMaintenanceKnowledge(knowledge: any): Promise<string> {
+    const [newKnowledge] = await db.insert(maintenanceKnowledgeBase).values(knowledge).returning();
+    return newKnowledge.id;
+  }
+
+  async getMaintenanceKnowledge(filters?: any): Promise<any[]> {
+    if (!filters) {
+      return await db.select().from(maintenanceKnowledgeBase);
+    }
+
+    let query = db.select().from(maintenanceKnowledgeBase);
+    
+    if (filters.category) {
+      query = query.where(eq(maintenanceKnowledgeBase.category, filters.category));
+    }
+    if (filters.type) {
+      query = query.where(eq(maintenanceKnowledgeBase.type, filters.type));
+    }
+    
+    return await query;
+  }
+
+  async searchMaintenanceKnowledge(searchQuery: string, category?: string): Promise<any[]> {
+    let query = db
+      .select()
+      .from(maintenanceKnowledgeBase)
+      .where(
+        or(
+          like(maintenanceKnowledgeBase.title, `%${searchQuery}%`),
+          like(maintenanceKnowledgeBase.description, `%${searchQuery}%`),
+          like(maintenanceKnowledgeBase.content, `%${searchQuery}%`)
+        )
+      );
+
+    if (category) {
+      query = query.where(eq(maintenanceKnowledgeBase.category, category));
+    }
+
+    return await query.orderBy(desc(maintenanceKnowledgeBase.lastUsedAt));
+  }
+
+  async getPartsToolsCatalog(filters?: any): Promise<any[]> {
+    if (!filters) {
+      return await db.select().from(partsToolsCatalog);
+    }
+
+    let query = db.select().from(partsToolsCatalog);
+    
+    if (filters.category) {
+      query = query.where(eq(partsToolsCatalog.category, filters.category));
+    }
+    if (filters.type) {
+      query = query.where(eq(partsToolsCatalog.type, filters.type));
+    }
+    if (filters.isActive !== undefined) {
+      query = query.where(eq(partsToolsCatalog.isActive, filters.isActive));
+    }
+    
+    return await query;
+  }
+
+  async createPartsToolsCatalogItem(item: any): Promise<string> {
+    const [newItem] = await db.insert(partsToolsCatalog).values(item).returning();
+    return newItem.id;
+  }
+
+  async updatePartsToolsCatalogItem(id: string, updates: any): Promise<any> {
+    const [updated] = await db
+      .update(partsToolsCatalog)
+      .set(updates)
+      .where(eq(partsToolsCatalog.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createCaseAiRecommendation(recommendation: any): Promise<string> {
+    const [newRecommendation] = await db.insert(caseAiRecommendations).values(recommendation).returning();
+    return newRecommendation.id;
+  }
+
+  async getCaseAiRecommendations(caseId: string): Promise<any[]> {
+    return await db.select().from(caseAiRecommendations).where(eq(caseAiRecommendations.caseId, caseId));
+  }
+
+  async updateCaseAiRecommendation(id: string, updates: any): Promise<any> {
+    const [updated] = await db
+      .update(caseAiRecommendations)
+      .set(updates)
+      .where(eq(caseAiRecommendations.id, id))
+      .returning();
+    return updated;
   }
 }
 

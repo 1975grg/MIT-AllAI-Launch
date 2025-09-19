@@ -508,6 +508,151 @@ export const appointments = pgTable("appointments", {
   // since they are created manually via SQL for better control
 }));
 
+// ========================================
+// ✅ PHASE 4: AI MAINTENANCE COPILOT
+// ========================================
+
+// Knowledge base categories and difficulty levels
+export const knowledgeBaseTypeEnum = pgEnum("knowledge_base_type", ["procedure", "troubleshooting", "safety", "parts", "faq"]);
+export const difficultyLevelEnum = pgEnum("difficulty_level", ["beginner", "intermediate", "advanced", "expert"]);
+export const procedureStatusEnum = pgEnum("procedure_status", ["draft", "active", "deprecated", "archived"]);
+
+// Maintenance knowledge base for AI-powered contractor assistance
+export const maintenanceKnowledgeBase = pgTable("maintenance_knowledge_base", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  type: knowledgeBaseTypeEnum("type").notNull(),
+  category: varchar("category").notNull(), // "plumbing", "electrical", "hvac", etc.
+  title: varchar("title").notNull(),
+  description: text("description"),
+  content: text("content").notNull(), // Detailed procedure content
+  difficultyLevel: difficultyLevelEnum("difficulty_level").default("intermediate"),
+  estimatedTimeMinutes: integer("estimated_time_minutes"),
+  requiredTools: text("required_tools").array(), // ["wrench", "screwdriver", "multimeter"]
+  requiredParts: text("required_parts").array(), // ["valve", "pipe", "gasket"]
+  safetyWarnings: text("safety_warnings").array(), // Safety considerations
+  keywords: text("keywords").array(), // For AI search and matching
+  relatedCaseIds: text("related_case_ids").array(), // Historical cases this applies to
+  successRate: decimal("success_rate", { precision: 3, scale: 2 }), // Success rate when followed
+  aiGeneratedSummary: text("ai_generated_summary"), // AI-generated quick summary
+  status: procedureStatusEnum("status").default("active"),
+  createdBy: varchar("created_by").references(() => users.id),
+  lastUsedAt: timestamp("last_used_at"),
+  useCount: integer("use_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Troubleshooting decision trees for AI-guided diagnostics
+export const troubleshootingDecisionTrees = pgTable("troubleshooting_decision_trees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  knowledgeBaseId: varchar("knowledge_base_id").notNull().references(() => maintenanceKnowledgeBase.id),
+  parentNodeId: varchar("parent_node_id"), // Self-reference for tree structure
+  nodeType: varchar("node_type").notNull(), // "question", "action", "solution", "escalation"
+  content: text("content").notNull(), // Question text or action description
+  conditions: jsonb("conditions"), // Logic for when this node applies
+  nextNodes: jsonb("next_nodes"), // Possible next steps based on answers
+  isTerminalNode: boolean("is_terminal_node").default(false),
+  successProbability: decimal("success_probability", { precision: 3, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Enhanced photo analysis results for damage assessment
+export const photoAnalysisResults = pgTable("photo_analysis_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mediaId: varchar("media_id").notNull().references(() => caseMedia.id),
+  caseId: varchar("case_id").notNull().references(() => smartCases.id),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  // AI analysis results
+  analysisJson: jsonb("analysis_json").notNull(), // Complete AI vision analysis
+  detectedIssues: text("detected_issues").array(), // ["water_damage", "mold", "rust"]
+  severityLevel: varchar("severity_level"), // "minor", "moderate", "severe", "critical"
+  confidenceScore: decimal("confidence_score", { precision: 3, scale: 2 }),
+  estimatedCostRange: jsonb("estimated_cost_range"), // {min: 100, max: 500, currency: "USD"}
+  recommendedActions: text("recommended_actions").array(),
+  safetyRisks: text("safety_risks").array(),
+  urgencyScore: decimal("urgency_score", { precision: 3, scale: 2 }), // 0.0 - 1.0
+  // Material and damage assessment
+  materialType: varchar("material_type"), // "drywall", "wood", "metal", "tile", etc.
+  damageType: varchar("damage_type"), // "crack", "leak", "corrosion", "wear", etc.
+  estimatedAge: varchar("estimated_age"), // "new", "recent", "old", "very_old"
+  repairComplexity: difficultyLevelEnum("repair_complexity"),
+  // AI recommendations
+  suggestedProcedures: text("suggested_procedures").array(), // References to knowledge base
+  suggestedParts: text("suggested_parts").array(),
+  suggestedTools: text("suggested_tools").array(),
+  contractorSpecialization: varchar("contractor_specialization"), // Required skill level
+  followUpRequired: boolean("follow_up_required").default(false),
+  analysisVersion: varchar("analysis_version").default("v1.0"), // AI model version
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Parts and tools catalog for AI recommendations
+export const partsToolsCatalog = pgTable("parts_tools_catalog", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  type: varchar("type").notNull(), // "part", "tool", "material", "consumable"
+  category: varchar("category").notNull(), // "plumbing", "electrical", "hvac", etc.
+  name: varchar("name").notNull(),
+  description: text("description"),
+  modelNumber: varchar("model_number"),
+  brand: varchar("brand"),
+  specifications: jsonb("specifications"), // Technical specs
+  averageCost: decimal("average_cost", { precision: 10, scale: 2 }),
+  costRange: jsonb("cost_range"), // {min: X, max: Y, currency: "USD"}
+  suppliers: jsonb("suppliers"), // Array of supplier info
+  compatibleWith: text("compatible_with").array(), // Compatible equipment/materials
+  commonUses: text("common_uses").array(), // Common maintenance tasks
+  aiRecommendationScore: decimal("ai_recommendation_score", { precision: 3, scale: 2 }),
+  lastPriceUpdate: timestamp("last_price_update"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// AI troubleshooting sessions for contractors
+export const aiTroubleshootingSessions = pgTable("ai_troubleshooting_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  caseId: varchar("case_id").references(() => smartCases.id),
+  contractorId: varchar("contractor_id").references(() => vendors.id),
+  sessionType: varchar("session_type").notNull(), // "diagnostic", "repair_guidance", "parts_lookup"
+  initialQuery: text("initial_query").notNull(), // Contractor's question/problem
+  conversationHistory: jsonb("conversation_history").notNull(), // Full conversation log
+  recommendedProcedures: text("recommended_procedures").array(),
+  suggestedParts: text("suggested_parts").array(),
+  estimatedTimeMinutes: integer("estimated_time_minutes"),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
+  resolution: text("resolution"), // Final outcome/solution
+  wasHelpful: boolean("was_helpful"), // Contractor feedback
+  helpfulnessRating: integer("helpfulness_rating"), // 1-5 rating
+  feedback: text("feedback"), // Additional contractor feedback
+  knowledgeBaseUsed: text("knowledge_base_used").array(), // Which KB articles were referenced
+  sessionDurationSeconds: integer("session_duration_seconds"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Case-specific AI recommendations and learning
+export const caseAiRecommendations = pgTable("case_ai_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  caseId: varchar("case_id").notNull().references(() => smartCases.id),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  recommendationType: varchar("recommendation_type").notNull(), // "procedure", "parts", "tools", "escalation"
+  aiModel: varchar("ai_model").default("gpt-4"), // Which AI model generated this
+  confidence: decimal("confidence", { precision: 3, scale: 2 }),
+  reasoning: text("reasoning"), // AI's explanation of recommendation
+  recommendedItems: jsonb("recommended_items"), // Structured recommendations
+  estimatedImpact: jsonb("estimated_impact"), // Cost, time, success rate estimates
+  wasImplemented: boolean("was_implemented").default(false),
+  implementationResults: text("implementation_results"),
+  actualVsEstimated: jsonb("actual_vs_estimated"), // Compare predictions to reality
+  learningWeight: decimal("learning_weight", { precision: 3, scale: 2 }).default("1.0"), // For future model training
+  createdAt: timestamp("created_at").defaultNow(),
+  implementedAt: timestamp("implemented_at"),
+});
+
 // CAM Categories
 export const camCategories = pgTable("cam_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -836,6 +981,45 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({ i
   path: ["scheduledEndAt"],
 });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
+
+// ✅ Phase 4 AI Maintenance Copilot Insert Schemas
+export const insertMaintenanceKnowledgeBaseSchema = createInsertSchema(maintenanceKnowledgeBase).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  lastUsedAt: true,
+  useCount: true 
+});
+
+export const insertTroubleshootingDecisionTreeSchema = createInsertSchema(troubleshootingDecisionTrees).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertPhotoAnalysisResultSchema = createInsertSchema(photoAnalysisResults).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertPartsToolsCatalogSchema = createInsertSchema(partsToolsCatalog).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  lastPriceUpdate: true 
+});
+
+export const insertAiTroubleshootingSessionSchema = createInsertSchema(aiTroubleshootingSessions).omit({ 
+  id: true, 
+  createdAt: true,
+  completedAt: true,
+  sessionDurationSeconds: true 
+});
+
+export const insertCaseAiRecommendationSchema = createInsertSchema(caseAiRecommendations).omit({ 
+  id: true, 
+  createdAt: true,
+  implementedAt: true 
+});
 export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true, parentRecurringId: true }).extend({
   dueAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
   isRecurring: z.boolean().optional().default(false),
