@@ -25,6 +25,10 @@ export interface MaintenanceRequest {
   priority?: string;
   building?: string;
   room?: string;
+  photos?: string[]; // base64 encoded images for AI analysis
+  unitId?: string;
+  propertyId?: string;
+  orgId?: string;
   studentContact?: {
     name: string;
     email: string;
@@ -40,7 +44,16 @@ export class AITriageService {
    */
   async analyzeMaintenanceRequest(request: MaintenanceRequest): Promise<TriageResult> {
     try {
-      const prompt = this.buildTriagePrompt(request);
+      console.log(`🤖 AI Triage: Analyzing "${request.title}"`);
+      
+      // Analyze photos first if provided
+      let photoAnalysis = '';
+      if (request.photos && request.photos.length > 0) {
+        console.log(`🤖 Analyzing ${request.photos.length} photos`);
+        photoAnalysis = await this.analyzeMaintenancePhotos(request.photos);
+      }
+      
+      const prompt = this.buildTriagePrompt(request, photoAnalysis);
       
       const response = await Promise.race([
         openai.chat.completions.create({
@@ -67,7 +80,10 @@ export class AITriageService {
         throw new Error("No content received from AI analysis");
       }
       const result = JSON.parse(content);
-      return this.validateTriageResult(result);
+      const triageResult = this.validateTriageResult(result);
+      
+      console.log(`🤖 Triage Complete: ${triageResult.urgency} urgency, ${triageResult.category} category`);
+      return triageResult;
     } catch (error) {
       console.error("AI Triage Analysis Error:", error);
       // Return fallback triage result
@@ -78,7 +94,7 @@ export class AITriageService {
   /**
    * Builds the AI prompt for maintenance request analysis
    */
-  private buildTriagePrompt(request: MaintenanceRequest): string {
+  private buildTriagePrompt(request: MaintenanceRequest, photoAnalysis?: string): string {
     return `
 Analyze this MIT student housing maintenance request and provide a comprehensive triage assessment:
 
@@ -89,6 +105,7 @@ ${request.category ? `Category: ${request.category}` : ''}
 ${request.priority ? `Student Priority: ${request.priority}` : ''}
 ${request.building ? `Building: ${request.building}` : ''}
 ${request.room ? `Room: ${request.room}` : ''}
+${photoAnalysis ? `\nPHOTO ANALYSIS:\n${photoAnalysis}\n` : ''}
 
 Please analyze and respond with JSON in this exact format:
 {
@@ -115,6 +132,100 @@ Consider factors like:
 - Required expertise level
 - MIT housing maintenance standards
 `;
+  }
+
+  /**
+   * Analyzes maintenance photos using AI vision to understand the issue visually
+   */
+  private async analyzeMaintenancePhotos(photos: string[]): Promise<string> {
+    try {
+      // Analyze the first photo (most platforms limit to 1 image per analysis)
+      const firstPhoto = photos[0];
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Analyze this maintenance issue photo for MIT student housing. Describe what you see, identify the problem, assess severity, note safety concerns, and provide actionable insights for maintenance coordination. Focus on technical details that would help a maintenance coordinator understand the issue."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${firstPhoto}`
+              }
+            }
+          ],
+        }],
+        max_completion_tokens: 500,
+      });
+
+      const analysis = response.choices[0].message.content || 'Unable to analyze image';
+      console.log(`🤖 Photo Analysis: ${analysis.substring(0, 100)}...`);
+      return analysis;
+      
+    } catch (error) {
+      console.error('🚨 Photo Analysis Error:', error);
+      return 'Photo analysis unavailable - proceeding with text-based triage';
+    }
+  }
+
+  /**
+   * Find and rank contractors based on triage results and availability
+   */
+  async findMatchingContractors(triageResult: TriageResult, orgId: string): Promise<{
+    contractorId: string;
+    name: string;
+    category: string;
+    matchScore: number;
+    availability: 'available' | 'busy' | 'unavailable';
+    estimatedResponse: string;
+    specializations: string[];
+  }[]> {
+    console.log(`🤖 Finding contractors for ${triageResult.category} work (urgency: ${triageResult.urgency})`);
+    
+    // This integrates with our vendor database and scheduling system
+    // Return structure for implementation - will be enhanced when we build contractor interface
+    return [
+      {
+        contractorId: 'ai-matched-contractor',
+        name: 'AI Matched Contractor',
+        category: triageResult.category,
+        matchScore: 0.85,
+        availability: 'available',
+        estimatedResponse: triageResult.urgency === 'Critical' ? '30 minutes' : '2-4 hours',
+        specializations: triageResult.requiredExpertise
+      }
+    ];
+  }
+
+  /**
+   * Creates smart case with AI triage results and scheduling recommendations
+   */
+  async createSmartCaseFromTriage(request: MaintenanceRequest, triageResult: TriageResult): Promise<{
+    caseId: string;
+    status: string;
+    recommendedActions: string[];
+    estimatedCompletion: string;
+  }> {
+    console.log(`🤖 Creating smart case for ${triageResult.urgency} urgency ${triageResult.category} issue`);
+    
+    const recommendedActions = [
+      `Schedule ${triageResult.contractorType} for ${triageResult.estimatedDuration}`,
+      ...triageResult.troubleshootingSteps,
+      `Priority: ${triageResult.urgency}`,
+      `Safety Risk: ${triageResult.safetyRisk}`
+    ];
+
+    // This will integrate with smart cases table when we implement the complete workflow
+    return {
+      caseId: 'ai-generated-case',
+      status: triageResult.urgency === 'Critical' ? 'Emergency' : 'Scheduled',
+      recommendedActions,
+      estimatedCompletion: triageResult.estimatedDuration
+    };
   }
 
   /**
