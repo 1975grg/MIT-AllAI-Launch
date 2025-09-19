@@ -17,6 +17,11 @@ interface MaillaResponse {
   urgencyLevel: 'emergency' | 'urgent' | 'normal' | 'low';
   safetyFlags: string[];
   nextAction: 'ask_followup' | 'request_media' | 'escalate_immediate' | 'complete_triage' | 'recommend_diy';
+  location?: {
+    buildingName?: string;
+    roomNumber?: string;
+    isLocationConfirmed?: boolean;
+  };
   followupQuestions?: string[];
   mediaRequest?: {
     type: 'photo' | 'video' | 'audio';
@@ -211,6 +216,15 @@ export class MaillaAIService {
                   enum: ["ask_followup", "request_media", "escalate_immediate", "complete_triage", "recommend_diy"],
                   description: "Next step in triage process" 
                 },
+                location: {
+                  type: "object",
+                  properties: {
+                    buildingName: { type: "string", description: "MIT building name (e.g., 'Next House', 'Simmons Hall')" },
+                    roomNumber: { type: "string", description: "Room/unit number" },
+                    isLocationConfirmed: { type: "boolean", description: "Whether student has provided complete location" }
+                  },
+                  description: "Student's location information"
+                },
                 followupQuestions: { 
                   type: "array", 
                   items: { type: "string" },
@@ -254,6 +268,23 @@ export class MaillaAIService {
       // 4. Merge safety flags from both checks
       const allFlags = [...safetyResults.flags, ...maillaResponse.safetyFlags];
       maillaResponse.safetyFlags = Array.from(new Set(allFlags));
+
+      // 5. Update triage data with location if provided
+      if (maillaResponse.location && (maillaResponse.location.buildingName || maillaResponse.location.roomNumber)) {
+        const currentTriageData = conversation?.triageData || { initialRequest: studentMessage, category: null, context: {} };
+        const existingLocation = (currentTriageData as any)?.location || {};
+        
+        await storage.updateTriageConversation(conversationId, {
+          triageData: {
+            ...currentTriageData,
+            location: {
+              buildingName: maillaResponse.location.buildingName || existingLocation.buildingName,
+              roomNumber: maillaResponse.location.roomNumber || existingLocation.roomNumber,
+              isLocationConfirmed: maillaResponse.location.isLocationConfirmed || false
+            }
+          }
+        });
+      }
 
       return maillaResponse;
 
@@ -411,49 +442,43 @@ MIT context: This is university housing, so focus on student safety and getting 
   // COMPLETE TRIAGE & CASE CREATION
   // ========================================
 
+  // ✅ Unified case creation method - DEPRECATED: Use completeTriageConversation instead
   async completeTriageAndCreateCase(conversationId: string): Promise<string> {
-    try {
-      const conversation = await storage.getTriageConversation(conversationId);
-      if (!conversation) {
-        throw new Error("Conversation not found");
-      }
+    console.log(`⚠️ Using deprecated completeTriageAndCreateCase - use completeTriageConversation instead`);
+    const result = await this.completeTriageConversation(conversationId);
+    return result.caseId;
+  }
 
-      // Create smart case with rich triage context
-      const caseData = {
-        orgId: conversation.orgId,
-        title: `Maintenance Request: ${conversation.initialRequest.substring(0, 50)}...`,
-        description: conversation.initialRequest,
-        category: "general", // Will be updated by AI
-        priority: conversation.urgencyLevel as any,
-        status: "Open" as any,
-        reportedBy: conversation.studentId,
-        propertyId: null, // Will be set during AI triage
-        unitId: null,
-        metadata: {
-          triageConversationId: conversationId,
-          safetyFlags: conversation.safetyFlags,
-          triageData: conversation.triageData,
-          urgencyLevel: conversation.urgencyLevel
-        }
-      };
-
-      const newCase = await storage.createSmartCase(caseData);
-      const caseId = newCase.id;
-
-      // Update conversation as complete
-      await storage.updateTriageConversation(conversationId, {
-        isComplete: true,
-        smartCaseId: caseId,
-        currentPhase: "final_triage"
-      });
-
-      console.log(`✅ Mailla triage completed, case ${caseId} created from conversation ${conversationId}`);
-      return caseId;
-
-    } catch (error) {
-      console.error("🚨 Mailla case creation error:", error);
-      throw new Error("Failed to complete triage and create case");
+  // MIT building mapping with basic implementation
+  private getMITPropertyMapping(buildingName?: string, roomNumber?: string): { propertyId: string | null; unitId: string | null } {
+    if (!buildingName) {
+      return { propertyId: null, unitId: null };
     }
+
+    // Basic MIT building mapping - in production this would be a database lookup
+    const mitBuildingMap: Record<string, string> = {
+      'Next House': 'mit-next-house',
+      'Simmons Hall': 'mit-simmons-hall', 
+      'MacGregor House': 'mit-macgregor-house',
+      'Burton Conner': 'mit-burton-conner',
+      'New House': 'mit-new-house',
+      'Baker House': 'mit-baker-house',
+      'McCormick Hall': 'mit-mccormick-hall',
+      'Random Hall': 'mit-random-hall',
+      'Senior House': 'mit-senior-house',
+      'Tang Hall': 'mit-tang-hall',
+      'Westgate': 'mit-westgate',
+      'Ashdown House': 'mit-ashdown-house',
+      'Sidney-Pacific': 'mit-sidney-pacific'
+    };
+
+    const propertyId = mitBuildingMap[buildingName] || null;
+    
+    // Unit ID would require room number and building-specific mapping
+    // For now, we'll include room in metadata but not map to specific unitId
+    const unitId = null; // In production: map roomNumber to actual unit ID
+    
+    return { propertyId, unitId };
   }
 
   // ✅ Implementation for complete triage conversation (required by API)
@@ -466,22 +491,28 @@ MIT context: This is university housing, so focus on student safety and getting 
         throw new Error("Conversation not found");
       }
 
-      // Create smart case with rich triage context
+      // Extract location data from triage
+      const locationData = (conversation.triageData as any)?.location;
+      const { propertyId, unitId } = this.getMITPropertyMapping(locationData?.buildingName, locationData?.roomNumber);
+
+      // Create smart case with rich triage context and location
       const caseData = {
         orgId: conversation.orgId,
         title: `Maintenance Request: ${conversation.initialRequest.substring(0, 50)}...`,
-        description: conversation.initialRequest,
+        description: `${conversation.initialRequest}${locationData ? `\n\nLocation: ${locationData.buildingName || 'Unknown building'}${locationData.roomNumber ? `, Room ${locationData.roomNumber}` : ''}` : ''}`,
         category: "general", // Will be updated by AI
         priority: conversation.urgencyLevel as any,
         status: "Open" as any,
         reportedBy: conversation.studentId,
-        propertyId: null, // Will be set during AI triage
-        unitId: null,
+        propertyId: propertyId, // Now uses location data
+        unitId: unitId,        // Now uses location data
         metadata: {
           triageConversationId: conversationId,
           safetyFlags: conversation.safetyFlags,
           triageData: conversation.triageData,
-          urgencyLevel: conversation.urgencyLevel
+          urgencyLevel: conversation.urgencyLevel,
+          mitBuilding: locationData?.buildingName,
+          roomNumber: locationData?.roomNumber
         }
       };
 
