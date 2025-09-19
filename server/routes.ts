@@ -2193,21 +2193,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return mitOrgPromise;
   };
 
-  // ✅ Mailla AI Triage Agent endpoints (authentication required for security)
-  app.post('/api/mailla/start-triage', isAuthenticated, publicRateLimit, async (req: any, res) => {
+  // ✅ Mailla AI Triage Agent endpoints (public for students, optional auth)
+  app.post('/api/mailla/start-triage', publicRateLimit, async (req: any, res) => {
     try {
-      // ✅ Derive identity from authenticated session (security-critical)
-      const studentId = req.user?.claims?.sub;
-      if (!studentId) {
-        return res.status(401).json({ error: 'Authentication required' });
+      // ✅ Handle both authenticated and anonymous students
+      let studentId: string;
+      let orgId: string;
+      
+      if (req.user?.claims?.sub) {
+        // Authenticated user - use real identity
+        studentId = req.user.claims.sub;
+        const userOrg = await storage.getUserOrganization(studentId);
+        if (!userOrg) {
+          return res.status(403).json({ error: 'User organization not found' });
+        }
+        orgId = userOrg.id;
+      } else {
+        // Anonymous student - create temporary identity
+        studentId = `anonymous-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        orgId = "mit-housing"; // Default to MIT housing for anonymous users
       }
-
-      // Get user's organization from storage
-      const userOrg = await storage.getUserOrganization(studentId);
-      if (!userOrg) {
-        return res.status(403).json({ error: 'User organization not found' });
-      }
-      const orgId = userOrg.id;
 
       // ✅ Validate only the request content, not identity
       const { initialRequest } = req.body;
@@ -2232,19 +2237,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/mailla/continue-triage', isAuthenticated, publicRateLimit, async (req: any, res) => {
+  app.post('/api/mailla/continue-triage', publicRateLimit, async (req: any, res) => {
     try {
-      // ✅ Validate user owns this conversation (security-critical)
+      // ✅ Validate conversation ownership (supports both auth'd and anonymous)
       const { conversationId, studentMessage, mediaUrls } = req.body;
-      const userId = req.user?.claims?.sub;
       
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+      // Verify conversation exists
+      const conversation = await storage.getTriageConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
       }
 
-      // Verify conversation ownership
-      const conversation = await storage.getTriageConversation(conversationId);
-      if (!conversation || conversation.studentId !== userId) {
+      // For authenticated users, verify ownership
+      if (req.user?.claims?.sub && conversation.studentId !== req.user.claims.sub) {
         return res.status(403).json({ error: 'Access denied to this conversation' });
       }
       
@@ -2265,19 +2270,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/mailla/complete-triage', isAuthenticated, publicRateLimit, async (req: any, res) => {
+  app.post('/api/mailla/complete-triage', publicRateLimit, async (req: any, res) => {
     try {
-      // ✅ Validate user owns this conversation (security-critical)
+      // ✅ Validate conversation ownership (supports both auth'd and anonymous)
       const { conversationId } = req.body;
-      const userId = req.user?.claims?.sub;
       
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+      // Verify conversation exists
+      const conversation = await storage.getTriageConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
       }
 
-      // Verify conversation ownership
-      const conversation = await storage.getTriageConversation(conversationId);
-      if (!conversation || conversation.studentId !== userId) {
+      // For authenticated users, verify ownership
+      if (req.user?.claims?.sub && conversation.studentId !== req.user.claims.sub) {
         return res.status(403).json({ error: 'Access denied to this conversation' });
       }
       
