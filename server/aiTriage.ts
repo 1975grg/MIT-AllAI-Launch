@@ -240,6 +240,7 @@ Consider factors like:
       enabled: triageResult.urgency === 'Critical' || triageResult.urgency === 'High',
       priority: triageResult.urgency,
       estimatedDuration: triageResult.estimatedDuration,
+      contractorAssigned: undefined as string | undefined,
       schedulingNotes: ''
     };
 

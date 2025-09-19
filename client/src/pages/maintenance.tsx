@@ -23,6 +23,7 @@ import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, Bell,
 import ReminderForm from "@/components/forms/reminder-form";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 import PropertyAssistant from "@/components/ai/property-assistant";
+import EnhancedChatInterface from "@/components/maintenance/enhanced-chat-interface";
 
 // Student Housing Maintenance Categories
 const MAINTENANCE_CATEGORIES = [
@@ -466,180 +467,101 @@ export default function Maintenance() {
           </div>
 
           {viewMode === "student" ? (
-            /* Student Interface */
+            /* Enhanced Student Chat Interface */
             <div className="max-w-4xl mx-auto">
               <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-foreground mb-2">Submit a Maintenance Request</h1>
-                <p className="text-lg text-muted-foreground">Having trouble with something in your room or building? Let us know and we'll take care of it!</p>
+                <h1 className="text-3xl font-bold text-foreground mb-2">AI-Powered Maintenance Assistant</h1>
+                <p className="text-lg text-muted-foreground">Just describe what's wrong in plain English - our AI will handle the rest!</p>
               </div>
 
-              {/* Quick Request Form */}
-              <Card className="mb-6">
+              <EnhancedChatInterface 
+                onSubmitRequest={async (request) => {
+                  try {
+                    // Map building name and room to propertyId and unitId
+                    let propertyId = "";
+                    let unitId = "";
+                    
+                    if (request.buildingName && properties) {
+                      // Find property by name (case-insensitive matching)
+                      const matchedProperty = properties.find(p => 
+                        p.name?.toLowerCase().includes(request.buildingName.toLowerCase()) ||
+                        request.buildingName.toLowerCase().includes(p.name?.toLowerCase() || "")
+                      );
+                      
+                      if (matchedProperty) {
+                        propertyId = matchedProperty.id;
+                        
+                        // Find unit by room number within the property
+                        if (request.roomNumber && units) {
+                          const matchedUnit = units.find(u => 
+                            u.propertyId === propertyId && 
+                            (u.unitNumber === request.roomNumber || 
+                             u.unitNumber?.includes(request.roomNumber) ||
+                             request.roomNumber.includes(u.unitNumber || ""))
+                          );
+                          if (matchedUnit) {
+                            unitId = matchedUnit.id;
+                          }
+                        }
+                      }
+                    }
+
+                    const response = await apiRequest("POST", "/api/cases", {
+                      title: request.title,
+                      description: request.description,
+                      category: request.category,
+                      priority: request.priority,
+                      propertyId: propertyId || undefined,
+                      unitId: unitId || undefined,
+                      locationText: request.locationText,
+                      buildingName: request.buildingName,
+                      roomNumber: request.roomNumber,
+                      aiConfidence: request.aiConfidence ? Number(request.aiConfidence) / 100 : undefined // Convert percentage to decimal
+                    });
+                    
+                    const newCase = await response.json();
+                    
+                    // Trigger contractor-first scheduling triage
+                    try {
+                      await apiRequest("POST", `/api/cases/${newCase.id}/triage`, {
+                        schedulingMode: "contractor-first"
+                      });
+                    } catch (triageError) {
+                      console.log("Triage scheduling will be handled by background process");
+                    }
+                    
+                    queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+                    
+                    toast({
+                      title: "Success", 
+                      description: `Your maintenance request has been submitted! ${propertyId ? 'Location matched and ' : ''}AI is now assigning the right contractor with availability.`,
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "Failed to submit request. Please try again.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                isSubmitting={createCaseMutation.isPending}
+              />
+
+              {/* Traditional Form Fallback - Collapsible */}
+              <Card className="mt-6 border-muted/50">
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Plus className="h-5 w-5" />
-                    <span>New Maintenance Request</span>
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center space-x-2">
+                    <Plus className="h-4 w-4" />
+                    <span>Need the traditional form instead?</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Left Column - Issue Details */}
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">What's the problem?</label>
-                        <select className="w-full p-3 border rounded-lg bg-background" data-testid="select-student-issue-type">
-                          <option value="">Choose an issue type...</option>
-                          <option value="HVAC / Heating & Cooling">🌡️ Temperature/Heating/AC not working</option>
-                          <option value="Plumbing (Water, Drains, Sewer)">🚿 Water/Plumbing/Bathroom issues</option>
-                          <option value="Electrical & Lighting">💡 Lights/Electrical outlets not working</option>
-                          <option value="Appliances (Kitchen, Laundry, etc.)">🍳 Appliances not working (fridge, microwave, etc.)</option>
-                          <option value="Safety & Security (locks, alarms, smoke detectors, windows/doors)">🔒 Door/Window/Lock/Safety issues</option>
-                          <option value="General Interior (walls, ceilings, flooring, paint, cabinets)">🏠 Wall/Floor/Ceiling damage</option>
-                          <option value="Network/Internet Connectivity">📱 Internet/WiFi not working</option>
-                          <option value="Common Areas (lounges, study rooms, bathrooms)">🏢 Common area issues</option>
-                          <option value="Other / Miscellaneous">❓ Something else</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Describe the issue</label>
-                        <textarea 
-                          className="w-full p-3 border rounded-lg bg-background min-h-[100px]" 
-                          placeholder="Please describe what's wrong and any details that might help..."
-                          data-testid="textarea-student-description"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">How urgent is this?</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 border-green-200 bg-green-50">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                              <span className="font-medium">Not urgent</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">Can wait a few days</p>
-                          </div>
-                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                              <span className="font-medium">Needs attention</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">Should be fixed soon</p>
-                          </div>
-                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                              <span className="font-medium">Important</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">Affecting daily life</p>
-                          </div>
-                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 border-red-200 bg-red-50">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                              <span className="font-medium">Emergency</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">Safety concern/urgent</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column - Location & Photos */}
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Where is the problem?</label>
-                        <select className="w-full p-3 border rounded-lg bg-background mb-3" data-testid="select-student-building">
-                          <option value="">Select your building...</option>
-                          {properties?.map((property) => (
-                            <option key={property.id} value={property.id}>
-                              {property.name || `${property.street}, ${property.city}`}
-                            </option>
-                          ))}
-                        </select>
-                        <input 
-                          type="text" 
-                          className="w-full p-3 border rounded-lg bg-background" 
-                          placeholder="Room number (e.g., 204A, or 'Common Area')"
-                          data-testid="input-student-room"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Add photos (optional)</label>
-                        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                          <div className="flex flex-col items-center space-y-2">
-                            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                              📸
-                            </div>
-                            <p className="text-sm font-medium">Click to upload photos</p>
-                            <p className="text-xs text-muted-foreground">Photos help us understand the problem better</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Your contact info</label>
-                        <input 
-                          type="email" 
-                          className="w-full p-3 border rounded-lg bg-background mb-3" 
-                          placeholder="Your email address"
-                          data-testid="input-student-email"
-                        />
-                        <input 
-                          type="tel" 
-                          className="w-full p-3 border rounded-lg bg-background" 
-                          placeholder="Phone number (optional)"
-                          data-testid="input-student-phone"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 text-center">
-                    <Button size="lg" className="px-8" data-testid="button-submit-student-request">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Submit Request
-                    </Button>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      You'll receive an email confirmation and updates on your request
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* AI Assistant for Students */}
-              <PropertyAssistant 
-                context="student-maintenance"
-                exampleQuestions={[
-                  "My heater isn't working, what should I do?",
-                  "How long does it usually take to fix plumbing issues?",
-                  "Who should I contact for emergency maintenance?",
-                  "Can I track the status of my maintenance request?"
-                ]}
-              />
-
-              {/* Recent Requests */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Your Recent Requests</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {smartCases?.slice(0, 3).map((request, index) => (
-                      <div key={request.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div>
-                          <p className="font-medium">{request.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : 'Unknown date'}
-                          </p>
-                        </div>
-                        {getStatusBadge(request.status)}
-                      </div>
-                    )) || (
-                      <p className="text-muted-foreground text-center py-4">No recent requests</p>
-                    )}
-                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Prefer filling out individual fields? Use the admin view above or the detailed form in the main request page.
+                  </p>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href="/student-request">Use Traditional Form</a>
+                  </Button>
                 </CardContent>
               </Card>
             </div>
