@@ -166,7 +166,7 @@ export default function Landing() {
               <a href="/api/login">Request Demo</a>
             </Button>
             <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3" data-testid="button-student-portal">
-              <a href="/maintenance">Student Portal</a>
+              <a href="/student-tracking">Track Your Request</a>
             </Button>
           </div>
         </div>

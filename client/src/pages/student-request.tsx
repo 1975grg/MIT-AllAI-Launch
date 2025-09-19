@@ -270,7 +270,7 @@ export default function StudentRequest() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Building</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger data-testid="select-student-building">
                               <SelectValue placeholder="Select your building..." />
@@ -320,7 +320,7 @@ export default function StudentRequest() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>What type of problem is this?</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || undefined}>
                         <FormControl>
                           <SelectTrigger data-testid="select-student-category">
                             <SelectValue placeholder="Choose an issue type..." />
