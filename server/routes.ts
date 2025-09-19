@@ -660,10 +660,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/properties/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/properties/:id', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
       const property = await storage.getProperty(req.params.id);
       if (!property) return res.status(404).json({ message: "Property not found" });
+      
+      // Verify property belongs to user's organization  
+      if (property.orgId !== org.id) {
+        return res.status(403).json({ message: "Access denied: Property belongs to another organization" });
+      }
       
       res.json(property);
     } catch (error) {
