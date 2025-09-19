@@ -25,6 +25,7 @@ import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { aiTriageService } from "./aiTriage";
 import { aiCoordinatorService } from "./aiCoordinator";
+import { aiDuplicateDetectionService } from "./aiDuplicateDetection";
 import { dataAuditService } from "./dataAudit";
 
 // Revenue schema for API validation
@@ -2007,6 +2008,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Override endpoint - allows humans to override AI triage decisions
+  const aiOverrideSchema = z.object({
+    category: z.string().min(1, "Category is required"),
+    priority: z.enum(["Low", "Medium", "High", "Critical"]),
+    contractorType: z.string().min(1, "Contractor type is required"),
+    reasoning: z.string().min(10, "Detailed reasoning is required for audit trail")
+  });
+
+  app.patch('/api/cases/:id/ai-override', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      // Validate override data
+      const overrideData = aiOverrideSchema.parse(req.body);
+      
+      // Get the current case to preserve AI analysis data
+      const existingCase = await storage.getSmartCase(req.params.id);
+      if (!existingCase) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // SECURITY: Verify case belongs to user's organization
+      if (existingCase.orgId !== org.id) {
+        return res.status(403).json({ message: "Access denied: Case belongs to different organization" });
+      }
+
+      // Parse existing AI triage data
+      const existingAiData = existingCase.aiTriageJson || {};
+      
+      // Create override record in AI analysis data
+      const overrideRecord = {
+        overriddenAt: new Date().toISOString(),
+        overriddenBy: userId,
+        originalDecision: {
+          category: existingCase.category,
+          priority: existingCase.priority,
+          aiCategory: existingAiData?.aiAnalysis?.category,
+          aiUrgency: existingAiData?.aiAnalysis?.urgency,
+          aiContractorType: existingAiData?.aiAnalysis?.contractorType
+        },
+        newDecision: {
+          category: overrideData.category,
+          priority: overrideData.priority,
+          contractorType: overrideData.contractorType
+        },
+        reasoning: overrideData.reasoning,
+        humanOverride: true
+      };
+
+      // Update case with human override data
+      const updatedCaseData = {
+        category: overrideData.category,
+        priority: overrideData.priority,
+        aiTriageJson: {
+          ...existingAiData,
+          humanOverride: overrideRecord
+        }
+      };
+
+      console.log(`🔄 AI Override Applied by ${userId} for case ${req.params.id}: ${overrideData.category} (${overrideData.priority})`);
+      console.log(`📝 Override Reason: ${overrideData.reasoning}`);
+
+      const updatedCase = await storage.updateSmartCase(req.params.id, updatedCaseData);
+      
+      // Log the override event for audit purposes
+      console.log(`📊 AI Override Complete: Case ${req.params.id} - ${overrideData.category} → ${overrideData.priority} priority`);
+      
+      res.json({
+        success: true,
+        case: updatedCase,
+        override: overrideRecord,
+        message: "AI decision successfully overridden"
+      });
+
+    } catch (error) {
+      console.error("Error applying AI override:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid override data", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to apply AI override" });
+    }
+  });
+
   // Input validation schema for public student requests
   const publicStudentRequestSchema = z.object({
     studentName: z.string().min(2, "Name must be at least 2 characters"),
@@ -2159,15 +2248,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🎯 AI Analysis complete - Category: ${aiTriage.category}, Urgency: ${aiTriage.urgency}, Contractor: ${aiTriage.contractorType}`);
       
+      // 🔍 AI DUPLICATE DETECTION - Phase 2 Enhancement
+      console.log(`🔍 Running AI duplicate detection for: ${validatedInput.title}`);
+      let duplicateAnalysis = null;
+      let isDuplicate = false;
+      let similarCases = [];
+      
+      try {
+        // Get existing cases for duplicate analysis
+        const existingCases = await storage.getSmartCases(mitOrg.id);
+        
+        // Run AI duplicate detection
+        duplicateAnalysis = await aiDuplicateDetectionService.analyzeDuplicates(
+          {
+            title: validatedInput.title,
+            description: validatedInput.description,
+            category: aiTriage.category,
+            buildingName: validatedInput.building,
+            roomNumber: validatedInput.room
+          },
+          existingCases
+        );
+        
+        isDuplicate = !duplicateAnalysis.isUnique;
+        similarCases = duplicateAnalysis.similarCases;
+        
+        if (isDuplicate) {
+          console.log(`🚨 DUPLICATE DETECTED: ${duplicateAnalysis.analysisReason} (Confidence: ${(duplicateAnalysis.confidenceScore * 100).toFixed(1)}%)`);
+        } else {
+          console.log(`✅ UNIQUE REQUEST: ${duplicateAnalysis.analysisReason} (Confidence: ${(duplicateAnalysis.confidenceScore * 100).toFixed(1)}%)`);
+        }
+        
+      } catch (duplicateError) {
+        console.error('🚨 Duplicate detection failed, proceeding as unique:', duplicateError);
+        duplicateAnalysis = {
+          isUnique: true,
+          similarCases: [],
+          analysisReason: "Duplicate detection failed - treated as unique",
+          confidenceScore: 0.5
+        };
+      }
+      
       // Create case description with student contact info
       const studentInfo = `\n\n--- Student Information ---\nName: ${validatedInput.studentName}\nEmail: ${validatedInput.studentEmail}${validatedInput.studentPhone ? `\nPhone: ${validatedInput.studentPhone}` : ''}\nBuilding: ${validatedInput.building}\nRoom: ${validatedInput.room}`;
       
       // Map AI urgency to schema-compatible priority enum
-      const urgencyToPriorityMap: Record<string, "Low" | "Medium" | "High" | "Urgent"> = {
+      const urgencyToPriorityMap: Record<string, "Low" | "Medium" | "High" | "Critical"> = {
         "Low": "Low",
         "Medium": "Medium", 
         "High": "High",
-        "Critical": "Urgent" // Map AI "Critical" to schema "Urgent"
+        "Critical": "Critical" // Keep AI "Critical" as "Critical"
       };
       
       const finalPriority = urgencyToPriorityMap[aiTriage.urgency] || "Medium";
@@ -2176,7 +2306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let assignedContractor = null;
       let routingNotes = "";
       let escalationFlag = false;
-      let contractorRecommendations = [];
+      let contractorRecommendations: any[] = [];
       
       try {
         // Get available contractors from database
@@ -2273,6 +2403,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...aiTriage,
             analysisCompletedAt: new Date().toISOString(),
             version: "1.0"
+          },
+          // AI Duplicate Detection Results
+          duplicateAnalysis: {
+            isUnique: duplicateAnalysis?.isUnique || true,
+            duplicateOfId: duplicateAnalysis?.duplicateOfId || null,
+            similarCases: duplicateAnalysis?.similarCases || [],
+            analysisReason: duplicateAnalysis?.analysisReason || "No duplicate analysis performed",
+            confidenceScore: duplicateAnalysis?.confidenceScore || 1.0,
+            analysisCompletedAt: new Date().toISOString()
           },
           // Intelligent routing results
           routing: {

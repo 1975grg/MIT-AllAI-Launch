@@ -19,6 +19,7 @@ export interface DuplicateAnalysisResult {
   similarCases: SimilarityMatch[];
   analysisReason: string;
   confidenceScore: number;
+  analysisCompletedAt: string; // ISO timestamp
 }
 
 export class AIDuplicateDetectionService {
@@ -48,7 +49,8 @@ export class AIDuplicateDetectionService {
           isUnique: true,
           similarCases: [],
           analysisReason: "No existing cases found for comparison",
-          confidenceScore: 1.0
+          confidenceScore: 1.0,
+          analysisCompletedAt: new Date().toISOString()
         };
       }
       
@@ -68,7 +70,8 @@ export class AIDuplicateDetectionService {
         analysisReason: potentialDuplicate 
           ? `High similarity (${(potentialDuplicate.similarityScore * 100).toFixed(1)}%) detected with case ${potentialDuplicate.caseId}`
           : "No significant duplicates found - appears to be a unique request",
-        confidenceScore: potentialDuplicate ? potentialDuplicate.similarityScore : 0.95
+        confidenceScore: potentialDuplicate ? potentialDuplicate.similarityScore : 0.95,
+        analysisCompletedAt: new Date().toISOString()
       };
       
       console.log(`🎯 Duplicate Analysis Complete: ${result.isUnique ? 'UNIQUE' : 'DUPLICATE'} (confidence: ${(result.confidenceScore * 100).toFixed(1)}%)`);
@@ -81,7 +84,8 @@ export class AIDuplicateDetectionService {
         isUnique: true, // Default to unique on error to avoid blocking requests
         similarCases: [],
         analysisReason: "Duplicate detection failed - treating as unique request",
-        confidenceScore: 0.5
+        confidenceScore: 0.5,
+        analysisCompletedAt: new Date().toISOString()
       };
     }
   }

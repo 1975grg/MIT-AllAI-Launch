@@ -41,7 +41,7 @@ const ContractorMatchRequest = z.object({
   caseData: z.object({
     id: z.string(),
     category: z.string(),
-    priority: z.enum(['Low', 'Medium', 'High', 'Urgent']),
+    priority: z.enum(['Low', 'Medium', 'High', 'Critical']),
     description: z.string(),
     location: z.string().optional(),
     urgency: z.enum(['Low', 'Medium', 'High', 'Critical']),

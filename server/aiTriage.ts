@@ -16,6 +16,8 @@ export interface TriageResult {
   specialEquipment: string[];
   safetyRisk: "None" | "Low" | "Medium" | "High";
   reasoning: string;
+  analysisCompletedAt?: string; // ISO timestamp
+  version?: string; // Analysis version
 }
 
 export interface MaintenanceRequest {
@@ -81,6 +83,10 @@ export class AITriageService {
       }
       const result = JSON.parse(content);
       const triageResult = this.validateTriageResult(result);
+      
+      // Add required fields for UI data contract
+      triageResult.analysisCompletedAt = new Date().toISOString();
+      triageResult.version = "1.0";
       
       console.log(`🤖 Triage Complete: ${triageResult.urgency} urgency, ${triageResult.category} category`);
       return triageResult;
@@ -426,7 +432,9 @@ Consider factors like:
       contractorType,
       specialEquipment: [],
       safetyRisk,
-      reasoning: "Automated fallback triage based on keyword analysis"
+      reasoning: "Automated fallback triage based on keyword analysis",
+      analysisCompletedAt: new Date().toISOString(),
+      version: "1.0-fallback"
     };
   }
 
