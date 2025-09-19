@@ -97,21 +97,12 @@ export default function StudentMaillaTriagePage() {
           </div>
           <p className="text-gray-600 mb-4">Get help with maintenance issues using our AI-powered triage system</p>
           
-          {/* Feature badges */}
-          <div className="flex flex-wrap justify-center gap-2 mb-6">
-            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-              <Bot className="h-3 w-3 mr-1" />
-              AI-Powered Triage
-            </Badge>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              Safety-First Assessment
-            </Badge>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              Smart Question Flow
-            </Badge>
-            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-              Immediate Safety Alerts
-            </Badge>
+          {/* MIT-style description */}
+          <div className="max-w-2xl mx-auto mb-6">
+            <p className="text-gray-600 text-center">
+              Describe your maintenance issue and we'll help prioritize and route it to the right team. 
+              For emergencies, call Campus Police at <strong>(617) 253-1212</strong> immediately.
+            </p>
           </div>
         </div>
 
@@ -123,17 +114,16 @@ export default function StudentMaillaTriagePage() {
             onTriageComplete={handleTriageComplete}
           />
           
-          {/* Help Text */}
-          <Card className="mt-6 bg-blue-50 border-blue-200">
+          {/* MIT Housing Information */}
+          <Card className="mt-6 bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700">
             <CardContent className="pt-6">
-              <h3 className="font-medium text-blue-900 mb-2">How Mailla helps you:</h3>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• <strong>Safety First:</strong> Immediate alerts for gas leaks, electrical issues, and other dangers</li>
-                <li>• <strong>Smart Questions:</strong> Asks follow-up questions to understand your issue better</li>
-                <li>• <strong>Quick Fixes:</strong> Suggests DIY solutions when safe and appropriate</li>
-                <li>• <strong>Rich Context:</strong> Collects all details needed for maintenance teams</li>
-                <li>• <strong>Urgency Assessment:</strong> Prioritizes your request based on severity</li>
-              </ul>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">What to expect:</h3>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p>• <strong>Location questions:</strong> We'll ask which building and room you're in</p>
+                <p>• <strong>Issue details:</strong> Help us understand the problem and timeline</p>
+                <p>• <strong>Safety check:</strong> We prioritize urgent safety issues</p>
+                <p>• <strong>Photos helpful:</strong> Visual documentation speeds up repairs</p>
+              </div>
             </CardContent>
           </Card>
 

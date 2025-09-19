@@ -373,25 +373,29 @@ Always be empathetic, clear, and focused on student safety and getting the right
     let prompt = `Student message: "${studentMessage}"\n\n`;
 
     if (isInitial) {
-      prompt += `This is the initial maintenance request. Please:
-1. Assess safety and urgency
-2. Ask 1-2 smart follow-up questions to understand:
+      prompt += `This is the initial maintenance request from an MIT student. Please:
+1. Assess safety and urgency FIRST
+2. Ask for location details early (CRITICAL for MIT Housing):
+   - Which MIT building? (Next House, Simmons Hall, MacGregor House, Burton Conner, New House, Baker House, McCormick Hall, Random Hall, Senior House, Tang Hall, Westgate, Ashdown House, Sidney-Pacific, or Other)
+   - What room/unit number?
+3. Ask smart follow-up questions about the issue:
    - Timeline (when did this start?)
    - Severity (dripping vs gushing? warm vs cold room?)
    - Context (any other symptoms?)
-3. Request photos/videos if visual assessment would help contractors
-4. Suggest simple safe student actions if appropriate
+4. Request photos/videos if visual assessment would help contractors
+5. Suggest simple safe student actions if appropriate
 
+MIT context: This is university housing, so focus on student safety and getting maintenance staff the exact location quickly.
 `;
     } else {
-      prompt += `This is a follow-up in an ongoing conversation.\n`;
+      prompt += `This is a follow-up in an ongoing MIT student conversation.\n`;
       if (conversation) {
         prompt += `Previous context: ${JSON.stringify(conversation.triageData)}\n`;
         prompt += `Current phase: ${conversation.currentPhase}\n`;
         prompt += `Previous urgency: ${conversation.urgencyLevel}\n\n`;
       }
       
-      prompt += `Continue gathering context or complete triage if you have enough information.\n\n`;
+      prompt += `Continue gathering context. If location (building + room) is missing, prioritize getting that information. Complete triage when you have enough details.\n\n`;
     }
 
     if (safetyResults && safetyResults.flags.length > 0) {
