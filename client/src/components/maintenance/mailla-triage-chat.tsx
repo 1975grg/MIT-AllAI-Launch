@@ -47,7 +47,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
     {
       id: "welcome",
       type: "mailla",
-      content: "Hi! I'm Mailla, your AI maintenance assistant. I'm here to help figure out what's going on and make sure you're safe. What's happening that needs attention?",
+      content: "Hi! I'm Mailla, MIT Housing's maintenance assistant. What's going on?",
       timestamp: new Date(),
     }
   ]);
@@ -294,7 +294,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-blue-600" />
+            <Bot className="h-5 w-5 text-red-600" />
             <CardTitle className="text-lg">Mailla AI Triage</CardTitle>
           </div>
           <div className="flex items-center gap-2">
@@ -343,11 +343,11 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-4 rounded-lg"
+            className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 p-4 rounded-lg"
             data-testid="section-media-upload"
           >
-            <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">📸 Upload Photos/Videos</h3>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+            <h3 className="font-medium text-red-700 dark:text-red-300 mb-2">📸 Upload Photos/Videos</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
               Please upload photos or videos to help us understand the issue better.
             </p>
             
@@ -360,18 +360,18 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
                   const files = Array.from(e.target.files || []);
                   setSelectedFiles(files);
                 }}
-                className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
                 data-testid="input-file-upload"
               />
               
               {selectedFiles.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
                     {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected:
                   </p>
                   {selectedFiles.map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-blue-100 dark:bg-blue-900 p-2 rounded text-sm">
-                      <span className="text-blue-800 dark:text-blue-200">{file.name}</span>
+                    <div key={idx} className="flex items-center justify-between bg-gray-100 dark:bg-gray-900 p-2 rounded text-sm">
+                      <span className="text-gray-800 dark:text-gray-200">{file.name}</span>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -401,17 +401,17 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
               >
                 <div className={`flex gap-2 max-w-[80%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    message.type === 'user' ? 'bg-blue-100' : 
-                    message.type === 'mailla' ? 'bg-purple-100' : 'bg-gray-100'
+                    message.type === 'user' ? 'bg-slate-100' : 
+                    message.type === 'mailla' ? 'bg-gray-100' : 'bg-gray-100'
                   }`}>
-                    {message.type === 'user' ? <User className="h-4 w-4 text-blue-600" /> : 
-                     message.type === 'mailla' ? <Bot className="h-4 w-4 text-purple-600" /> :
+                    {message.type === 'user' ? <User className="h-4 w-4 text-slate-700" /> : 
+                     message.type === 'mailla' ? <Bot className="h-4 w-4 text-red-600" /> :
                      <CheckCircle className="h-4 w-4 text-gray-600" />}
                   </div>
                   
                   <div className={`rounded-lg px-3 py-2 ${
-                    message.type === 'user' ? 'bg-blue-600 text-white' :
-                    message.type === 'mailla' ? 'bg-purple-50 text-purple-900 border border-purple-200' :
+                    message.type === 'user' ? 'bg-slate-700 text-white' :
+                    message.type === 'mailla' ? 'bg-gray-50 text-gray-900 border border-gray-200' :
                     'bg-gray-50 text-gray-900 border border-gray-200'
                   }`}>
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -467,13 +467,13 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
               animate={{ opacity: 1, y: 0 }}
               className="flex gap-2"
             >
-              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-purple-600" />
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-red-600" />
               </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                 <div className="flex items-center gap-1">
-                  <span className="text-sm text-purple-700">Mailla is thinking</span>
-                  <Loader2 className="h-3 w-3 animate-spin text-purple-600" />
+                  <span className="text-sm text-gray-700">Mailla is thinking</span>
+                  <Loader2 className="h-3 w-3 animate-spin text-red-600" />
                 </div>
               </div>
             </motion.div>
