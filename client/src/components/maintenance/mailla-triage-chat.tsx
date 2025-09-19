@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, AlertTriangle, Clock, Bot, User, CheckCircle, Heart, Upload, X, Phone } from "lucide-react";
+import { Loader2, Send, AlertTriangle, Clock, Bot, User, CheckCircle, Heart, Upload, X, Phone, MapPin, Home } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MaillaMessage {
@@ -17,7 +17,9 @@ interface MaillaMessage {
   urgencyLevel?: 'emergency' | 'urgent' | 'normal' | 'low';
   safetyFlags?: string[];
   nextAction?: 'ask_followup' | 'request_media' | 'escalate_immediate' | 'complete_triage' | 'recommend_diy';
-  followupQuestions?: string[];
+  nextQuestion?: string;
+  quickReplies?: string[];
+  followupQuestions?: string[]; // Keep for backward compatibility
   diyAction?: {
     action: string;
     instructions: string[];
@@ -42,6 +44,41 @@ interface MaillaTriageChatProps {
   onTriageComplete?: (caseId: string) => void;
 }
 
+// Generate contextual quick replies based on the conversation
+const generateQuickReplies = (nextQuestion?: string, message?: string): string[] => {
+  if (!nextQuestion && !message) return [];
+  
+  const lowerMessage = (message || '').toLowerCase();
+  const lowerQuestion = (nextQuestion || '').toLowerCase();
+  
+  // Building selection quick replies
+  if (lowerQuestion.includes('building') || lowerMessage.includes('building')) {
+    return ['Next House', 'Simmons Hall', 'MacGregor House', 'Burton Conner'];
+  }
+  
+  // Room number quick replies (after building is known)
+  if (lowerQuestion.includes('room') || lowerQuestion.includes('unit')) {
+    return ['100', '200', '300', 'Not sure'];
+  }
+  
+  // Issue type quick replies
+  if (lowerQuestion.includes('issue') || lowerQuestion.includes('problem')) {
+    return ['Water leak', 'No heat', 'Electrical issue', 'Broken fixture'];
+  }
+  
+  // Timeline quick replies
+  if (lowerQuestion.includes('when') || lowerQuestion.includes('started')) {
+    return ['Just now', 'Today', 'Yesterday', 'Few days ago'];
+  }
+  
+  // General yes/no questions
+  if (lowerQuestion.includes('?') && (lowerQuestion.includes('is') || lowerQuestion.includes('can') || lowerQuestion.includes('would'))) {
+    return ['Yes', 'No', 'Not sure'];
+  }
+  
+  return ['Skip for now'];
+};
+
 export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }: MaillaTriageChatProps) {
   const [messages, setMessages] = useState<MaillaMessage[]>([
     {
@@ -61,6 +98,8 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
   const [isEmergencyMode, setIsEmergencyMode] = useState(false);
   const [needsMediaUpload, setNeedsMediaUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [currentQuickReplies, setCurrentQuickReplies] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -101,6 +140,9 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
       setCurrentUrgency(data.maillaResponse.urgencyLevel || 'normal');
       setSafetyFlags(data.maillaResponse.safetyFlags || []);
 
+      // Generate quick replies based on context
+      const quickReplies = generateQuickReplies(data.maillaResponse.nextQuestion, data.maillaResponse.message);
+      
       // Add Mailla's response as a message
       const maillaMessage: MaillaMessage = {
         id: `mailla-${Date.now()}`,
@@ -110,11 +152,22 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
         urgencyLevel: data.maillaResponse.urgencyLevel,
         safetyFlags: data.maillaResponse.safetyFlags,
         nextAction: data.maillaResponse.nextAction,
+        nextQuestion: data.maillaResponse.nextQuestion,
+        quickReplies,
         followupQuestions: data.maillaResponse.followupQuestions,
         diyAction: data.maillaResponse.diyAction
       };
 
       setMessages(prev => [...prev, maillaMessage]);
+      
+      // Set up quick replies if we have a question
+      if (data.maillaResponse.nextQuestion && quickReplies.length > 0) {
+        setCurrentQuickReplies(quickReplies);
+        setShowQuickReplies(true);
+      } else {
+        setShowQuickReplies(false);
+        setCurrentQuickReplies([]);
+      }
 
     } catch (error) {
       console.error('Error starting triage:', error);
@@ -155,6 +208,9 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
       setCurrentUrgency(data.urgencyLevel || currentUrgency);
       setSafetyFlags(data.safetyFlags || []);
 
+      // Generate quick replies based on context
+      const quickReplies = generateQuickReplies(data.nextQuestion, data.message);
+      
       // Add Mailla's response
       const maillaMessage: MaillaMessage = {
         id: `mailla-${Date.now()}`,
@@ -164,11 +220,22 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
         urgencyLevel: data.urgencyLevel,
         safetyFlags: data.safetyFlags,
         nextAction: data.nextAction,
+        nextQuestion: data.nextQuestion,
+        quickReplies,
         followupQuestions: data.followupQuestions,
         diyAction: data.diyAction
       };
 
       setMessages(prev => [...prev, maillaMessage]);
+      
+      // Set up quick replies if we have a question
+      if (data.nextQuestion && quickReplies.length > 0) {
+        setCurrentQuickReplies(quickReplies);
+        setShowQuickReplies(true);
+      } else {
+        setShowQuickReplies(false);
+        setCurrentQuickReplies([]);
+      }
 
       // ✅ Handle critical safety actions
       if (data.nextAction === 'escalate_immediate') {
@@ -251,10 +318,35 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
     }
   };
 
+  const handleQuickReply = async (reply: string) => {
+    // Hide quick replies immediately for better UX
+    setShowQuickReplies(false);
+    setCurrentQuickReplies([]);
+    
+    const userMessage: MaillaMessage = {
+      id: `user-${Date.now()}`,
+      type: "user", 
+      content: reply,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    if (!conversation) {
+      await startTriageConversation(reply);
+    } else {
+      await continueTriageConversation(reply);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // ✅ Critical safety: Prevent input during emergency mode
     if (!input.trim() || isLoading || isEmergencyMode) return;
+
+    // Hide quick replies when user types their own message
+    setShowQuickReplies(false);
+    setCurrentQuickReplies([]);
 
     const userMessage: MaillaMessage = {
       id: `user-${Date.now()}`,
@@ -481,6 +573,46 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
 
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Quick Reply Buttons */}
+        {showQuickReplies && currentQuickReplies.length > 0 && !isEmergencyMode && !conversation?.isComplete && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border"
+            data-testid="quick-replies"
+          >
+            <div className="w-full text-xs text-gray-600 dark:text-gray-400 mb-1">
+              Quick replies:
+            </div>
+            {currentQuickReplies.map((reply, idx) => (
+              <Button
+                key={`${reply}-${idx}`}
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickReply(reply)}
+                disabled={isLoading}
+                className="text-xs h-8 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                data-testid={`quick-reply-${idx}`}
+              >
+                {reply === 'Skip for now' ? (
+                  <>
+                    <X className="h-3 w-3 mr-1" />
+                    {reply}
+                  </>
+                ) : reply.includes('House') || reply.includes('Hall') ? (
+                  <>
+                    <Home className="h-3 w-3 mr-1" />
+                    {reply}
+                  </>
+                ) : (
+                  reply
+                )}
+              </Button>
+            ))}
+          </motion.div>
+        )}
 
         {/* Input Area */}
         <form onSubmit={handleSubmit} className="flex gap-2">

@@ -17,12 +17,22 @@ interface MaillaResponse {
   urgencyLevel: 'emergency' | 'urgent' | 'normal' | 'low';
   safetyFlags: string[];
   nextAction: 'ask_followup' | 'request_media' | 'escalate_immediate' | 'complete_triage' | 'recommend_diy';
+  nextQuestion?: string;
+  queuedQuestions?: string[];
+  acknowledgment?: string;
+  conversationSlots?: {
+    buildingName?: string;
+    roomNumber?: string;
+    issueSummary?: string;
+    timeline?: string;
+    severity?: string;
+  };
   location?: {
     buildingName?: string;
     roomNumber?: string;
     isLocationConfirmed?: boolean;
   };
-  followupQuestions?: string[];
+  followupQuestions?: string[]; // Keep for backward compatibility
   mediaRequest?: {
     type: 'photo' | 'video' | 'audio';
     reason: string;
@@ -225,10 +235,29 @@ export class MaillaAIService {
                   },
                   description: "Student's location information"
                 },
-                followupQuestions: { 
-                  type: "array", 
+                nextQuestion: {
+                  type: "string",
+                  description: "The single next question to ask (if any) - keep it conversational and friendly"
+                },
+                queuedQuestions: {
+                  type: "array",
                   items: { type: "string" },
-                  description: "Specific follow-up questions to ask" 
+                  description: "Additional questions to ask later, in order of priority"
+                },
+                acknowledgment: {
+                  type: "string",
+                  description: "Brief acknowledgment of what the student shared (optional)"
+                },
+                conversationSlots: {
+                  type: "object",
+                  properties: {
+                    buildingName: { type: "string" },
+                    roomNumber: { type: "string" },
+                    issueSummary: { type: "string" },
+                    timeline: { type: "string" },
+                    severity: { type: "string" }
+                  },
+                  description: "Information slots filled from this interaction"
                 },
                 mediaRequest: {
                   type: "object",
@@ -269,19 +298,36 @@ export class MaillaAIService {
       const allFlags = [...safetyResults.flags, ...maillaResponse.safetyFlags];
       maillaResponse.safetyFlags = Array.from(new Set(allFlags));
 
-      // 5. Update triage data with location if provided
-      if (maillaResponse.location && (maillaResponse.location.buildingName || maillaResponse.location.roomNumber)) {
+      // 5. Update conversation slots and queue pending questions
+      if (maillaResponse.conversationSlots || maillaResponse.queuedQuestions || maillaResponse.location) {
         const currentTriageData = conversation?.triageData || { initialRequest: studentMessage, category: null, context: {} };
+        const existingSlots = (currentTriageData as any)?.conversationSlots || {};
         const existingLocation = (currentTriageData as any)?.location || {};
+        const pendingQuestions = (currentTriageData as any)?.pendingQuestions || [];
+        
+        // Merge conversation slots
+        const updatedSlots = {
+          ...existingSlots,
+          ...maillaResponse.conversationSlots
+        };
+        
+        // Handle location updates
+        const updatedLocation = {
+          ...existingLocation,
+          ...maillaResponse.location
+        };
+        
+        // Add new queued questions to pending list
+        const updatedPendingQuestions = maillaResponse.queuedQuestions 
+          ? [...pendingQuestions, ...maillaResponse.queuedQuestions]
+          : pendingQuestions;
         
         await storage.updateTriageConversation(conversationId, {
           triageData: {
             ...currentTriageData,
-            location: {
-              buildingName: maillaResponse.location.buildingName || existingLocation.buildingName,
-              roomNumber: maillaResponse.location.roomNumber || existingLocation.roomNumber,
-              isLocationConfirmed: maillaResponse.location.isLocationConfirmed || false
-            }
+            conversationSlots: updatedSlots,
+            location: updatedLocation,
+            pendingQuestions: updatedPendingQuestions
           }
         });
       }
@@ -364,35 +410,33 @@ export class MaillaAIService {
   // ========================================
 
   private getMaillaSystemPrompt(): string {
-    return `You are Mailla, a friendly but safety-focused AI assistant helping university students with maintenance issues.
+    return `You are Mailla, MIT Housing's compassionate maintenance assistant. You help students one step at a time with a kind, natural conversation style.
 
-CORE PRINCIPLES:
-1. **Safety ALWAYS comes first** - detect and escalate any safety hazards immediately
-2. **Urgency assessment** - understand timeline and impact to prioritize properly
-3. **Student-friendly** - students are not expected to do complex repairs, only simple safe actions
-4. **Context gathering** - ask smart questions to understand the full situation
-5. **Media collection** - request photos/videos/audio when helpful for contractors
+CONVERSATION RULES:
+1. **ONE QUESTION AT A TIME** - Never ask multiple questions in one message
+2. **Be compassionate** - Acknowledge their situation and feelings
+3. **Keep responses SHORT** - Maximum 2 sentences + one question
+4. **Talk like a helpful person** - Natural, warm, conversational tone
+5. **Safety ALWAYS comes first** - Escalate emergencies immediately
+
+CONVERSATION FLOW:
+- Greeting → Building → Room → Issue details → Timeline → Severity (as needed)
+- If they give multiple pieces of info, acknowledge what they shared and ask the next most important question
+- Emergency keywords bypass normal flow for immediate help
+
+TONE EXAMPLES:
+❌ "I need to gather some information. Which building are you in and what's your room number? Also, when did this start?"
+✅ "I'm here to help! Which MIT building are you in?"
+
+❌ "Thank you for the information. Can you provide additional details about the timeline and severity?"
+✅ "Got it, Next House. What's your room number?"
 
 SAFETY PROTOCOLS:
 - Gas smells = IMMEDIATE evacuation and emergency services
 - Electrical + water = IMMEDIATE isolation and emergency help
-- No heat/cooling + extreme weather = URGENT
 - Sparking/burning = IMMEDIATE shutdown and evacuation
 
-STUDENT ACTIONS (Simple & Safe Only):
-- Check circuit breakers (flip if tripped)
-- Ensure appliances are plugged in securely
-- Place towels for minor water (away from electrical)
-- Turn off water valve if easy to reach
-- Never: electrical repairs, gas work, complex plumbing
-
-URGENCY LEVELS:
-- Emergency: Safety hazard, immediate danger
-- Urgent: No heat/cooling, significant water damage, major disruption
-- Normal: Standard maintenance issues
-- Low: Cosmetic issues, minor inconveniences
-
-Always be empathetic, clear, and focused on student safety and getting the right help quickly.`;
+Always sound like you're texting a helpful friend who works in maintenance - warm, competent, and focused.`;
   }
 
   private buildTriageContextPrompt(
@@ -403,37 +447,48 @@ Always be empathetic, clear, and focused on student safety and getting the right
   ): string {
     let prompt = `Student message: "${studentMessage}"\n\n`;
 
-    if (isInitial) {
-      prompt += `This is the initial maintenance request from an MIT student. Please:
-1. Assess safety and urgency FIRST
-2. Ask for location details early (CRITICAL for MIT Housing):
-   - Which MIT building? (Next House, Simmons Hall, MacGregor House, Burton Conner, New House, Baker House, McCormick Hall, Random Hall, Senior House, Tang Hall, Westgate, Ashdown House, Sidney-Pacific, or Other)
-   - What room/unit number?
-3. Ask smart follow-up questions about the issue:
-   - Timeline (when did this start?)
-   - Severity (dripping vs gushing? warm vs cold room?)
-   - Context (any other symptoms?)
-4. Request photos/videos if visual assessment would help contractors
-5. Suggest simple safe student actions if appropriate
+    // Extract existing conversation slots from triageData
+    const existingSlots = (conversation?.triageData as any)?.conversationSlots || {};
+    const pendingQuestions = (conversation?.triageData as any)?.pendingQuestions || [];
 
-MIT context: This is university housing, so focus on student safety and getting maintenance staff the exact location quickly.
+    if (isInitial) {
+      prompt += `This is the FIRST message from an MIT student about a maintenance issue.
+
+Your response should:
+1. Be warm and compassionate - acknowledge their issue
+2. Ask for their building name ONLY (don't ask multiple things)
+3. Keep your message short and conversational
+
+MIT Buildings: Next House, Simmons Hall, MacGregor House, Burton Conner, New House, Baker House, McCormick Hall, Random Hall, Senior House, Tang Hall, Westgate, Ashdown House, Sidney-Pacific
+
+Example: "I'm here to help with that! Which MIT building are you in?"
 `;
     } else {
-      prompt += `This is a follow-up in an ongoing MIT student conversation.\n`;
-      if (conversation) {
-        prompt += `Previous context: ${JSON.stringify(conversation.triageData)}\n`;
-        prompt += `Current phase: ${conversation.currentPhase}\n`;
-        prompt += `Previous urgency: ${conversation.urgencyLevel}\n\n`;
+      prompt += `This is a follow-up message. Conversation progress:\n`;
+      
+      // Show what we know so far
+      if (Object.keys(existingSlots).length > 0) {
+        prompt += `Information gathered: ${JSON.stringify(existingSlots)}\n`;
       }
       
-      prompt += `Continue gathering context. If location (building + room) is missing, prioritize getting that information. Complete triage when you have enough details.\n\n`;
+      if (pendingQuestions.length > 0) {
+        prompt += `Questions in queue: ${pendingQuestions.join(', ')}\n`;
+      }
+      
+      prompt += `\nNext question priority:
+1. Building name (if missing)
+2. Room number (if building known but room missing)
+3. Issue details (if location complete)
+4. Timeline/severity (if needed)
+
+Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they just shared.\n`;
     }
 
     if (safetyResults && safetyResults.flags.length > 0) {
-      prompt += `Safety flags detected: ${safetyResults.flags.join(', ')}\n\n`;
+      prompt += `SAFETY ALERT: ${safetyResults.flags.join(', ')} - prioritize safety!\n`;
     }
 
-    prompt += `Remember: prioritize safety, be concise but thorough, and help the student feel supported.`;
+    prompt += `\nRemember: ONE question at a time, be conversational, acknowledge what they shared.`;
 
     return prompt;
   }
