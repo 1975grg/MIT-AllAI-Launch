@@ -196,7 +196,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      res.json(user);
+      
+      // Get user's role from organization membership
+      const userOrg = await storage.getUserOrganization(userId);
+      const role = userOrg?.role || 'admin'; // Default to admin if no org found
+      
+      res.json({
+        ...user,
+        role: role
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });

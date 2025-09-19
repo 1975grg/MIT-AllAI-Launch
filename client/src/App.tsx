@@ -23,7 +23,7 @@ import ContractorDashboard from "@/pages/contractor-dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -47,7 +47,15 @@ function Router() {
           <Route path="/" component={Landing} />
           <Route component={Landing} />
         </>
+      ) : user?.role === "vendor" ? (
+        /* Contractor-specific routes */
+        <>
+          <Route path="/" component={ContractorDashboard} />
+          <Route path="/contractor" component={ContractorDashboard} />
+          <Route component={ContractorDashboard} />
+        </>
       ) : (
+        /* Admin/Manager routes */
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/properties" component={Properties} />
