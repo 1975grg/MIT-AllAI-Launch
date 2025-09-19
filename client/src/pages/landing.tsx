@@ -44,7 +44,7 @@ export default function Landing() {
             
             {/* Primary AI Chat Option */}
             <div className="space-y-4">
-              <Button size="lg" asChild className="text-lg px-8 py-3 bg-blue-600 hover:bg-blue-700" data-testid="button-ai-chat">
+              <Button size="lg" asChild className="text-lg px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg transform hover:scale-105 transition-all" data-testid="button-ai-chat">
                 <a href="/student-mailla-triage">
                   <Bot className="h-5 w-5 mr-2" />
                   Chat with AI Assistant
@@ -90,7 +90,7 @@ export default function Landing() {
             <p className="text-muted-foreground mb-4 max-w-lg mx-auto">
               Access the management dashboard to view requests, coordinate contractors, and track maintenance operations.
             </p>
-            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3 border-orange-600 text-orange-600 hover:bg-orange-50" data-testid="button-admin-login">
+            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 shadow-md transition-all" data-testid="button-admin-login">
               <a href="/api/login">🔧 Staff & Contractor Login</a>
             </Button>
           </div>

@@ -3,43 +3,43 @@
 @tailwind utilities;
 
 :root {
-  /* MIT Official Color Scheme */
-  /* MIT Red #A31F34 - Primary brand color */
-  /* Silver Gray #8A8B8C - Secondary brand color */ 
-  /* Light Gray #C2C0BF - Tertiary brand color */
+  /* Vibrant University Color Scheme */
+  /* Bright Blue Primary - Energetic and trustworthy */
+  /* Vibrant Red Accent - MIT heritage with energy */
+  /* Clean whites and bright contrasts */
   
   --background: hsl(0 0% 100%);
-  --foreground: hsl(210 25% 7.8431%);
-  --card: hsl(30 4% 95%);
-  --card-foreground: hsl(210 25% 7.8431%);
+  --foreground: hsl(210 40% 8%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(210 40% 8%);
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(210 25% 7.8431%);
-  --primary: hsl(349.5 67.5% 38%); /* MIT Red */
+  --popover-foreground: hsl(210 40% 8%);
+  --primary: hsl(217 89% 61%); /* Vibrant Blue */
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(220 1% 54.5%); /* MIT Silver Gray */
+  --secondary: hsl(217 89% 51%); /* Darker Vibrant Blue */
   --secondary-foreground: hsl(0 0% 100%);
-  --muted: hsl(30 4% 75.5%); /* MIT Light Gray */
-  --muted-foreground: hsl(220 1% 40%);
-  --accent: hsl(30 4% 92%); /* Light MIT Gray tint */
-  --accent-foreground: hsl(349.5 67.5% 38%); /* MIT Red for accent text */
-  --destructive: hsl(356.3033 90.5579% 54.3137%);
+  --muted: hsl(217 33% 94%); /* Light Blue Tint */
+  --muted-foreground: hsl(215 25% 27%);
+  --accent: hsl(217 89% 96%); /* Very Light Blue */
+  --accent-foreground: hsl(217 89% 51%); /* Vibrant Blue for accent text */
+  --destructive: hsl(0 84% 60%); /* Vibrant Red */
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(30 4% 88%);
-  --input: hsl(30 4% 96%);
-  --ring: hsl(349.5 67.5% 38%); /* MIT Red for focus rings */
-  --chart-1: hsl(349.5 67.5% 38%); /* MIT Red */
-  --chart-2: hsl(220 1% 54.5%); /* MIT Silver Gray */
-  --chart-3: hsl(30 4% 75.5%); /* MIT Light Gray */
-  --chart-4: hsl(349.5 67.5% 58%); /* Lighter MIT Red */
-  --chart-5: hsl(220 1% 74.5%); /* Lighter MIT Silver */
-  --sidebar: hsl(30 4% 97%);
-  --sidebar-foreground: hsl(210 25% 7.8431%);
-  --sidebar-primary: hsl(349.5 67.5% 38%); /* MIT Red */
+  --border: hsl(217 33% 90%);
+  --input: hsl(217 33% 97%);
+  --ring: hsl(217 89% 61%); /* Vibrant Blue for focus rings */
+  --chart-1: hsl(217 89% 61%); /* Vibrant Blue */
+  --chart-2: hsl(142 72% 29%); /* Vibrant Green */
+  --chart-3: hsl(45 93% 47%); /* Vibrant Yellow */
+  --chart-4: hsl(271 81% 56%); /* Vibrant Purple */
+  --chart-5: hsl(0 84% 60%); /* Vibrant Red */
+  --sidebar: hsl(217 33% 98%);
+  --sidebar-foreground: hsl(210 40% 8%);
+  --sidebar-primary: hsl(217 89% 61%); /* Vibrant Blue */
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(30 4% 92%);
-  --sidebar-accent-foreground: hsl(349.5 67.5% 38%); /* MIT Red */
-  --sidebar-border: hsl(30 4% 88%);
-  --sidebar-ring: hsl(349.5 67.5% 38%); /* MIT Red */
+  --sidebar-accent: hsl(217 89% 96%);
+  --sidebar-accent-foreground: hsl(217 89% 51%); /* Vibrant Blue */
+  --sidebar-border: hsl(217 33% 90%);
+  --sidebar-ring: hsl(217 89% 61%); /* Vibrant Blue */
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -57,39 +57,39 @@
 }
 
 .dark {
-  /* MIT Dark Mode Color Scheme */
-  --background: hsl(0 0% 0%);
-  --foreground: hsl(200 6.6667% 91.1765%);
-  --card: hsl(220 1% 12%);
-  --card-foreground: hsl(0 0% 85.0980%);
-  --popover: hsl(0 0% 0%);
-  --popover-foreground: hsl(200 6.6667% 91.1765%);
-  --primary: hsl(349.5 67.5% 48%); /* Lighter MIT Red for dark mode */
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(220 1% 64.5%); /* Lighter MIT Silver Gray for dark mode */
-  --secondary-foreground: hsl(210 25% 7.8431%);
-  --muted: hsl(220 1% 18%);
-  --muted-foreground: hsl(220 1% 60%);
-  --accent: hsl(220 1% 15%);
-  --accent-foreground: hsl(349.5 67.5% 58%); /* Lighter MIT Red for accent text */
-  --destructive: hsl(356.3033 90.5579% 54.3137%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(220 1% 20%);
-  --input: hsl(220 1% 15%);
-  --ring: hsl(349.5 67.5% 48%); /* MIT Red for focus rings */
-  --chart-1: hsl(349.5 67.5% 48%); /* MIT Red */
-  --chart-2: hsl(220 1% 64.5%); /* MIT Silver Gray */
-  --chart-3: hsl(30 4% 75.5%); /* MIT Light Gray */
-  --chart-4: hsl(349.5 67.5% 68%); /* Lighter MIT Red */
-  --chart-5: hsl(220 1% 84.5%); /* Lighter MIT Silver */
-  --sidebar: hsl(220 1% 10%);
-  --sidebar-foreground: hsl(0 0% 85.0980%);
-  --sidebar-primary: hsl(349.5 67.5% 48%); /* MIT Red */
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(220 1% 15%);
-  --sidebar-accent-foreground: hsl(349.5 67.5% 58%); /* MIT Red */
-  --sidebar-border: hsl(220 1% 25%);
-  --sidebar-ring: hsl(349.5 67.5% 48%); /* MIT Red */
+  /* Vibrant Dark Mode Color Scheme */
+  --background: hsl(217 33% 6%);
+  --foreground: hsl(0 0% 95%);
+  --card: hsl(217 33% 10%);
+  --card-foreground: hsl(0 0% 90%);
+  --popover: hsl(217 33% 6%);
+  --popover-foreground: hsl(0 0% 95%);
+  --primary: hsl(217 89% 70%); /* Bright Blue for dark mode */
+  --primary-foreground: hsl(217 33% 6%);
+  --secondary: hsl(217 89% 80%); /* Lighter Bright Blue */
+  --secondary-foreground: hsl(217 33% 6%);
+  --muted: hsl(217 33% 18%);
+  --muted-foreground: hsl(217 33% 65%);
+  --accent: hsl(217 33% 15%);
+  --accent-foreground: hsl(217 89% 70%); /* Bright Blue for accent text */
+  --destructive: hsl(0 84% 70%); /* Bright Red */
+  --destructive-foreground: hsl(217 33% 6%);
+  --border: hsl(217 33% 20%);
+  --input: hsl(217 33% 15%);
+  --ring: hsl(217 89% 70%); /* Bright Blue for focus rings */
+  --chart-1: hsl(217 89% 70%); /* Bright Blue */
+  --chart-2: hsl(142 72% 39%); /* Bright Green */
+  --chart-3: hsl(45 93% 57%); /* Bright Yellow */
+  --chart-4: hsl(271 81% 66%); /* Bright Purple */
+  --chart-5: hsl(0 84% 70%); /* Bright Red */
+  --sidebar: hsl(217 33% 8%);
+  --sidebar-foreground: hsl(0 0% 90%);
+  --sidebar-primary: hsl(217 89% 70%); /* Bright Blue */
+  --sidebar-primary-foreground: hsl(217 33% 6%);
+  --sidebar-accent: hsl(217 33% 15%);
+  --sidebar-accent-foreground: hsl(217 89% 70%); /* Bright Blue */
+  --sidebar-border: hsl(217 33% 25%);
+  --sidebar-ring: hsl(217 89% 70%); /* Bright Blue */
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;

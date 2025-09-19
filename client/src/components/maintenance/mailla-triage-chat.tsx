@@ -381,11 +381,11 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'emergency': return 'bg-red-500';
-      case 'urgent': return 'bg-orange-500';
-      case 'normal': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case 'emergency': return 'bg-red-500 text-white shadow-lg border-red-200';
+      case 'urgent': return 'bg-orange-500 text-white shadow-lg border-orange-200';
+      case 'normal': return 'bg-blue-500 text-white shadow-lg border-blue-200';
+      case 'low': return 'bg-green-500 text-white shadow-lg border-green-200';
+      default: return 'bg-gray-500 text-white shadow-lg border-gray-200';
     }
   };
 
