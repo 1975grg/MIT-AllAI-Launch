@@ -1548,26 +1548,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async checkAppointmentOverlap(contractorId: string, startTime: Date, endTime: Date, excludeId?: string): Promise<boolean> {
-    let query = db
-      .select()
-      .from(appointments)
-      .where(and(
-        eq(appointments.contractorId, contractorId),
-        // Check for time overlap: (start1 < end2) AND (start2 < end1)
-        and(
-          lt(appointments.scheduledStartAt, endTime),
-          gt(appointments.scheduledEndAt, startTime)
-        ),
-        // Only check active appointment statuses - exclude cancelled/completed
-        inArray(appointments.status, ['Pending', 'Confirmed', 'In Progress', 'Rescheduled'])
-      ));
-    
-    // Exclude the current appointment if updating
+    // Build all conditions at once
+    const conditions = [
+      eq(appointments.contractorId, contractorId),
+      // Check for time overlap: (start1 < end2) AND (start2 < end1)
+      and(
+        lt(appointments.scheduledStartAt, endTime),
+        gt(appointments.scheduledEndAt, startTime)
+      ),
+      // Only check active appointment statuses - exclude cancelled/completed
+      inArray(appointments.status, ['Pending', 'Confirmed', 'In Progress', 'Rescheduled'])
+    ];
+
+    // Add exclusion condition if needed
     if (excludeId) {
-      query = query.where(ne(appointments.id, excludeId));
+      conditions.push(ne(appointments.id, excludeId));
     }
     
-    const overlapping = await query.limit(1);
+    const overlapping = await db
+      .select()
+      .from(appointments)
+      .where(and(...conditions))
+      .limit(1);
+    
     return overlapping.length > 0;
   }
 
