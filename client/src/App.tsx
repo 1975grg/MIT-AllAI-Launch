@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useRolePreview } from "@/hooks/useRolePreview";
+import { RolePreviewProvider } from "@/contexts/RolePreviewContext";
 import Landing from "@/pages/landing";
 import StudentRequest from "@/pages/student-request";
 import StudentTracking from "@/pages/student-tracking";
@@ -25,6 +27,7 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { effectiveRole } = useRolePreview();
 
   if (isLoading) {
     return (
@@ -48,14 +51,14 @@ function Router() {
           <Route path="/" component={Landing} />
           <Route component={Landing} />
         </>
-      ) : user?.role === "vendor" ? (
+      ) : effectiveRole === "vendor" ? (
         /* Contractor-specific routes */
         <>
           <Route path="/" component={ContractorDashboard} />
           <Route path="/contractor" component={ContractorDashboard} />
           <Route component={ContractorDashboard} />
         </>
-      ) : user?.role && ["admin", "manager", "staff"].includes(user.role) ? (
+      ) : effectiveRole && ["admin", "manager", "staff"].includes(effectiveRole) ? (
         /* Admin/Manager/Staff routes */
         <>
           <Route path="/" component={Dashboard} />
@@ -112,8 +115,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <RolePreviewProvider>
+          <Toaster />
+          <Router />
+        </RolePreviewProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

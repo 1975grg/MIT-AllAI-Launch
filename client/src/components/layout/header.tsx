@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import QuickAddModal from "@/components/modals/quick-add-modal";
 import ReminderForm from "@/components/forms/reminder-form";
-import { useAuth } from "@/hooks/useAuth";
-import { Search, Bell, Plus } from "lucide-react";
+import { useAuth, UserRole } from "@/hooks/useAuth";
+import { useRolePreview } from "@/hooks/useRolePreview";
+import { Search, Bell, Plus, Settings } from "lucide-react";
 import type { Notification, Property, OwnershipEntity, Unit } from "@shared/schema";
 import mitLogoUrl from "@assets/generated_images/MIT_logo_black_transparent_d4456daa.png";
 
@@ -21,6 +23,7 @@ interface HeaderProps {
 export default function Header({ title }: HeaderProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { previewRole, setPreviewRole, isPreviewing, originalRole, isDevMode } = useRolePreview();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,6 +133,38 @@ export default function Header({ title }: HeaderProps) {
               </Badge>
             )}
           </Button>
+          
+          {/* Dev Role Preview Toggle */}
+          {isDevMode && (
+            <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-100 dark:bg-yellow-900 border border-yellow-300 dark:border-yellow-700 rounded-md">
+              <Settings className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />
+              <Select 
+                value={previewRole ?? "original"} 
+                onValueChange={(value) => setPreviewRole(value === "original" ? null : value as UserRole)}
+                data-testid="select-role-preview"
+              >
+                <SelectTrigger className="w-32 h-7 text-xs bg-transparent border-none shadow-none">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {originalRole && (
+                    <SelectItem value="original" data-testid="option-original-role">
+                      Original ({originalRole})
+                    </SelectItem>
+                  )}
+                  <SelectItem value="admin" data-testid="option-admin">Admin</SelectItem>
+                  <SelectItem value="manager" data-testid="option-manager">Manager</SelectItem>
+                  <SelectItem value="staff" data-testid="option-staff">Staff</SelectItem>
+                  <SelectItem value="vendor" data-testid="option-vendor">Contractor</SelectItem>
+                </SelectContent>
+              </Select>
+              {isPreviewing && (
+                <Badge variant="outline" className="text-xs bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200">
+                  Preview
+                </Badge>
+              )}
+            </div>
+          )}
           
           {/* Quick Add */}
           <Button onClick={() => setShowQuickAdd(true)} data-testid="button-quick-add">
