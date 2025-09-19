@@ -323,6 +323,21 @@ export const maintenanceReminders = pgTable("maintenance_reminders", {
 export const caseStatusEnum = pgEnum("case_status", ["New", "In Review", "Scheduled", "In Progress", "On Hold", "Resolved", "Closed"]);
 export const casePriorityEnum = pgEnum("case_priority", ["Low", "Medium", "High", "Urgent"]);
 
+// AI-Enhanced Enums for Smart Triage
+export const aiCategoryEnum = pgEnum("ai_category", [
+  "plumbing", "electrical", "hvac", "appliance", "structural", 
+  "safety", "security", "cleaning", "pest_control", "landscaping", 
+  "general_repair", "emergency", "other"
+]);
+
+export const aiTriageStatusEnum = pgEnum("ai_triage_status", [
+  "pending", "processed", "verified", "overridden", "failed"
+]);
+
+export const duplicateStatusEnum = pgEnum("duplicate_status", [
+  "unique", "potential_duplicate", "confirmed_duplicate", "merged"
+]);
+
 export const smartCases = pgTable("smart_cases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orgId: varchar("org_id").notNull().references(() => organizations.id),
@@ -334,12 +349,40 @@ export const smartCases = pgTable("smart_cases", {
   status: caseStatusEnum("status").default("New"),
   priority: casePriorityEnum("priority").default("Medium"),
   category: varchar("category"),
-  aiTriageJson: jsonb("ai_triage_json"),
-  // ✅ Enhanced AI context extraction fields
+  
+  // ✅ AI Triage Enhancement - Phase 2
+  aiTriageJson: jsonb("ai_triage_json"), // Complete AI analysis results
+  aiCategory: aiCategoryEnum("ai_category"), // AI-classified category
+  aiPriority: casePriorityEnum("ai_priority"), // AI-suggested priority 
+  aiTriageStatus: aiTriageStatusEnum("ai_triage_status").default("pending"),
+  aiConfidence: decimal("ai_confidence", { precision: 3, scale: 2 }), // Overall confidence (0.00-1.00)
+  aiCategoryConfidence: decimal("ai_category_confidence", { precision: 3, scale: 2 }), // Category confidence
+  aiPriorityConfidence: decimal("ai_priority_confidence", { precision: 3, scale: 2 }), // Priority confidence
+  
+  // ✅ Duplicate Detection & Similarity
+  duplicateStatus: duplicateStatusEnum("duplicate_status").default("unique"),
+  similarCaseIds: text("similar_case_ids").array(), // Array of similar case IDs
+  duplicateOfId: varchar("duplicate_of_id"), // Points to original case if duplicate (self-reference added later)
+  similarityScore: decimal("similarity_score", { precision: 3, scale: 2 }), // Highest similarity score
+  
+  // ✅ Enhanced AI Context Extraction
   locationText: text("location_text"), // Original location description from chat
   buildingName: varchar("building_name"), // Extracted building name (e.g., "Baker House")
   roomNumber: varchar("room_number"), // Extracted room number (e.g., "305")
-  aiConfidence: decimal("ai_confidence", { precision: 3, scale: 2 }), // AI confidence score (0.00-1.00)
+  urgencyKeywords: text("urgency_keywords").array(), // Detected urgency indicators ["leak", "broken", "emergency"]
+  
+  // ✅ Human Override & Review
+  humanOverride: boolean("human_override").default(false), // True if human changed AI decisions
+  overrideReason: text("override_reason"), // Why human overrode AI
+  reviewedBy: varchar("reviewed_by").references(() => users.id), // Who reviewed/overrode
+  reviewedAt: timestamp("reviewed_at"),
+  
+  // ✅ Financial & Timeline AI Predictions
+  aiEstimatedCost: decimal("ai_estimated_cost", { precision: 10, scale: 2 }), // AI cost prediction
+  aiEstimatedHours: decimal("ai_estimated_hours", { precision: 4, scale: 1 }), // AI time prediction
+  aiComplexityScore: decimal("ai_complexity_score", { precision: 3, scale: 2 }), // Complexity (0.00-1.00)
+  
+  // ✅ Traditional Fields
   estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
   actualCost: decimal("actual_cost", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
