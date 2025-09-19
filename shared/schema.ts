@@ -60,7 +60,6 @@ export const assetTypeEnum = pgEnum("asset_type", ["building", "improvement", "e
 
 // Enhanced Enums for Contractor-First Scheduling
 export const schedulingModeEnum = pgEnum("scheduling_mode", ["contractor_first", "mutual_availability"]);
-export const contractorAvailabilityEnum = pgEnum("contractor_availability", ["available", "busy", "unavailable"]);
 
 // Organizations (moved here to resolve enum dependency)
 export const organizations = pgTable("organizations", {
@@ -395,7 +394,7 @@ export const caseEvents = pgTable("case_events", {
 });
 
 // Contractor availability patterns
-export const availabilityPatternEnum = pgEnum("availability_pattern", ["weekdays", "weekends", "24_7", "emergency_only", "custom"]);
+// Note: availabilityPatternEnum removed - was unused and causing migration conflicts
 export const prioritySchedulingEnum = pgEnum("priority_scheduling", ["standard", "priority", "emergency"]);
 
 // Vendors (Contractors for MIT)
@@ -415,7 +414,7 @@ export const vendors = pgTable("vendors", {
   w9OnFile: boolean("w9_on_file").default(false),
   taxExempt: boolean("tax_exempt").default(false),
   // MIT Contractor Scheduling Fields
-  availabilityPattern: availabilityPatternEnum("availability_pattern").default("weekdays"),
+  availabilityPattern: varchar("availability_pattern").default("weekdays"),
   availableStartTime: varchar("available_start_time").default("09:00"), // HH:MM format
   availableEndTime: varchar("available_end_time").default("17:00"), // HH:MM format
   availableDays: text("available_days").array().default(sql`ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday']`), // Days of week
