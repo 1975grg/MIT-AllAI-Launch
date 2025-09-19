@@ -24,6 +24,7 @@ import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { aiTriageService } from "./aiTriage";
 import { aiCoordinatorService } from "./aiCoordinator";
+import { dataAuditService } from "./dataAudit";
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
@@ -2235,6 +2236,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Failed to submit maintenance request. Please try again."
         });
       }
+    }
+  });
+
+  // Data audit routes (Phase 2 security implementation)
+  app.get('/api/audit/appointments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Run comprehensive data audit
+      const auditResult = await dataAuditService.auditAppointmentData();
+      
+      // Generate detailed report
+      const report = dataAuditService.generateAuditReport(auditResult);
+      
+      console.log("📊 Data audit completed for org:", user.orgId);
+      console.log(report);
+      
+      res.json({
+        success: true,
+        audit: auditResult,
+        report: report,
+        timestamp: new Date().toISOString(),
+        auditor: user.email,
+      });
+    } catch (error) {
+      console.error("❌ Data audit failed:", error);
+      res.status(500).json({
+        success: false,
+        error: "Data audit failed",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   });
 
