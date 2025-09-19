@@ -2193,17 +2193,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return mitOrgPromise;
   };
 
-  // ✅ Mailla AI Triage Agent endpoints (public for students)
-  app.post('/api/mailla/start-triage', publicRateLimit, async (req: any, res) => {
+  // ✅ Mailla AI Triage Agent endpoints (authentication required for security)
+  app.post('/api/mailla/start-triage', isAuthenticated, publicRateLimit, async (req: any, res) => {
     try {
-      // ✅ Strict validation with Zod
-      const validatedInput = startTriageSchema.parse(req.body);
+      // ✅ Derive identity from authenticated session (security-critical)
+      const studentId = req.user?.claims?.sub;
+      if (!studentId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      // Get user's organization from storage
+      const userOrg = await storage.getUserOrganization(studentId);
+      if (!userOrg) {
+        return res.status(403).json({ error: 'User organization not found' });
+      }
+      const orgId = userOrg.id;
+
+      // ✅ Validate only the request content, not identity
+      const { initialRequest } = req.body;
+      if (!initialRequest || typeof initialRequest !== 'string' || initialRequest.length < 10) {
+        return res.status(400).json({ error: 'Invalid initial request - must be at least 10 characters' });
+      }
       
       const { maillaAIService } = await import('./maillaAIService');
       const response = await maillaAIService.startTriageConversation(
-        validatedInput.studentId, 
-        validatedInput.orgId, 
-        validatedInput.initialRequest
+        studentId, 
+        orgId, 
+        initialRequest
       );
       
       res.json(response);
@@ -2216,16 +2232,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/mailla/continue-triage', publicRateLimit, async (req: any, res) => {
+  app.post('/api/mailla/continue-triage', isAuthenticated, publicRateLimit, async (req: any, res) => {
     try {
-      // ✅ Fix API parameter mismatch - service expects object format
-      const validatedInput = continueTriageSchema.parse(req.body);
+      // ✅ Validate user owns this conversation (security-critical)
+      const { conversationId, studentMessage, mediaUrls } = req.body;
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      // Verify conversation ownership
+      const conversation = await storage.getTriageConversation(conversationId);
+      if (!conversation || conversation.studentId !== userId) {
+        return res.status(403).json({ error: 'Access denied to this conversation' });
+      }
       
       const { maillaAIService } = await import('./maillaAIService');
       const response = await maillaAIService.continueTriageConversation({
-        conversationId: validatedInput.conversationId,
-        studentMessage: validatedInput.studentMessage,
-        mediaUrls: validatedInput.mediaUrls
+        conversationId,
+        studentMessage,
+        mediaUrls: mediaUrls || []
       });
       
       res.json(response);
@@ -2238,13 +2265,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/mailla/complete-triage', publicRateLimit, async (req: any, res) => {
+  app.post('/api/mailla/complete-triage', isAuthenticated, publicRateLimit, async (req: any, res) => {
     try {
-      // ✅ Strict validation with Zod
-      const validatedInput = completeTriageSchema.parse(req.body);
+      // ✅ Validate user owns this conversation (security-critical)
+      const { conversationId } = req.body;
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      // Verify conversation ownership
+      const conversation = await storage.getTriageConversation(conversationId);
+      if (!conversation || conversation.studentId !== userId) {
+        return res.status(403).json({ error: 'Access denied to this conversation' });
+      }
       
       const { maillaAIService } = await import('./maillaAIService');
-      const response = await maillaAIService.completeTriageConversation(validatedInput.conversationId);
+      const response = await maillaAIService.completeTriageConversation(conversationId);
       
       res.json(response);
     } catch (error) {

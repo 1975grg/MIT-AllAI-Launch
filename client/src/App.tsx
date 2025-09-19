@@ -10,6 +10,7 @@ import { RolePreviewProvider } from "@/contexts/RolePreviewContext";
 import Landing from "@/pages/landing";
 import StudentRequest from "@/pages/student-request";
 import StudentTracking from "@/pages/student-tracking";
+import StudentMaillaTriagePage from "@/pages/student-mailla-triage";
 import Dashboard from "@/pages/dashboard";
 import Properties from "@/pages/properties";
 import Entities from "@/pages/entities";
@@ -45,6 +46,7 @@ function Router() {
       {/* Public routes accessible to everyone */}
       <Route path="/student-request" component={StudentRequest} />
       <Route path="/student-tracking" component={StudentTracking} />
+      <Route path="/student-mailla-triage" component={StudentMaillaTriagePage} />
       
       {!isAuthenticated ? (
         <>
