@@ -248,19 +248,26 @@ export class AISchedulingOrchestrator {
     
     if (isBlackedOut) return slots;
 
-    // Generate hourly slots within availability window
-    const startHour = parseInt(dayAvailability.startTime.split(':')[0]);
-    const endHour = parseInt(dayAvailability.endTime.split(':')[0]);
+    // Parse availability times with minute precision
+    const [startHour, startMinute] = dayAvailability.startTime.split(':').map(Number);
+    const [endHour, endMinute] = dayAvailability.endTime.split(':').map(Number);
 
     // Parse duration estimate (e.g., "2-4 hours" -> 3 hours average)
     const estimatedHours = this.parseDurationEstimate(request.estimatedDuration);
+    const estimatedMinutes = estimatedHours * 60;
+    const bufferMinutes = 15; // 15-minute buffer between appointments
 
-    for (let hour = startHour; hour < endHour - estimatedHours + 1; hour++) {
+    // Generate 30-minute slots within availability window
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    const slotInterval = 30; // 30-minute intervals
+
+    for (let minute = startMinutes; minute <= endMinutes - estimatedMinutes - bufferMinutes; minute += slotInterval) {
       const slotStart = new Date(date);
-      slotStart.setHours(hour, 0, 0, 0);
+      slotStart.setHours(Math.floor(minute / 60), minute % 60, 0, 0);
       
       const slotEnd = new Date(slotStart);
-      slotEnd.setHours(hour + estimatedHours);
+      slotEnd.setMinutes(slotEnd.getMinutes() + estimatedMinutes);
 
       // Check for conflicts with existing appointments
       const conflicts = appointments.filter(apt => {
@@ -325,6 +332,14 @@ export class AISchedulingOrchestrator {
 
       // Factor 3: Response time
       confidence *= Math.max(0.3, 1.0 - (slot.responseTimeHours - 1) / 48);
+
+      // Factor 3.5: Travel time penalty (default 15 minutes between jobs)
+      const defaultTravelMinutes = 15;
+      if (slot.conflictingAppointments === 0) {
+        confidence *= 1.1; // Bonus for no conflicts
+      } else {
+        confidence *= Math.max(0.7, 1.0 - (slot.conflictingAppointments * 0.1));
+      }
 
       // Factor 4: Preferred time slots
       if (request.preferredTimeSlots) {

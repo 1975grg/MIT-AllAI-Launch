@@ -4986,6 +4986,112 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     }
   });
 
+  // =================== TENANT APPROVAL WORKFLOW ===================
+
+  // Public approval endpoint (no authentication required - uses signed token)
+  app.get('/api/approvals/:token', async (req: any, res) => {
+    try {
+      const { token } = req.params;
+      const { action } = req.query;
+
+      if (!token) {
+        return res.status(400).json({ message: "Approval token required" });
+      }
+
+      // Import approval service
+      const { TenantApprovalService } = await import("./tenantApprovalService.js");
+      const approvalService = new TenantApprovalService(storage);
+
+      // Verify token and get appointment details
+      const payload = await approvalService.verifyApprovalToken(token);
+      const appointment = await storage.getAppointment(payload.appointmentId);
+      const contractor = appointment?.contractorId ? await storage.getVendor(appointment.contractorId) : null;
+
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Handle direct approve/decline actions
+      if (action === 'approve' || action === 'decline') {
+        const approved = action === 'approve';
+        const approvalStatus = await approvalService.processApprovalResponse(token, approved);
+        
+        // Return success page or redirect
+        return res.json({
+          success: true,
+          message: `Appointment ${approved ? 'approved' : 'declined'} successfully`,
+          appointment: {
+            id: appointment.id,
+            title: appointment.title,
+            scheduledStartAt: appointment.scheduledStartAt,
+            contractor: contractor ? { name: contractor.name, phone: contractor.phone } : null
+          },
+          status: approvalStatus
+        });
+      }
+
+      // Return approval form data for frontend
+      res.json({
+        valid: true,
+        appointment: {
+          id: appointment.id,
+          title: appointment.title,
+          description: appointment.description,
+          scheduledStartAt: appointment.scheduledStartAt,
+          scheduledEndAt: appointment.scheduledEndAt,
+          contractor: contractor ? {
+            name: contractor.name,
+            phone: contractor.phone,
+            email: contractor.email
+          } : null
+        },
+        expiresAt: new Date(payload.expiresAt).toISOString()
+      });
+
+    } catch (error) {
+      console.error('Approval token verification error:', error);
+      res.status(400).json({ 
+        valid: false,
+        message: error instanceof Error ? error.message : 'Invalid approval token'
+      });
+    }
+  });
+
+  // Approval response endpoint  
+  app.post('/api/approvals/:token/respond', async (req: any, res) => {
+    try {
+      const { token } = req.params;
+      const { approved, reason, preferredTimeSlot, contactPreference } = req.body;
+
+      if (typeof approved !== 'boolean') {
+        return res.status(400).json({ message: "Approval decision required" });
+      }
+
+      // Import approval service
+      const { TenantApprovalService } = await import("./tenantApprovalService.js");
+      const approvalService = new TenantApprovalService(storage);
+
+      const approvalStatus = await approvalService.processApprovalResponse(token, approved, {
+        reason,
+        preferredTimeSlot,
+        contactPreference
+      });
+
+      res.json({
+        success: true,
+        status: approvalStatus,
+        message: `Appointment ${approved ? 'approved' : 'declined'} successfully`
+      });
+
+    } catch (error) {
+      console.error('Approval response error:', error);
+      res.status(400).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to process approval response'
+      });
+    }
+  });
+
   // Smart appointment creation from scheduling recommendations
   app.post('/api/appointments/from-recommendation', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
