@@ -92,26 +92,26 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
         conversationId: data.conversationId,
         studentId,
         orgId,
-        currentPhase: data.currentPhase || 'gathering_info',
-        urgencyLevel: data.urgencyLevel || 'normal',
-        safetyFlags: data.safetyFlags || [],
+        currentPhase: 'gathering_info',
+        urgencyLevel: data.maillaResponse.urgencyLevel || 'normal',
+        safetyFlags: data.maillaResponse.safetyFlags || [],
         isComplete: false
       });
 
-      setCurrentUrgency(data.urgencyLevel || 'normal');
-      setSafetyFlags(data.safetyFlags || []);
+      setCurrentUrgency(data.maillaResponse.urgencyLevel || 'normal');
+      setSafetyFlags(data.maillaResponse.safetyFlags || []);
 
       // Add Mailla's response as a message
       const maillaMessage: MaillaMessage = {
         id: `mailla-${Date.now()}`,
         type: "mailla",
-        content: data.message,
+        content: data.maillaResponse.message,
         timestamp: new Date(),
-        urgencyLevel: data.urgencyLevel,
-        safetyFlags: data.safetyFlags,
-        nextAction: data.nextAction,
-        followupQuestions: data.followupQuestions,
-        diyAction: data.diyAction
+        urgencyLevel: data.maillaResponse.urgencyLevel,
+        safetyFlags: data.maillaResponse.safetyFlags,
+        nextAction: data.maillaResponse.nextAction,
+        followupQuestions: data.maillaResponse.followupQuestions,
+        diyAction: data.maillaResponse.diyAction
       };
 
       setMessages(prev => [...prev, maillaMessage]);
