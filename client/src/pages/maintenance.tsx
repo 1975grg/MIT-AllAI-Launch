@@ -19,7 +19,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, Bell, GraduationCap, Grid3X3, List, Map, Columns3, Edit, MapPin } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, Clock, CheckCircle, XCircle, Trash2, Bell, GraduationCap, Grid3X3, List, Map as MapIcon, Columns3, Edit, MapPin } from "lucide-react";
 import ReminderForm from "@/components/forms/reminder-form";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 import PropertyAssistant from "@/components/ai/property-assistant";
@@ -469,8 +469,23 @@ export default function Maintenance() {
       );
     }
 
-    // Render based on selected view mode
-    switch (smartCasesViewMode) {
+    // Temporarily simplified for debugging
+    return (
+      <div className="grid grid-cols-1 gap-6">
+        {filteredCases.map((smartCase, index) => (
+          <Card key={smartCase.id} className="hover:shadow-md transition-shadow" data-testid={`card-case-${index}`}>
+            <CardHeader>
+              <CardTitle>{smartCase.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>{smartCase.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+    
+    /*switch (smartCasesViewMode) {
       case 'cards':
         return (
           <div className="grid grid-cols-1 gap-6">
@@ -531,11 +546,11 @@ export default function Maintenance() {
 
                   <div className="flex items-center justify-between">
                     <Select
-                      value={smartCase.status}
-                      onValueChange={(value: SmartCase["status"]) => {
+                      value={smartCase.status || 'New'}
+                      onValueChange={(value) => {
                         updateCaseStatusMutation.mutate({
                           id: smartCase.id,
-                          status: value,
+                          status: value as SmartCase["status"],
                         });
                       }}
                     >
@@ -638,11 +653,11 @@ export default function Maintenance() {
                       </td>
                       <td className="p-4" data-testid={`cell-status-${index}`}>
                         <Select
-                          value={smartCase.status}
-                          onValueChange={(value: SmartCase["status"]) => {
+                          value={smartCase.status || 'New'}
+                          onValueChange={(value) => {
                             updateCaseStatusMutation.mutate({
                               id: smartCase.id,
-                              status: value,
+                              status: value as SmartCase["status"],
                             });
                           }}
                         >
@@ -712,9 +727,9 @@ export default function Maintenance() {
           </div>
         );
 
-      case 'heatmap':
+      // case 'heatmap':
         const propertyStats = (() => {
-          const stats = new Map();
+          const stats = new globalThis.Map<string, { count: number; highestPriority: string }>();
           filteredCases.forEach(smartCase => {
             const propertyId = smartCase.propertyId || 'unassigned';
             if (!stats.has(propertyId)) {
@@ -769,7 +784,7 @@ export default function Maintenance() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {Array.from(propertyStats.entries()).map(([propertyId, stats], index) => {
+              {Array.from(propertyStats.entries()).map(([propertyId, stats]: [string, any], index) => {
                 const property = properties?.find(p => p.id === propertyId);
                 const propertyName = propertyId === 'unassigned' 
                   ? 'Unassigned Property' 
@@ -824,7 +839,7 @@ export default function Maintenance() {
           </div>
         );
 
-      case 'kanban':
+      // case 'kanban':
         const COLUMNS = ['New', 'In Review', 'Scheduled', 'In Progress', 'On Hold', 'Resolved', 'Closed'];
         
         const groupedCases = (() => {
@@ -1211,7 +1226,6 @@ export default function Maintenance() {
                   <SelectItem value="Closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
-                </div>
               </div>
 
               {/* Smart Cases View Toggle */}
@@ -1353,12 +1367,7 @@ export default function Maintenance() {
                       />
 
                       {/* Unit Selection - only show if property is selected and is a building with multiple units */}
-                      {(() => {
-                        const selectedPropertyForForm = properties?.find(p => p.id === selectedPropertyId);
-                        const selectedPropertyUnitsForForm = units.filter(unit => unit.propertyId === selectedPropertyId);
-                        const isBuildingForm = selectedPropertyId && selectedPropertyUnitsForForm.length > 1;
-                        
-                        return isBuildingForm && (
+                      {selectedPropertyId && selectedPropertyUnits.length > 1 && (
                         <FormField
                           control={form.control}
                           name="unitId"
@@ -1377,7 +1386,7 @@ export default function Maintenance() {
                                   />
                                   <span className="text-sm">Common Area</span>
                                 </label>
-                                {selectedPropertyUnitsForForm.map((unit) => (
+                                {selectedPropertyUnits.map((unit) => (
                                   <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
                                     <input
                                       type="radio"
@@ -1395,8 +1404,7 @@ export default function Maintenance() {
                             </FormItem>
                           )}
                         />
-                        );
-                      })()}
+                      )}
 
                       <FormField
                         control={form.control}
