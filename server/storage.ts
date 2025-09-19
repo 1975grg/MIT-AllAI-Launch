@@ -127,7 +127,9 @@ export interface IStorage {
   
   // Vendor operations
   getVendors(orgId: string): Promise<Vendor[]>;
+  getVendor(id: string): Promise<Vendor | undefined>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
+  updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor>;
   
   // Transaction operations
   getTransactions(orgId: string, type?: "Income" | "Expense"): Promise<Transaction[]>;
@@ -1442,6 +1444,26 @@ export class DatabaseStorage implements IStorage {
   async createVendor(vendor: InsertVendor): Promise<Vendor> {
     const [newVendor] = await db.insert(vendors).values(vendor).returning();
     return newVendor;
+  }
+
+  async getVendor(id: string): Promise<Vendor | undefined> {
+    const result = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.id, id))
+      .limit(1);
+    
+    return result[0];
+  }
+
+  async updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor> {
+    const [updatedVendor] = await db
+      .update(vendors)
+      .set(vendor)
+      .where(eq(vendors.id, id))
+      .returning();
+    
+    return updatedVendor;
   }
 
   // Transaction operations
