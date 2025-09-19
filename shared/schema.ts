@@ -396,30 +396,27 @@ export const appointmentStatusEnum = pgEnum("appointment_status", ["Pending", "C
 export const appointments = pgTable("appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orgId: varchar("org_id").notNull().references(() => organizations.id), // Multi-tenant security
-  caseId: varchar("case_id").notNull().references(() => smartCases.id),
+  caseId: varchar("case_id").references(() => smartCases.id), // Nullable to match database
   contractorId: varchar("contractor_id").notNull().references(() => vendors.id),
+  title: varchar("title").notNull(), // Required title field
+  description: text("description"), // Optional description
   scheduledStartAt: timestamp("scheduled_start_at", { withTimezone: true }).notNull(), // Timezone-aware
   scheduledEndAt: timestamp("scheduled_end_at", { withTimezone: true }).notNull(), // Timezone-aware
-  estimatedDurationMinutes: integer("estimated_duration_minutes").default(120), // Default 2 hours
-  actualStartTime: timestamp("actual_start_time", { withTimezone: true }),
-  actualEndTime: timestamp("actual_end_time", { withTimezone: true }),
+  actualStartAt: timestamp("actual_start_at", { withTimezone: true }), // Match database column name
+  actualEndAt: timestamp("actual_end_at", { withTimezone: true }), // Match database column name
   status: appointmentStatusEnum("status").default("Pending"),
-  studentNotified: boolean("student_notified").default(false),
-  contractorNotified: boolean("contractor_notified").default(false),
-  aiSchedulingJson: jsonb("ai_scheduling_json"), // AI reasoning for scheduling decision
+  priority: varchar("priority").notNull().default("Medium"), // Priority field with default
+  estimatedDurationMinutes: integer("estimated_duration_minutes"), // Optional estimated duration
   notes: text("notes"),
-  cancellationReason: text("cancellation_reason"),
-  rescheduledFromId: varchar("rescheduled_from_id").references(() => appointments.id), // If rescheduled
-  conflictResolutionJson: jsonb("conflict_resolution_json"), // How conflicts were resolved
+  locationDetails: text("location_details"), // Location details for appointment
+  isEmergency: boolean("is_emergency").notNull().default(false), // Emergency flag
+  requiresTenantAccess: boolean("requires_tenant_access").notNull().default(false), // Tenant access required
+  requiresSpecialEquipment: boolean("requires_special_equipment").notNull().default(false), // Special equipment required
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  // Indexes for performance
-  orgIdIdx: index("appointments_org_id_idx").on(table.orgId),
-  caseIdIdx: index("appointments_case_id_idx").on(table.caseId),
-  contractorIdIdx: index("appointments_contractor_id_idx").on(table.contractorId),
-  scheduledTimeIdx: index("appointments_scheduled_time_idx").on(table.scheduledStartAt),
-  contractorScheduleIdx: index("appointments_contractor_schedule_idx").on(table.contractorId, table.scheduledStartAt),
+  // Updated indexes to match our manually created ones - removed index definitions 
+  // since they are created manually via SQL for better control
 }));
 
 // CAM Categories
