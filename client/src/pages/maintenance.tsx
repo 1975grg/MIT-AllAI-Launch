@@ -1,20 +1,30 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Sidebar } from "@/components/sidebar";
+import { Header } from "@/components/header";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from "@/components/ui/form";
 import { Calendar } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,384 +34,231 @@ import ReminderForm from "@/components/forms/reminder-form";
 import type { SmartCase, Property, OwnershipEntity, Unit } from "@shared/schema";
 import PropertyAssistant from "@/components/ai/property-assistant";
 import EnhancedChatInterface from "@/components/maintenance/enhanced-chat-interface";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-// Student Housing Maintenance Categories
 const MAINTENANCE_CATEGORIES = [
-  "HVAC / Heating & Cooling",
-  "Plumbing (Water, Drains, Sewer)", 
-  "Electrical & Lighting",
-  "Dormitory Appliances (Kitchen, Laundry, etc.)",
-  "Building Structure / Exterior",
-  "Pest & Odor Issues",
-  "Safety & Security (locks, alarms, smoke detectors, room access)",
-  "Room Interior (walls, ceilings, flooring, paint, furniture)",
-  "Common Areas (lounges, study rooms, bathrooms)",
-  "Campus Grounds / Landscaping",
-  "Network/Internet Connectivity",
-  "Student Life / Accessibility",
-  "Emergency Response",
-  "Other / Miscellaneous"
+  "Plumbing", "Electrical", "HVAC", "Appliances", "Flooring", "Walls/Paint", 
+  "Windows/Doors", "Roofing", "Exterior", "Cleaning", "Pest Control", "Safety/Security", "Other"
 ];
 
-const createCaseSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  propertyId: z.string().optional(),
-  unitId: z.string().optional(),
-  priority: z.enum(["Low", "Medium", "High", "Urgent"]).default("Medium"),
-  category: z.string().optional(),
-  createReminder: z.boolean().default(false),
-});
-
-export default function Maintenance() {
+export default function MaintenancePage() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
+  const queryClient = useQueryClient();
+
+  // State for different views and filters
+  const [viewMode, setViewMode] = useState<"student" | "admin">("admin");
+  const [smartCasesViewMode, setSmartCasesViewMode] = useState<"cards" | "list" | "heatmap" | "kanban">("cards");
   const [showCaseForm, setShowCaseForm] = useState(false);
   const [editingCase, setEditingCase] = useState<SmartCase | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [entityFilter, setEntityFilter] = useState<string>("all");
-  const [propertyFilter, setPropertyFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [unitFilter, setUnitFilter] = useState<string[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [entityFilter, setEntityFilter] = useState("all");
+  const [propertyFilter, setPropertyFilter] = useState("all");
+  const [unitFilter, setUnitFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+
+  // Reminder states
   const [showReminderForm, setShowReminderForm] = useState(false);
-  const [reminderCaseContext, setReminderCaseContext] = useState<{caseId: string; caseTitle: string} | null>(null);
-  const [viewMode, setViewMode] = useState<"admin" | "student">("admin");
-  const [smartCasesViewMode, setSmartCasesViewMode] = useState<"cards" | "list" | "heatmap" | "kanban">("cards");
+  const [reminderCaseContext, setReminderCaseContext] = useState<{ caseId: string; caseTitle: string } | null>(null);
 
+  // Form setup
+  const form = useForm({
+    resolver: zodResolver(z.object({
+      title: z.string().min(1, "Title is required"),
+      description: z.string().optional(),
+      propertyId: z.string().min(1, "Property is required"),
+      unitId: z.string().optional(),
+      priority: z.enum(["Low", "Medium", "High", "Urgent"]),
+      category: z.string().min(1, "Category is required"),
+      createReminder: z.boolean().optional(),
+    })),
+    defaultValues: {
+      title: "",
+      description: "",
+      propertyId: "",
+      unitId: "",
+      priority: "Medium" as const,
+      category: "",
+      createReminder: false,
+    },
+  });
+
+  // Reset selectedPropertyId when starting to create a new case
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
+    if (!editingCase && showCaseForm) {
+      setSelectedPropertyId("");
+      form.setValue("unitId", "");
     }
-  }, [isAuthenticated, isLoading, toast]);
+  }, [showCaseForm, editingCase, form]);
 
-  const { data: smartCases, isLoading: casesLoading, error } = useQuery<SmartCase[]>({
-    queryKey: ["/api/cases"],
-    retry: false,
-  });
-
-  const { data: properties } = useQuery<Property[]>({
-    queryKey: ["/api/properties"],
-    retry: false,
-  });
-
-  const { data: units = [] } = useQuery<Unit[]>({
-    queryKey: ["/api/units"],
-    retry: false,
-  });
-
-  const { data: entities = [] } = useQuery<OwnershipEntity[]>({
-    queryKey: ["/api/entities"],
-    retry: false,
-  });
-
-  const selectedProperty = properties?.find(p => p.id === selectedPropertyId);
-  const selectedPropertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
-  const isBuilding = selectedProperty?.type === "Commercial Building" || selectedProperty?.type === "Residential Building";
-  const isMultiUnit = selectedPropertyUnits.length > 1;
-  
   // Update selectedPropertyId when editing a case
   useEffect(() => {
-    if (editingCase?.propertyId) {
+    if (editingCase && editingCase.propertyId) {
       setSelectedPropertyId(editingCase.propertyId);
-    } else {
-      setSelectedPropertyId("");
     }
   }, [editingCase]);
 
-  // Mutation for creating reminders
-  const createReminderMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/reminders", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
-      setShowReminderForm(false);
-      setReminderCaseContext(null);
-      toast({
-        title: "Success",
-        description: "Reminder created successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create reminder",
-        variant: "destructive",
-      });
-    },
+  // Data fetching
+  const { data: smartCases, isLoading: casesLoading } = useQuery({
+    queryKey: ["/api/smart-cases"],
   });
 
-  // Handle reminder form submission
-  const handleReminderSubmit = (data: any) => {
-    const reminderData = {
-      ...data,
-      type: "maintenance",
-      scope: "asset", 
-      scopeId: reminderCaseContext?.caseId,
-      payloadJson: {
-        caseId: reminderCaseContext?.caseId,
-        caseTitle: reminderCaseContext?.caseTitle
-      }
-    };
-    createReminderMutation.mutate(reminderData);
-  };
-
-  const form = useForm<z.infer<typeof createCaseSchema>>({
-    resolver: zodResolver(createCaseSchema),
-    defaultValues: editingCase ? {
-      title: editingCase.title || "",
-      description: editingCase.description || "",
-      propertyId: editingCase.propertyId || "",
-      unitId: editingCase.unitId || "",
-      priority: editingCase.priority || "Medium",
-      category: editingCase.category || "",
-      createReminder: false,
-    } : {
-      title: "",
-      description: "",
-      priority: "Medium",
-      createReminder: false,
-    },
+  const { data: properties } = useQuery({
+    queryKey: ["/api/properties"],
   });
 
+  const { data: entities } = useQuery({
+    queryKey: ["/api/entities"],
+  });
+
+  const { data: units } = useQuery({
+    queryKey: ["/api/units"],
+  });
+
+  // Mutations
   const createCaseMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof createCaseSchema>) => {
-      const response = await apiRequest("POST", "/api/cases", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
-      setShowCaseForm(false);
-      setEditingCase(null);
-      form.reset();
-      toast({
-        title: "Success",
-        description: "Maintenance case created successfully",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
+    mutationFn: (data: any) => fetch("/api/smart-cases", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).then(res => res.json()),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/smart-cases"] });
+      toast({ title: "Success", description: "Maintenance case created successfully!" });
+      
+      // Handle reminder creation if requested
+      if (form.getValues("createReminder")) {
+        setReminderCaseContext({
+          caseId: data.id,
+          caseTitle: data.title
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
+        setShowReminderForm(true);
       }
-      toast({
-        title: "Error",
-        description: "Failed to create maintenance case",
-        variant: "destructive",
-      });
+      
+      handleCloseForm();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create maintenance case", variant: "destructive" });
     },
   });
 
   const updateCaseMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: z.infer<typeof createCaseSchema> }) => {
-      const response = await apiRequest("PATCH", `/api/cases/${id}`, data);
-      return response.json();
-    },
+    mutationFn: ({ id, ...data }: any) => fetch(`/api/smart-cases/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).then(res => res.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
-      setShowCaseForm(false);
-      setEditingCase(null);
-      form.reset();
-      toast({
-        title: "Success",
-        description: "Maintenance case updated successfully",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/smart-cases"] });
+      toast({ title: "Success", description: "Maintenance case updated successfully!" });
+      handleCloseForm();
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to update maintenance case",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update maintenance case", variant: "destructive" });
     },
   });
 
   const updateCaseStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const response = await apiRequest("PATCH", `/api/cases/${id}`, { status });
-      return response.json();
-    },
+    mutationFn: ({ id, status }: { id: string; status: string }) => 
+      fetch(`/api/smart-cases/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      }).then(res => res.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
-      toast({
-        title: "Success",
-        description: "Case status updated successfully",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/smart-cases"] });
+      toast({ title: "Success", description: "Case status updated!" });
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to update case status",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update case status", variant: "destructive" });
     },
   });
 
   const deleteCaseMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/cases/${id}`);
-      return response;
-    },
+    mutationFn: (id: string) => fetch(`/api/smart-cases/${id}`, { method: "DELETE" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
-      toast({
-        title: "Success", 
-        description: "Case deleted successfully",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/smart-cases"] });
+      toast({ title: "Success", description: "Maintenance case deleted!" });
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to delete case",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete maintenance case", variant: "destructive" });
     },
   });
 
-  if (isLoading || !isAuthenticated) {
-    return null;
-  }
+  const createReminderMutation = useMutation({
+    mutationFn: (data: any) => fetch("/api/reminders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+      toast({ title: "Success", description: "Reminder created successfully!" });
+      setShowReminderForm(false);
+      setReminderCaseContext(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create reminder", variant: "destructive" });
+    },
+  });
 
-  if (error && isUnauthorizedError(error as Error)) {
-    return null;
-  }
-
+  // Helper functions
   const getStatusIcon = (status: string | null) => {
-    // Keep icon color neutral and visible
-    const iconColor = "text-gray-700";
-    
     switch (status) {
-      case "New": return <AlertTriangle className={`h-4 w-4 ${iconColor}`} />;
-      case "In Review": return <Clock className={`h-4 w-4 ${iconColor}`} />;
-      case "Scheduled": return <Clock className={`h-4 w-4 ${iconColor}`} />;
-      case "In Progress": return <Wrench className={`h-4 w-4 ${iconColor}`} />;
-      case "On Hold": return <XCircle className={`h-4 w-4 ${iconColor}`} />;
-      case "Resolved": return <CheckCircle className={`h-4 w-4 ${iconColor}`} />;
-      case "Closed": return <CheckCircle className={`h-4 w-4 ${iconColor}`} />;
-      default: return <Clock className={`h-4 w-4 ${iconColor}`} />;
+      case "New": return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      case "In Progress": return <Clock className="h-4 w-4 text-blue-600" />;
+      case "Resolved": return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "Closed": return <XCircle className="h-4 w-4 text-gray-600" />;
+      default: return <Clock className="h-4 w-4 text-gray-600" />;
     }
   };
 
   const getPriorityCircleColor = (priority: string | null) => {
     switch (priority) {
-      case "Urgent": return "bg-red-100";
-      case "High": return "bg-orange-100";
-      case "Medium": return "bg-yellow-100";
-      case "Low": return "bg-gray-100";
-      default: return "bg-gray-50";
+      case "Urgent": return "bg-red-100 text-red-800";
+      case "High": return "bg-orange-100 text-orange-800";
+      case "Medium": return "bg-yellow-100 text-yellow-800";
+      case "Low": return "bg-green-100 text-green-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
-      case "New": return <Badge className="bg-blue-100 text-blue-800">New</Badge>;
-      case "In Progress": return <Badge className="bg-yellow-100 text-yellow-800">In Progress</Badge>;
-      case "Resolved": return <Badge className="bg-green-100 text-green-800">Resolved</Badge>;
-      case "Closed": return <Badge className="bg-green-100 text-green-800">Closed</Badge>;
+      case "New": return <Badge variant="destructive">{status}</Badge>;
+      case "In Progress": return <Badge variant="default">{status}</Badge>;
+      case "Resolved": return <Badge variant="secondary" className="bg-green-100 text-green-800">{status}</Badge>;
+      case "Closed": return <Badge variant="outline">{status}</Badge>;
       default: return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
-      case "Urgent": return <Badge className="bg-red-100 text-red-800">Urgent</Badge>;
-      case "High": return <Badge className="bg-orange-100 text-orange-800">High</Badge>;
-      case "Medium": return <Badge className="bg-yellow-100 text-yellow-800">Medium</Badge>;
-      case "Low": return <Badge className="bg-gray-100 text-gray-800">Low</Badge>;
+      case "Urgent": return <Badge variant="destructive">{priority}</Badge>;
+      case "High": return <Badge variant="destructive" className="bg-orange-100 text-orange-800">{priority}</Badge>;
+      case "Medium": return <Badge variant="default">{priority}</Badge>;
+      case "Low": return <Badge variant="outline">{priority}</Badge>;
       default: return <Badge variant="secondary">{priority}</Badge>;
     }
   };
 
-  const filteredProperties = properties || [];
-  
-  const filteredCases = smartCases?.filter(smartCase => {
-    const statusMatch = statusFilter === "all" || smartCase.status === statusFilter;
-    const propertyMatch = propertyFilter === "all" || smartCase.propertyId === propertyFilter;
-    const categoryMatch = categoryFilter === "all" || smartCase.category === categoryFilter;
-    const unitMatch = unitFilter.length === 0 || (smartCase.unitId && unitFilter.includes(smartCase.unitId)) || (unitFilter.includes("common") && !smartCase.unitId);
-    // Note: SmartCase doesn't have entityId directly, but we can filter by property's entity relationship if needed
-    return statusMatch && propertyMatch && categoryMatch && unitMatch;
-  }) || [];
-
-
-  const onSubmit = async (data: z.infer<typeof createCaseSchema>) => {
-    const { createReminder, ...caseData } = data;
-    
+  // Event handlers
+  const handleSubmit = (data: any) => {
     if (editingCase) {
-      updateCaseMutation.mutate({ id: editingCase.id, data: { ...caseData, createReminder: false } });
+      updateCaseMutation.mutate({ id: editingCase.id, ...data });
     } else {
-      // Create the case first
-      const response = await apiRequest("POST", "/api/cases", caseData);
-      const newCase = await response.json();
-      
-      // If reminder checkbox is checked, open reminder dialog
-      if (createReminder) {
-        setReminderCaseContext({
-          caseId: newCase.id,
-          caseTitle: caseData.title
-        });
-        setShowReminderForm(true);
-      }
-      
-      // Update UI
-      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
-      setShowCaseForm(false);
-      setEditingCase(null);
-      form.reset();
-      toast({
-        title: "Success",
-        description: "Maintenance case created successfully",
-      });
+      createCaseMutation.mutate(data);
     }
   };
 
@@ -432,6 +289,44 @@ export default function Maintenance() {
       form.reset();
     }
   };
+
+  const handleReminderSubmit = (data: any) => {
+    const reminderData = {
+      ...data,
+      relatedCaseId: reminderCaseContext?.caseId || null,
+    };
+    createReminderMutation.mutate(reminderData);
+  };
+
+  // Filtered data
+  const selectedProperty = properties?.find(p => p.id === selectedPropertyId);
+  const selectedPropertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
+
+  const filteredProperties = entityFilter === "all" 
+    ? properties || []
+    : properties?.filter(p => p.entityId === entityFilter) || [];
+
+  const filteredCases = (smartCases || []).filter((smartCase: SmartCase) => {
+    const matchesSearch = !searchTerm || 
+      smartCase.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      smartCase.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesEntity = entityFilter === "all" || 
+      properties?.find(p => p.id === smartCase.propertyId)?.entityId === entityFilter;
+    
+    const matchesProperty = propertyFilter === "all" || smartCase.propertyId === propertyFilter;
+    
+    const matchesUnit = unitFilter.length === 0 || 
+      (smartCase.unitId && unitFilter.includes(smartCase.unitId)) ||
+      (!smartCase.unitId && unitFilter.includes("common"));
+    
+    const matchesCategory = categoryFilter === "all" || smartCase.category === categoryFilter;
+    const matchesStatus = statusFilter === "all" || smartCase.status === statusFilter;
+    const matchesPriority = priorityFilter === "all" || smartCase.priority === priorityFilter;
+
+    return matchesSearch && matchesEntity && matchesProperty && matchesUnit && 
+           matchesCategory && matchesStatus && matchesPriority;
+  });
 
   // Safe render function to avoid nested ternaries
   const renderSmartCases = () => {
@@ -484,1059 +379,17 @@ export default function Maintenance() {
         ))}
       </div>
     );
-    
-    /*switch (smartCasesViewMode) {
-      case 'cards':
-        return (
-          <div className="grid grid-cols-1 gap-6">
-            {filteredCases.map((smartCase, index) => (
-              <Card key={smartCase.id} className="hover:shadow-md transition-shadow" data-testid={`card-case-${index}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-12 h-12 ${getPriorityCircleColor(smartCase.priority)} rounded-lg flex items-center justify-center`}>
-                        {getStatusIcon(smartCase.status)}
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg" data-testid={`text-case-title-${index}`}>{smartCase.title}</CardTitle>
-                        {smartCase.category && (
-                          <p className="text-sm text-muted-foreground" data-testid={`text-case-category-${index}`}>
-                            {smartCase.category}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {getPriorityBadge(smartCase.priority)}
-                      {getStatusBadge(smartCase.status)}
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  {smartCase.description && (
-                    <p className="text-sm text-muted-foreground mb-4" data-testid={`text-case-description-${index}`}>
-                      {smartCase.description}
-                    </p>
-                  )}
-                  
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                    <div>
-                      <span data-testid={`text-case-created-${index}`}>
-                        Created {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
-                      </span>
-                      {smartCase.propertyId && (
-                        <div className="mt-1">
-                          <span className="text-blue-600 font-medium">Property:</span>
-                          <span className="ml-1" data-testid={`text-case-property-${index}`}>
-                            {(() => {
-                              const property = properties?.find(p => p.id === smartCase.propertyId);
-                              return property ? (property.name || `${property.street}, ${property.city}`) : 'Property';
-                            })()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    {smartCase.estimatedCost && (
-                      <span data-testid={`text-case-cost-${index}`}>
-                        Est. Cost: ${Number(smartCase.estimatedCost).toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Select
-                      value={smartCase.status || 'New'}
-                      onValueChange={(value) => {
-                        updateCaseStatusMutation.mutate({
-                          id: smartCase.id,
-                          status: value as SmartCase["status"],
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="w-40" data-testid={`select-case-status-${index}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="New">New</SelectItem>
-                        <SelectItem value="In Review">In Review</SelectItem>
-                        <SelectItem value="Scheduled">Scheduled</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="On Hold">On Hold</SelectItem>
-                        <SelectItem value="Resolved">Resolved</SelectItem>
-                        <SelectItem value="Closed">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleEditCase(smartCase)}
-                        data-testid={`button-edit-case-${index}`}
-                      >
-                        Edit
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setReminderCaseContext({
-                            caseId: smartCase.id,
-                            caseTitle: smartCase.title
-                          });
-                          setShowReminderForm(true);
-                        }}
-                        data-testid={`button-remind-case-${index}`}
-                      >
-                        <Bell className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          if (confirm("Are you sure you want to delete this case? This action cannot be undone.")) {
-                            deleteCaseMutation.mutate(smartCase.id);
-                          }
-                        }}
-                        data-testid={`button-delete-case-${index}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        );
-
-      case 'list':
-        return (
-          <div className="bg-card rounded-lg border">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="text-left p-4 font-medium">Title</th>
-                    <th className="text-left p-4 font-medium">Property/Unit</th>
-                    <th className="text-left p-4 font-medium">Category</th>
-                    <th className="text-left p-4 font-medium">Priority</th>
-                    <th className="text-left p-4 font-medium">Status</th>
-                    <th className="text-left p-4 font-medium">Created</th>
-                    <th className="text-left p-4 font-medium">Est. Cost</th>
-                    <th className="text-left p-4 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCases.map((smartCase, index) => (
-                    <tr key={smartCase.id} className="border-b hover:bg-muted/25" data-testid={`row-case-${index}`}>
-                      <td className="p-4 text-sm font-medium" data-testid={`cell-title-${index}`}>
-                        {smartCase.title}
-                      </td>
-                      <td className="p-4 text-sm" data-testid={`cell-property-${index}`}>
-                        {smartCase.propertyId ? (() => {
-                          const property = properties?.find(p => p.id === smartCase.propertyId);
-                          const unit = smartCase.unitId ? units?.find(u => u.id === smartCase.unitId) : null;
-                          const propertyName = property ? (property.name || property.street) : 'Unknown';
-                          const unitName = unit?.label;
-                          return unitName ? `${propertyName} / ${unitName}` : propertyName;
-                        })() : 'N/A'}
-                      </td>
-                      <td className="p-4 text-sm" data-testid={`cell-category-${index}`}>
-                        {smartCase.category || 'N/A'}
-                      </td>
-                      <td className="p-4" data-testid={`cell-priority-${index}`}>
-                        {getPriorityBadge(smartCase.priority)}
-                      </td>
-                      <td className="p-4" data-testid={`cell-status-${index}`}>
-                        <Select
-                          value={smartCase.status || 'New'}
-                          onValueChange={(value) => {
-                            updateCaseStatusMutation.mutate({
-                              id: smartCase.id,
-                              status: value as SmartCase["status"],
-                            });
-                          }}
-                        >
-                          <SelectTrigger className="w-32" data-testid={`select-status-${index}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="New">New</SelectItem>
-                            <SelectItem value="In Review">In Review</SelectItem>
-                            <SelectItem value="Scheduled">Scheduled</SelectItem>
-                            <SelectItem value="In Progress">In Progress</SelectItem>
-                            <SelectItem value="On Hold">On Hold</SelectItem>
-                            <SelectItem value="Resolved">Resolved</SelectItem>
-                            <SelectItem value="Closed">Closed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </td>
-                      <td className="p-4 text-sm text-muted-foreground" data-testid={`cell-created-${index}`}>
-                        {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'Unknown'}
-                      </td>
-                      <td className="p-4 text-sm" data-testid={`cell-cost-${index}`}>
-                        {smartCase.estimatedCost ? `$${Number(smartCase.estimatedCost).toLocaleString()}` : 'N/A'}
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-1">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleEditCase(smartCase)}
-                            data-testid={`button-edit-list-${index}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setReminderCaseContext({
-                                caseId: smartCase.id,
-                                caseTitle: smartCase.title
-                              });
-                              setShowReminderForm(true);
-                            }}
-                            data-testid={`button-remind-list-${index}`}
-                          >
-                            <Bell className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this case?")) {
-                                deleteCaseMutation.mutate(smartCase.id);
-                              }
-                            }}
-                            data-testid={`button-delete-list-${index}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-
-      // case 'heatmap':
-        const propertyStats = (() => {
-          const stats = new globalThis.Map<string, { count: number; highestPriority: string }>();
-          filteredCases.forEach(smartCase => {
-            const propertyId = smartCase.propertyId || 'unassigned';
-            if (!stats.has(propertyId)) {
-              stats.set(propertyId, { count: 0, highestPriority: 'Low' });
-            }
-            const current = stats.get(propertyId);
-            current.count += 1;
-            
-            // Determine highest priority
-            const priorities = ['Low', 'Medium', 'High', 'Critical'];
-            const currentPriorityIndex = priorities.indexOf(smartCase.priority || 'Low');
-            const highestPriorityIndex = priorities.indexOf(current.highestPriority);
-            if (currentPriorityIndex > highestPriorityIndex) {
-              current.highestPriority = smartCase.priority || 'Low';
-            }
-          });
-          return stats;
-        })();
-
-        const getHeatColor = (priority: string) => {
-          const baseColors = {
-            'Low': 'bg-green-100 border-green-300 text-green-800',
-            'Medium': 'bg-yellow-100 border-yellow-300 text-yellow-800',
-            'High': 'bg-orange-100 border-orange-300 text-orange-800',
-            'Critical': 'bg-red-100 border-red-300 text-red-800'
-          };
-          return baseColors[priority as keyof typeof baseColors] || baseColors['Low'];
-        };
-
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Cases by Property</h3>
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-                  <span>Low Priority</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
-                  <span>Medium Priority</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
-                  <span>High Priority</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
-                  <span>Critical Priority</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {Array.from(propertyStats.entries()).map(([propertyId, stats]: [string, any], index) => {
-                const property = properties?.find(p => p.id === propertyId);
-                const propertyName = propertyId === 'unassigned' 
-                  ? 'Unassigned Property' 
-                  : (property?.name || property?.street || 'Unknown Property');
-                
-                return (
-                  <Card 
-                    key={propertyId} 
-                    className={`${getHeatColor(stats.highestPriority)} hover:shadow-md transition-shadow cursor-pointer`}
-                    data-testid={`heatmap-property-${index}`}
-                    onClick={() => {
-                      // Focus on this property by setting property filter
-                      if (propertyId !== 'unassigned') {
-                        setPropertyFilter(propertyId);
-                      }
-                    }}
-                  >
-                    <CardContent className="p-4">
-                      <div className="text-center">
-                        <MapPin className="h-6 w-6 mx-auto mb-2 opacity-60" />
-                        <h4 className="font-semibold text-sm mb-2" data-testid={`text-property-name-${index}`}>
-                          {propertyName}
-                        </h4>
-                        <div className="text-2xl font-bold mb-1" data-testid={`text-case-count-${index}`}>
-                          {stats.count}
-                        </div>
-                        <div className="text-xs opacity-75 mb-2">
-                          {stats.count === 1 ? 'Case' : 'Cases'}
-                        </div>
-                        <div className="text-xs">
-                          <span className="font-medium">Highest Priority:</span>
-                          <div className="mt-1" data-testid={`text-highest-priority-${index}`}>
-                            {getPriorityBadge(stats.highestPriority)}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-            
-            {propertyStats.size === 0 && (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">No Property Data</h3>
-                  <p className="text-muted-foreground">Cases need property assignments to display heat map.</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        );
-
-      // case 'kanban':
-        const COLUMNS = ['New', 'In Review', 'Scheduled', 'In Progress', 'On Hold', 'Resolved', 'Closed'];
-        
-        const groupedCases = (() => {
-          const groups: Record<string, SmartCase[]> = {};
-          COLUMNS.forEach(status => { groups[status] = []; });
-          
-          filteredCases.forEach(smartCase => {
-            const status = smartCase.status || 'New';
-            if (groups[status]) {
-              groups[status].push(smartCase);
-            }
-          });
-          
-          return groups;
-        })();
-
-        return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Cases by Status</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 min-h-[600px]">
-              {COLUMNS.map((status, columnIndex) => (
-                <div key={status} className="bg-muted/30 rounded-lg p-3" data-testid={`kanban-column-${columnIndex}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-sm" data-testid={`text-column-title-${columnIndex}`}>
-                      {status}
-                    </h4>
-                    <span className="text-xs bg-muted px-2 py-1 rounded" data-testid={`text-column-count-${columnIndex}`}>
-                      {groupedCases[status].length}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    {groupedCases[status].map((smartCase, index) => (
-                      <Card key={smartCase.id} className="bg-card hover:shadow-sm transition-shadow" data-testid={`kanban-card-${columnIndex}-${index}`}>
-                        <CardContent className="p-3">
-                          <div className="space-y-2">
-                            <h5 className="font-medium text-sm line-clamp-2" data-testid={`text-kanban-title-${columnIndex}-${index}`}>
-                              {smartCase.title}
-                            </h5>
-                            
-                            {smartCase.category && (
-                              <p className="text-xs text-muted-foreground" data-testid={`text-kanban-category-${columnIndex}-${index}`}>
-                                {smartCase.category}
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center justify-between">
-                              {getPriorityBadge(smartCase.priority)}
-                              <div className="flex space-x-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => handleEditCase(smartCase)}
-                                  data-testid={`button-edit-kanban-${columnIndex}-${index}`}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => {
-                                    setReminderCaseContext({
-                                      caseId: smartCase.id,
-                                      caseTitle: smartCase.title
-                                    });
-                                    setShowReminderForm(true);
-                                  }}
-                                  data-testid={`button-remind-kanban-${columnIndex}-${index}`}
-                                >
-                                  <Bell className="h-3 w-3" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => {
-                                    if (confirm("Delete this case?")) {
-                                      deleteCaseMutation.mutate(smartCase.id);
-                                    }
-                                  }}
-                                  data-testid={`button-delete-kanban-${columnIndex}-${index}`}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                            
-                            {smartCase.propertyId && (
-                              <p className="text-xs text-blue-600" data-testid={`text-kanban-property-${columnIndex}-${index}`}>
-                                {(() => {
-                                  const property = properties?.find(p => p.id === smartCase.propertyId);
-                                  return property ? (property.name || property.street) : 'Property';
-                                })()}
-                              </p>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    
-                    {groupedCases[status].length === 0 && (
-                      <div className="text-center text-muted-foreground text-xs py-8" data-testid={`text-empty-column-${columnIndex}`}>
-                        No cases
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      default:
-        return (
-          <div className="grid grid-cols-1 gap-6">
-            {/* Default to cards view */}
-            {filteredCases.map((smartCase, index) => (
-              <Card key={smartCase.id} className="hover:shadow-md transition-shadow" data-testid={`card-case-${index}`}>
-                {/* Cards view content */}
-              </Card>
-            ))}
-          </div>
-        );
-    }
   };
-
 
   return (
     <div className="flex h-screen bg-background" data-testid="page-maintenance">
       <Sidebar />
-      
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title={viewMode === "student" ? "Submit Maintenance Request" : "AI Maintenance Triage"} />
-        
         <main className="flex-1 overflow-auto p-6 bg-muted/30">
-          {/* View Mode Toggle */}
-          <div className="flex justify-center mb-6">
-            <div className="bg-card border rounded-lg p-1 flex space-x-1">
-              <Button
-                variant={viewMode === "student" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("student")}
-                data-testid="button-student-mode"
-                className="flex items-center space-x-2"
-              >
-                <GraduationCap className="h-4 w-4" />
-                <span>Student View</span>
-              </Button>
-              <Button
-                variant={viewMode === "admin" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("admin")}
-                data-testid="button-admin-mode"
-                className="flex items-center space-x-2"
-              >
-                <Wrench className="h-4 w-4" />
-                <span>Admin View</span>
-              </Button>
-            </div>
-          </div>
-
-          {viewMode === "student" ? (
-            /* Enhanced Student Chat Interface */
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-foreground mb-2">AI-Powered Maintenance Assistant</h1>
-                <p className="text-lg text-muted-foreground">Just describe what's wrong in plain English - our AI will handle the rest!</p>
-              </div>
-
-              <EnhancedChatInterface 
-                onSubmitRequest={async (request) => {
-                  try {
-                    // Map building name and room to propertyId and unitId
-                    let propertyId = "";
-                    let unitId = "";
-                    
-                    if (request.buildingName && properties) {
-                      // Find property by name (case-insensitive matching)
-                      const matchedProperty = properties.find(p => 
-                        p.name?.toLowerCase().includes(request.buildingName.toLowerCase()) ||
-                        request.buildingName.toLowerCase().includes(p.name?.toLowerCase() || "")
-                      );
-                      
-                      if (matchedProperty) {
-                        propertyId = matchedProperty.id;
-                        
-                        // Find unit by room number within the property
-                        if (request.roomNumber && units) {
-                          const matchedUnit = units.find(u => 
-                            u.propertyId === propertyId && 
-                            (u.label === request.roomNumber || 
-                             u.label?.includes(request.roomNumber) ||
-                             request.roomNumber.includes(u.label || ""))
-                          );
-                          if (matchedUnit) {
-                            unitId = matchedUnit.id;
-                          }
-                        }
-                      }
-                    }
-
-                    const response = await apiRequest("POST", "/api/cases", {
-                      title: request.title,
-                      description: request.description,
-                      category: request.category,
-                      priority: request.priority,
-                      propertyId: propertyId || undefined,
-                      unitId: unitId || undefined,
-                      locationText: request.locationText,
-                      buildingName: request.buildingName,
-                      roomNumber: request.roomNumber,
-                      aiConfidence: request.aiConfidence ? Number(request.aiConfidence) / 100 : undefined // Convert percentage to decimal
-                    });
-                    
-                    const newCase = await response.json();
-                    
-                    // Trigger contractor-first scheduling triage
-                    try {
-                      await apiRequest("POST", `/api/cases/${newCase.id}/triage`, {
-                        schedulingMode: "contractor-first"
-                      });
-                    } catch (triageError) {
-                      console.log("Triage scheduling will be handled by background process");
-                    }
-                    
-                    queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
-                    
-                    toast({
-                      title: "Success", 
-                      description: `Your maintenance request has been submitted! ${propertyId ? 'Location matched and ' : ''}AI is now assigning the right contractor with availability.`,
-                    });
-                  } catch (error) {
-                    toast({
-                      title: "Error",
-                      description: "Failed to submit request. Please try again.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-                isSubmitting={createCaseMutation.isPending}
-              />
-
-              {/* Traditional Form Fallback - Collapsible */}
-              <Card className="mt-6 border-muted/50">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center space-x-2">
-                    <Plus className="h-4 w-4" />
-                    <span>Need the traditional form instead?</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Prefer filling out individual fields? Use the admin view above or the detailed form in the main request page.
-                  </p>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="/student-request">Use Traditional Form</a>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            /* Admin Interface */
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">AI Maintenance Triage</h1>
-                  <p className="text-muted-foreground">AI-powered maintenance request management and contractor coordination</p>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-              {/* Entity Filter */}
-              <Select value={entityFilter} onValueChange={(value) => {
-                setEntityFilter(value);
-                if (value !== "all") {
-                  setPropertyFilter("all");
-                }
-              }}>
-                <SelectTrigger className="w-44" data-testid="select-entity-filter">
-                  <SelectValue placeholder="All Entities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Entities</SelectItem>
-                  {entities.map((entity) => (
-                    <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Property Filter */}
-              <Select value={propertyFilter} onValueChange={(value) => {
-                setPropertyFilter(value);
-                setUnitFilter([]); // Reset unit filter when property changes
-              }}>
-                <SelectTrigger className="w-52" data-testid="select-property-filter">
-                  <SelectValue placeholder="All Properties" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Properties</SelectItem>
-                  {filteredProperties.map((property) => (
-                    <SelectItem key={property.id} value={property.id}>
-                      {property.name || `${property.street}, ${property.city}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Unit Selection - only show for buildings with multiple units */}
-              {propertyFilter !== "all" && (() => {
-                const selectedProperty = properties?.find(p => p.id === propertyFilter);
-                const propertyUnits = units.filter(unit => unit.propertyId === propertyFilter);
-                const isBuilding = propertyUnits.length > 1;
-                
-                if (!isBuilding) return null;
-
-                const handleUnitToggle = (unitId: string) => {
-                  const newFilter = [...unitFilter];
-                  if (newFilter.includes(unitId)) {
-                    setUnitFilter(newFilter.filter(id => id !== unitId));
-                  } else {
-                    setUnitFilter([...newFilter, unitId]);
-                  }
-                };
-                
-                return (
-                  <div className="flex flex-col space-y-2 p-3 border rounded-md bg-muted/30">
-                    <span className="text-sm font-medium">Units (Optional - leave empty to apply to entire building)</span>
-                    <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={unitFilter.includes("common")}
-                          onChange={() => handleUnitToggle("common")}
-                          className="rounded border-gray-300"
-                          data-testid="checkbox-common-area"
-                        />
-                        <span className="text-sm">Common Area</span>
-                      </label>
-                      {propertyUnits.map((unit) => (
-                        <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={unitFilter.includes(unit.id)}
-                            onChange={() => handleUnitToggle(unit.id)}
-                            className="rounded border-gray-300"
-                            data-testid={`checkbox-unit-${unit.id}`}
-                          />
-                          <span className="text-sm">{unit.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Category Filter */}
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-44" data-testid="select-category-filter">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {MAINTENANCE_CATEGORIES.map((category) => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Status Filter */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40" data-testid="select-status-filter">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="New">New</SelectItem>
-                  <SelectItem value="In Review">In Review</SelectItem>
-                  <SelectItem value="Scheduled">Scheduled</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="On Hold">On Hold</SelectItem>
-                  <SelectItem value="Resolved">Resolved</SelectItem>
-                  <SelectItem value="Closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-              </div>
-
-              {/* Smart Cases View Toggle */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">Smart Cases</h2>
-                  <p className="text-sm text-muted-foreground">AI-powered maintenance case management</p>
-                </div>
-                <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg">
-                  <Button
-                    variant={smartCasesViewMode === "cards" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setSmartCasesViewMode("cards")}
-                    data-testid="button-cards-view"
-                    className="flex items-center space-x-1"
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                    <span>Cards</span>
-                  </Button>
-                  <Button
-                    variant={smartCasesViewMode === "list" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setSmartCasesViewMode("list")}
-                    data-testid="button-list-view"
-                    className="flex items-center space-x-1"
-                  >
-                    <List className="h-4 w-4" />
-                    <span>List</span>
-                  </Button>
-                  <Button
-                    variant={smartCasesViewMode === "heatmap" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setSmartCasesViewMode("heatmap")}
-                    data-testid="button-heatmap-view"
-                    className="flex items-center space-x-1"
-                  >
-                    <Map className="h-4 w-4" />
-                    <span>Heat Map</span>
-                  </Button>
-                  <Button
-                    variant={smartCasesViewMode === "kanban" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setSmartCasesViewMode("kanban")}
-                    data-testid="button-kanban-view"
-                    className="flex items-center space-x-1"
-                  >
-                    <Columns3 className="h-4 w-4" />
-                    <span>Kanban</span>
-                  </Button>
-                </div>
-              </div>
-
-              <Dialog open={showCaseForm} onOpenChange={handleDialogChange}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-add-case">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Case
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>{editingCase ? "Edit Maintenance Case" : "Create Maintenance Case"}</DialogTitle>
-                  </DialogHeader>
-                  
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="title"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Title</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Describe the issue" 
-                                value={field.value || ""}
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
-                                name={field.name}
-                                data-testid="input-case-title" 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Description</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                placeholder="Provide additional details..." 
-                                value={field.value || ""}
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
-                                name={field.name}
-                                data-testid="textarea-case-description" 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="propertyId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Property</FormLabel>
-                            <Select 
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                setSelectedPropertyId(value);
-                                form.setValue("unitId", "");
-                              }} 
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger data-testid="select-case-property">
-                                  <SelectValue placeholder="Select a property" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {properties?.map((property) => (
-                                  <SelectItem key={property.id} value={property.id}>
-                                    {property.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Unit Selection - only show if property is selected and is a building with multiple units */}
-                      {selectedPropertyId && selectedPropertyUnits.length > 1 && (
-                        <FormField
-                          control={form.control}
-                          name="unitId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Unit (Optional - leave empty to apply to entire building)</FormLabel>
-                              <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto border rounded p-2">
-                                <label className="flex items-center space-x-2 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    name="caseUnit"
-                                    checked={field.value === "common"}
-                                    onChange={() => field.onChange("common")}
-                                    className="rounded border-gray-300"
-                                    data-testid="radio-case-common"
-                                  />
-                                  <span className="text-sm">Common Area</span>
-                                </label>
-                                {selectedPropertyUnits.map((unit) => (
-                                  <label key={unit.id} className="flex items-center space-x-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name="caseUnit"
-                                      checked={field.value === unit.id}
-                                      onChange={() => field.onChange(unit.id)}
-                                      className="rounded border-gray-300"
-                                      data-testid={`radio-case-unit-${unit.id}`}
-                                    />
-                                    <span className="text-sm">{unit.label}</span>
-                                  </label>
-                                ))}
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-
-                      <FormField
-                        control={form.control}
-                        name="priority"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Priority</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-case-priority">
-                                  <SelectValue placeholder="Select priority" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="Low">Low</SelectItem>
-                                <SelectItem value="Medium">Medium</SelectItem>
-                                <SelectItem value="High">High</SelectItem>
-                                <SelectItem value="Urgent">Urgent</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-case-category">
-                                  <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {MAINTENANCE_CATEGORIES.map((category) => (
-                                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      {/* Create Reminder Checkbox - only show when creating new cases */}
-                      {!editingCase && (
-                        <FormField
-                          control={form.control}
-                          name="createReminder"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <input
-                                  type="checkbox"
-                                  checked={field.value}
-                                  onChange={field.onChange}
-                                  className="mt-1"
-                                  data-testid="checkbox-create-reminder"
-                                />
-                              </FormControl>
-                              <div className="space-y-1 leading-none">
-                                <FormLabel className="text-sm font-normal">
-                                  Create a reminder for this case
-                                </FormLabel>
-                                <p className="text-xs text-muted-foreground">
-                                  Opens reminder dialog after case creation
-                                </p>
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-
-                      <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={handleCloseForm} data-testid="button-cancel-case">
-                          Cancel
-                        </Button>
-                        <Button type="submit" disabled={createCaseMutation.isPending || updateCaseMutation.isPending} data-testid="button-submit-case">
-                          {(createCaseMutation.isPending || updateCaseMutation.isPending) 
-                            ? (editingCase ? "Updating..." : "Creating...") 
-                            : (editingCase ? "Update Case" : "Create Case")
-                          }
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-
-              {/* Mailla AI Assistant */}
-              <PropertyAssistant 
-                context="maintenance"
-                exampleQuestions={[
-                  "What maintenance is overdue or urgent?",
-                  "Which property needs the most attention?",
-                  "Any recurring maintenance patterns I should address?",
-                  "What repairs are costing me the most?"
-                ]}
-              />
-
-              {/* Single source of truth for case rendering; do not add rendering here */}
-              {renderSmartCases()}
+          {renderSmartCases()}
         </main>
       </div>
-      
-      {/* Reminder Dialog */}
-      <Dialog open={showReminderForm} onOpenChange={setShowReminderForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {reminderCaseContext ? `Create Reminder for: ${reminderCaseContext.caseTitle}` : 'Create New Reminder'}
-            </DialogTitle>
-          </DialogHeader>
-          <ReminderForm 
-            properties={properties || []}
-            entities={entities || []}
-            units={units || []}
-            defaultType="maintenance"
-            onSubmit={handleReminderSubmit}
-            onCancel={() => {
-              setShowReminderForm(false);
-              setReminderCaseContext(null);
-            }}
-            isLoading={createReminderMutation.isPending}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
