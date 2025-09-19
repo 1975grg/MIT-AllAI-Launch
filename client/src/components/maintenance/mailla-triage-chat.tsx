@@ -520,15 +520,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
                       </div>
                     )}
 
-                    {/* Follow-up Questions */}
-                    {message.followupQuestions && message.followupQuestions.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        <p className="text-xs font-medium">Questions to help me understand:</p>
-                        {message.followupQuestions.map((question, idx) => (
-                          <p key={idx} className="text-xs opacity-75">• {question}</p>
-                        ))}
-                      </div>
-                    )}
+                    {/* Natural conversation flow - only one question at a time via quick replies */}
 
                     {/* DIY Action */}
                     {message.diyAction && (
