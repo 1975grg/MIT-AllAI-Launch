@@ -383,8 +383,8 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
   };
 
   return (
-    <Card className="h-[600px] flex flex-col">
-      <CardHeader className="pb-3">
+    <Card className="w-full max-w-4xl mx-auto h-[600px] flex flex-col">
+      <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-red-600" />
@@ -411,7 +411,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col gap-3">
+      <CardContent className="flex-1 flex flex-col gap-3 min-h-0 overflow-hidden">
         {/* ✅ Emergency Mode Banner */}
         {isEmergencyMode && (
           <motion.div
@@ -481,8 +481,8 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
           </motion.div>
         )}
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+        {/* Messages Area - Scrollable */}
+        <div className="flex-1 overflow-y-auto space-y-3 pr-2 min-h-0">
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div
@@ -567,55 +567,57 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Natural Quick Replies */}
-        {showQuickReplies && currentQuickReplies.length > 0 && !isEmergencyMode && !conversation?.isComplete && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex flex-wrap gap-2 p-3 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
-            data-testid="quick-replies"
-          >
-            {currentQuickReplies.map((reply, idx) => (
-              <Button
-                key={`${reply}-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickReply(reply)}
-                disabled={isLoading}
-                className="text-sm px-3 py-1 bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 transition-colors"
-                data-testid={`quick-reply-${idx}`}
-              >
-                {reply === 'Skip for now' ? (
-                  <>
-                    <X className="h-3 w-3 mr-1" />
-                    {reply}
-                  </>
-                ) : reply.includes('House') || reply.includes('Hall') ? (
-                  <>
-                    <Home className="h-3 w-3 mr-1" />
-                    {reply}
-                  </>
-                ) : reply.includes('Emergency') ? (
-                  <>
-                    <AlertTriangle className="h-3 w-3 mr-1 text-red-500" />
-                    {reply}
-                  </>
-                ) : reply.includes('Just now') || reply.includes('Today') || reply.includes('Yesterday') ? (
-                  <>
-                    <Clock className="h-3 w-3 mr-1" />
-                    {reply}
-                  </>
-                ) : (
-                  reply
-                )}
-              </Button>
-            ))}
-          </motion.div>
-        )}
+        {/* Quick Replies - Fixed at bottom above input */}
+        <div className="flex-shrink-0">
+          {showQuickReplies && currentQuickReplies.length > 0 && !isEmergencyMode && !conversation?.isComplete && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-wrap gap-2 p-3 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-3"
+              data-testid="quick-replies"
+            >
+              {currentQuickReplies.map((reply, idx) => (
+                <Button
+                  key={`${reply}-${idx}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickReply(reply)}
+                  disabled={isLoading}
+                  className="text-sm px-3 py-1 bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 transition-colors"
+                  data-testid={`quick-reply-${idx}`}
+                >
+                  {reply === 'Skip for now' ? (
+                    <>
+                      <X className="h-3 w-3 mr-1" />
+                      {reply}
+                    </>
+                  ) : reply.includes('House') || reply.includes('Hall') ? (
+                    <>
+                      <Home className="h-3 w-3 mr-1" />
+                      {reply}
+                    </>
+                  ) : reply.includes('Emergency') ? (
+                    <>
+                      <AlertTriangle className="h-3 w-3 mr-1 text-red-500" />
+                      {reply}
+                    </>
+                  ) : reply.includes('Just now') || reply.includes('Today') || reply.includes('Yesterday') ? (
+                    <>
+                      <Clock className="h-3 w-3 mr-1" />
+                      {reply}
+                    </>
+                  ) : (
+                    reply
+                  )}
+                </Button>
+              ))}
+            </motion.div>
+          )}
+        </div>
 
-        {/* Input Area */}
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        {/* Input Area - Fixed at bottom */}
+        <form onSubmit={handleSubmit} className="flex gap-2 flex-shrink-0">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
