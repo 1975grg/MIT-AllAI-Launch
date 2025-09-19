@@ -401,6 +401,7 @@ export const prioritySchedulingEnum = pgEnum("priority_scheduling", ["standard",
 export const vendors = pgTable("vendors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orgId: varchar("org_id").notNull().references(() => organizations.id),
+  userId: varchar("user_id").references(() => users.id), // Link to user for contractor authentication
   name: varchar("name").notNull(),
   category: varchar("category"), // plumbing, electrical, hvac, etc.
   phone: varchar("phone"),
@@ -760,6 +761,22 @@ export const insertLeaseSchema = createInsertSchema(leases).omit({ id: true, cre
 export const insertAssetSchema = createInsertSchema(assets).omit({ id: true, createdAt: true });
 export const insertSmartCaseSchema = createInsertSchema(smartCases).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
+
+// Dedicated contractor availability update schema
+export const contractorAvailabilityUpdateSchema = insertVendorSchema.pick({
+  availabilityPattern: true,
+  availableStartTime: true,
+  availableEndTime: true,
+  availableDays: true,
+  responseTimeHours: true,
+  priorityScheduling: true,
+  emergencyAvailable: true,
+  emergencyPhone: true,
+  maxJobsPerDay: true,
+  isActiveContractor: true,
+  specializations: true,
+  estimatedHourlyRate: true
+}).partial();
 export const insertContractorAvailabilitySchema = createInsertSchema(contractorAvailability).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertContractorBlackoutSchema = createInsertSchema(contractorBlackouts).omit({ id: true, createdAt: true });
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true, updatedAt: true }).extend({

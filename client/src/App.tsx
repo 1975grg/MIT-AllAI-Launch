@@ -18,6 +18,7 @@ import Vendors from "@/pages/vendors";
 import Revenue from "@/pages/revenue";
 import Tax from "@/pages/tax";
 import Reminders from "@/pages/reminders";
+import ContractorDashboard from "@/pages/contractor-dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -58,6 +59,7 @@ function Router() {
           <Route path="/revenue" component={Revenue} />
           <Route path="/tax" component={Tax} />
           <Route path="/reminders" component={Reminders} />
+          <Route path="/contractor" component={ContractorDashboard} />
           <Route component={NotFound} />
         </>
       )}

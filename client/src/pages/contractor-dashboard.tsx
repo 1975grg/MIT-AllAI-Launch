@@ -1,0 +1,446 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, User } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import ContractorAvailability from "@/pages/contractor-availability";
+
+interface ContractorCase {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  category: string;
+  buildingName?: string;
+  roomNumber?: string;
+  locationText?: string;
+  estimatedCost?: number;
+  actualCost?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ContractorAppointment {
+  id: string;
+  caseId?: string;
+  title: string;
+  description?: string;
+  scheduledStartAt: string;
+  scheduledEndAt: string;
+  status: string;
+  priority: string;
+  locationDetails?: string;
+  notes?: string;
+  isEmergency: boolean;
+  requiresTenantAccess: boolean;
+}
+
+const PRIORITY_COLORS = {
+  Low: "bg-green-100 text-green-800 border-green-200",
+  Medium: "bg-yellow-100 text-yellow-800 border-yellow-200", 
+  High: "bg-orange-100 text-orange-800 border-orange-200",
+  Urgent: "bg-red-100 text-red-800 border-red-200"
+};
+
+const STATUS_COLORS = {
+  New: "bg-blue-100 text-blue-800 border-blue-200",
+  "In Review": "bg-yellow-100 text-yellow-800 border-yellow-200",
+  Scheduled: "bg-purple-100 text-purple-800 border-purple-200",
+  "In Progress": "bg-orange-100 text-orange-800 border-orange-200",
+  "On Hold": "bg-gray-100 text-gray-800 border-gray-200",
+  Resolved: "bg-green-100 text-green-800 border-green-200",
+  Closed: "bg-gray-100 text-gray-800 border-gray-200",
+  Pending: "bg-blue-100 text-blue-800 border-blue-200",
+  Confirmed: "bg-green-100 text-green-800 border-green-200",
+  Completed: "bg-green-100 text-green-800 border-green-200"
+};
+
+export default function ContractorDashboard() {
+  const { toast } = useToast();
+  const [selectedTab, setSelectedTab] = useState("cases");
+
+  // Get assigned cases
+  const { data: assignedCases = [], isLoading: casesLoading } = useQuery<ContractorCase[]>({
+    queryKey: ['/api/contractor/cases'],
+    enabled: true
+  });
+
+  // Get contractor appointments
+  const { data: appointments = [], isLoading: appointmentsLoading } = useQuery<ContractorAppointment[]>({
+    queryKey: ['/api/contractor/appointments'],
+    enabled: true
+  });
+
+  // Update case status mutation
+  const updateCaseStatus = useMutation({
+    mutationFn: async ({ caseId, status, notes }: { caseId: string; status: string; notes?: string }) => {
+      return await apiRequest("PATCH", `/api/cases/${caseId}`, { 
+        status,
+        ...(notes && { notes })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/cases'] });
+      toast({
+        title: "Status Updated",
+        description: "Case status has been updated successfully."
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update case status. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update appointment status mutation
+  const updateAppointmentStatus = useMutation({
+    mutationFn: async ({ appointmentId, status, notes }: { appointmentId: string; status: string; notes?: string }) => {
+      return await apiRequest("PATCH", `/api/appointments/${appointmentId}`, { 
+        status,
+        ...(notes && { notes })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/appointments'] });
+      toast({
+        title: "Appointment Updated",
+        description: "Appointment status has been updated successfully."
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update appointment status. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case "Urgent":
+        return <AlertTriangle className="h-4 w-4" />;
+      case "High":
+        return <AlertTriangle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-muted/30">
+      {/* Header */}
+      <header className="border-b border-border bg-background">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <User className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Contractor Dashboard</h1>
+                <p className="text-sm text-muted-foreground">Manage your assigned maintenance cases</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span>{new Date().toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto p-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Assigned Cases</p>
+                  <p className="text-2xl font-bold">{assignedCases.length}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Urgent Cases</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {assignedCases.filter((c: ContractorCase) => c.priority === "Urgent").length}
+                  </p>
+                </div>
+                <AlertTriangle className="h-8 w-8 text-red-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Today's Appointments</p>
+                  <p className="text-2xl font-bold">
+                    {appointments.filter((a: ContractorAppointment) => {
+                      const today = new Date().toDateString();
+                      return new Date(a.scheduledStartAt).toDateString() === today;
+                    }).length}
+                  </p>
+                </div>
+                <Calendar className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">In Progress</p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {assignedCases.filter((c: ContractorCase) => c.status === "In Progress").length}
+                  </p>
+                </div>
+                <Clock className="h-8 w-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content Tabs */}
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="cases" data-testid="tab-cases">My Cases</TabsTrigger>
+            <TabsTrigger value="appointments" data-testid="tab-appointments">Appointments</TabsTrigger>
+            <TabsTrigger value="availability" data-testid="tab-availability">Availability</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="cases" className="mt-6">
+            <div className="space-y-4">
+              {casesLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading cases...</p>
+                </div>
+              ) : assignedCases.length === 0 ? (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Cases Assigned</h3>
+                    <p className="text-muted-foreground">You don't have any maintenance cases assigned at the moment.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                assignedCases.map((case_: ContractorCase) => (
+                  <Card key={case_.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {getPriorityIcon(case_.priority)}
+                            {case_.title}
+                          </CardTitle>
+                          <CardDescription className="mt-1">
+                            {case_.buildingName && case_.roomNumber ? 
+                              `${case_.buildingName} - Room ${case_.roomNumber}` : 
+                              case_.locationText || 'Location TBD'
+                            }
+                          </CardDescription>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge className={PRIORITY_COLORS[case_.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
+                            {case_.priority}
+                          </Badge>
+                          <Badge variant="outline" className={STATUS_COLORS[case_.status as keyof typeof STATUS_COLORS] || "bg-gray-100"}>
+                            {case_.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">{case_.description}</p>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            <span>{case_.category}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            <span>{formatDateTime(case_.createdAt)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          {case_.status === "New" && (
+                            <Button
+                              size="sm"
+                              onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Progress" })}
+                              disabled={updateCaseStatus.isPending}
+                              data-testid={`button-start-case-${case_.id}`}
+                            >
+                              Start Work
+                            </Button>
+                          )}
+                          {case_.status === "In Progress" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "Resolved" })}
+                              disabled={updateCaseStatus.isPending}
+                              data-testid={`button-complete-case-${case_.id}`}
+                            >
+                              Mark Complete
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="appointments" className="mt-6">
+            <div className="space-y-4">
+              {appointmentsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading appointments...</p>
+                </div>
+              ) : appointments.length === 0 ? (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Appointments Scheduled</h3>
+                    <p className="text-muted-foreground">You don't have any appointments scheduled at the moment.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                appointments.map((appointment: ContractorAppointment) => (
+                  <Card key={appointment.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Calendar className="h-5 w-5" />
+                            {appointment.title}
+                            {appointment.isEmergency && (
+                              <Badge className="bg-red-100 text-red-800 border-red-200">Emergency</Badge>
+                            )}
+                          </CardTitle>
+                          <CardDescription className="mt-1">
+                            {formatDateTime(appointment.scheduledStartAt)} - {formatDateTime(appointment.scheduledEndAt)}
+                          </CardDescription>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge className={PRIORITY_COLORS[appointment.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
+                            {appointment.priority}
+                          </Badge>
+                          <Badge variant="outline" className={STATUS_COLORS[appointment.status as keyof typeof STATUS_COLORS] || "bg-gray-100"}>
+                            {appointment.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {appointment.description && (
+                        <p className="text-sm text-muted-foreground mb-3">{appointment.description}</p>
+                      )}
+                      
+                      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
+                        {appointment.locationDetails && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            <span>{appointment.locationDetails}</span>
+                          </div>
+                        )}
+                        {appointment.requiresTenantAccess && (
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            <span>Tenant Access Required</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          Priority: {appointment.priority}
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          {appointment.status === "Pending" && (
+                            <Button
+                              size="sm"
+                              onClick={() => updateAppointmentStatus.mutate({ appointmentId: appointment.id, status: "Confirmed" })}
+                              disabled={updateAppointmentStatus.isPending}
+                              data-testid={`button-confirm-appointment-${appointment.id}`}
+                            >
+                              Confirm
+                            </Button>
+                          )}
+                          {appointment.status === "Confirmed" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateAppointmentStatus.mutate({ appointmentId: appointment.id, status: "In Progress" })}
+                              disabled={updateAppointmentStatus.isPending}
+                              data-testid={`button-start-appointment-${appointment.id}`}
+                            >
+                              Start
+                            </Button>
+                          )}
+                          {appointment.status === "In Progress" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateAppointmentStatus.mutate({ appointmentId: appointment.id, status: "Completed" })}
+                              disabled={updateAppointmentStatus.isPending}
+                              data-testid={`button-complete-appointment-${appointment.id}`}
+                            >
+                              Complete
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {appointment.notes && (
+                        <div className="mt-3 p-3 bg-muted rounded-lg">
+                          <p className="text-sm font-medium mb-1">Notes:</p>
+                          <p className="text-sm text-muted-foreground">{appointment.notes}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="availability" className="mt-6">
+            <ContractorAvailability />
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+}

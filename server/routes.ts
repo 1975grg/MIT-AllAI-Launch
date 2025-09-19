@@ -18,6 +18,7 @@ import {
   insertTransactionSchema,
   insertExpenseSchema,
   insertReminderSchema,
+  contractorAvailabilityUpdateSchema,
 } from "@shared/schema";
 import OpenAI from "openai";
 import { z } from "zod";
@@ -4363,6 +4364,260 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     } catch (error) {
       console.error("Error fetching contractor workload:", error);
       res.status(500).json({ message: "Failed to fetch contractor workload" });
+    }
+  });
+
+  // Contractor-specific API routes
+  app.get('/api/contractor/cases', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Find contractor by user ID (preferred) with fallback to email
+      const allVendors = await storage.getVendors(org.id);
+      const contractor = allVendors.find(v => 
+        // Primary: match by user ID if available
+        v.userId === userId ||
+        // Fallback: match by email only if userId is not set
+        (!v.userId && v.email === req.user.claims.email)
+      );
+      
+      if (!contractor) {
+        return res.json([]); // Return empty array if not a contractor
+      }
+      
+      // Get all smart cases assigned to this contractor
+      const allCases = await storage.getSmartCases(org.id);
+      const contractorCases = allCases.filter(c => {
+        // Check both contractorId field and AI routing assignment
+        if (c.contractorId === contractor.id) return true;
+        
+        // Fallback to AI triage routing data
+        const aiData = c.aiTriageJson as any;
+        return aiData?.routing?.assignedContractor === contractor.id;
+      });
+      
+      res.json(contractorCases);
+    } catch (error) {
+      console.error("Error fetching contractor cases:", error);
+      res.status(500).json({ message: "Failed to fetch contractor cases" });
+    }
+  });
+
+  app.get('/api/contractor/appointments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Find contractor by user ID (preferred) with fallback to email
+      const allVendors = await storage.getVendors(org.id);
+      const contractor = allVendors.find(v => 
+        // Primary: match by user ID if available
+        v.userId === userId ||
+        // Fallback: match by email only if userId is not set
+        (!v.userId && v.email === req.user.claims.email)
+      );
+      
+      if (!contractor) {
+        return res.json([]); // Return empty array if not a contractor
+      }
+      
+      // Get appointments for this contractor
+      const appointments = await storage.getContractorAppointments(contractor.id, org.id);
+      res.json(appointments);
+    } catch (error) {
+      console.error("Error fetching contractor appointments:", error);
+      res.status(500).json({ message: "Failed to fetch contractor appointments" });
+    }
+  });
+
+  app.get('/api/contractor/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Find contractor by user ID (preferred) with fallback to email
+      const allVendors = await storage.getVendors(org.id);
+      const contractor = allVendors.find(v => 
+        // Primary: match by user ID if available
+        v.userId === userId ||
+        // Fallback: match by email only if userId is not set
+        (!v.userId && v.email === req.user.claims.email)
+      );
+      
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor profile not found" });
+      }
+      
+      res.json(contractor);
+    } catch (error) {
+      console.error("Error fetching contractor profile:", error);
+      res.status(500).json({ message: "Failed to fetch contractor profile" });
+    }
+  });
+
+  // Link user to contractor/vendor for secure authentication
+  app.post('/api/contractor/link', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Find unlinked vendor by email
+      const allVendors = await storage.getVendors(org.id);
+      const vendor = allVendors.find(v => !v.userId && v.email === req.user.claims.email);
+      
+      if (!vendor) {
+        return res.status(404).json({ message: "No matching contractor profile found to link" });
+      }
+      
+      // Link the vendor to the user
+      const updatedVendor = await storage.updateVendor(vendor.id, { userId });
+      res.json({ message: "Contractor profile linked successfully", vendor: updatedVendor });
+    } catch (error) {
+      console.error("Error linking contractor profile:", error);
+      res.status(500).json({ message: "Failed to link contractor profile" });
+    }
+  });
+
+  app.put('/api/contractor/availability', isAuthenticated, async (req: any, res) => {
+    // Use dedicated contractor availability schema for validation
+    let validatedData;
+    try {
+      validatedData = contractorAvailabilityUpdateSchema.parse(req.body);
+    } catch (error) {
+      return res.status(400).json({ message: "Invalid request data", errors: error });
+    }
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Find contractor by user ID (preferred) with fallback to email
+      const allVendors = await storage.getVendors(org.id);
+      const contractor = allVendors.find(v => 
+        // Primary: match by user ID if available
+        v.userId === userId ||
+        // Fallback: match by email only if userId is not set
+        (!v.userId && v.email === req.user.claims.email)
+      );
+      
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor profile not found" });
+      }
+      
+      // Update contractor availability with validated data
+      const updates = {
+        availabilityPattern: validatedData.availabilityPattern || contractor.availabilityPattern,
+        availableStartTime: validatedData.availableStartTime || contractor.availableStartTime,
+        availableEndTime: validatedData.availableEndTime || contractor.availableEndTime,
+        availableDays: validatedData.availableDays || contractor.availableDays,
+        responseTimeHours: validatedData.responseTimeHours !== undefined ? validatedData.responseTimeHours : contractor.responseTimeHours,
+        priorityScheduling: validatedData.priorityScheduling || contractor.priorityScheduling,
+        emergencyAvailable: validatedData.emergencyAvailable !== undefined ? validatedData.emergencyAvailable : contractor.emergencyAvailable,
+        emergencyPhone: validatedData.emergencyPhone || contractor.emergencyPhone,
+        maxJobsPerDay: validatedData.maxJobsPerDay !== undefined ? validatedData.maxJobsPerDay : contractor.maxJobsPerDay,
+        estimatedHourlyRate: validatedData.estimatedHourlyRate || contractor.estimatedHourlyRate,
+        specializations: validatedData.specializations || contractor.specializations
+      };
+      
+      const updatedContractor = await storage.updateVendor(contractor.id, updates);
+      res.json(updatedContractor);
+    } catch (error) {
+      console.error("Error updating contractor availability:", error);
+      res.status(500).json({ message: "Failed to update availability" });
+    }
+  });
+
+  // PATCH endpoint for contractor case status updates  
+  app.patch('/api/cases/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Find contractor by userId
+      const allVendors = await storage.getVendors(org.id);
+      const contractor = allVendors.find(v => 
+        v.userId === userId ||
+        (!v.userId && v.email === req.user.claims.email)
+      );
+      
+      if (!contractor) {
+        return res.status(403).json({ message: "Access denied: Not a registered contractor" });
+      }
+      
+      // Get the case and verify contractor assignment
+      const caseData = await storage.getSmartCase(req.params.id);
+      if (!caseData || caseData.orgId !== org.id) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Check if contractor is assigned to this case
+      const isAssigned = caseData.contractorId === contractor.id ||
+        (caseData.aiTriageJson as any)?.routing?.assignedContractor === contractor.id;
+      
+      if (!isAssigned) {
+        return res.status(403).json({ message: "Access denied: Case not assigned to you" });
+      }
+      
+      // Validate and update case
+      const allowedFields = { status: true, notes: true, contractorNotes: true };
+      const updateData = Object.keys(req.body)
+        .filter(key => allowedFields[key as keyof typeof allowedFields])
+        .reduce((obj, key) => ({ ...obj, [key]: req.body[key] }), {});
+      
+      const updatedCase = await storage.updateSmartCase(req.params.id, updateData);
+      res.json(updatedCase);
+    } catch (error) {
+      console.error("Error updating case:", error);
+      res.status(500).json({ message: "Failed to update case" });
+    }
+  });
+
+  // PATCH endpoint for contractor appointment status updates
+  app.patch('/api/appointments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      
+      // Find contractor by userId
+      const allVendors = await storage.getVendors(org.id);
+      const contractor = allVendors.find(v => 
+        v.userId === userId ||
+        (!v.userId && v.email === req.user.claims.email)
+      );
+      
+      if (!contractor) {
+        return res.status(403).json({ message: "Access denied: Not a registered contractor" });
+      }
+      
+      // Get the appointment and verify contractor assignment
+      const appointment = await storage.getAppointment(req.params.id);
+      if (!appointment || appointment.orgId !== org.id) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      // Check if contractor is assigned to this appointment
+      if (appointment.contractorId !== contractor.id) {
+        return res.status(403).json({ message: "Access denied: Appointment not assigned to you" });
+      }
+      
+      // Validate and update appointment
+      const allowedFields = { status: true, notes: true, actualStartAt: true, actualEndAt: true };
+      const updateData = Object.keys(req.body)
+        .filter(key => allowedFields[key as keyof typeof allowedFields])
+        .reduce((obj, key) => ({ ...obj, [key]: req.body[key] }), {});
+      
+      const updatedAppointment = await storage.updateAppointment(req.params.id, updateData);
+      res.json(updatedAppointment);
+    } catch (error) {
+      console.error("Error updating appointment:", error);
+      res.status(500).json({ message: "Failed to update appointment" });
     }
   });
 
