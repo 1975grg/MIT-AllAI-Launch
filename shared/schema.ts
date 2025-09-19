@@ -390,6 +390,38 @@ export const vendors = pgTable("vendors", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Appointments for AI-powered scheduling
+export const appointmentStatusEnum = pgEnum("appointment_status", ["Pending", "Confirmed", "In Progress", "Completed", "Cancelled", "No Show", "Rescheduled"]);
+
+export const appointments = pgTable("appointments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id), // Multi-tenant security
+  caseId: varchar("case_id").notNull().references(() => smartCases.id),
+  contractorId: varchar("contractor_id").notNull().references(() => vendors.id),
+  scheduledStartAt: timestamp("scheduled_start_at", { withTimezone: true }).notNull(), // Timezone-aware
+  scheduledEndAt: timestamp("scheduled_end_at", { withTimezone: true }).notNull(), // Timezone-aware
+  estimatedDurationMinutes: integer("estimated_duration_minutes").default(120), // Default 2 hours
+  actualStartTime: timestamp("actual_start_time", { withTimezone: true }),
+  actualEndTime: timestamp("actual_end_time", { withTimezone: true }),
+  status: appointmentStatusEnum("status").default("Pending"),
+  studentNotified: boolean("student_notified").default(false),
+  contractorNotified: boolean("contractor_notified").default(false),
+  aiSchedulingJson: jsonb("ai_scheduling_json"), // AI reasoning for scheduling decision
+  notes: text("notes"),
+  cancellationReason: text("cancellation_reason"),
+  rescheduledFromId: varchar("rescheduled_from_id").references(() => appointments.id), // If rescheduled
+  conflictResolutionJson: jsonb("conflict_resolution_json"), // How conflicts were resolved
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // Indexes for performance
+  orgIdIdx: index("appointments_org_id_idx").on(table.orgId),
+  caseIdIdx: index("appointments_case_id_idx").on(table.caseId),
+  contractorIdIdx: index("appointments_contractor_id_idx").on(table.contractorId),
+  scheduledTimeIdx: index("appointments_scheduled_time_idx").on(table.scheduledStartAt),
+  contractorScheduleIdx: index("appointments_contractor_schedule_idx").on(table.contractorId, table.scheduledStartAt),
+}));
+
 // CAM Categories
 export const camCategories = pgTable("cam_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -686,6 +718,19 @@ export const insertLeaseSchema = createInsertSchema(leases).omit({ id: true, cre
 export const insertAssetSchema = createInsertSchema(assets).omit({ id: true, createdAt: true });
 export const insertSmartCaseSchema = createInsertSchema(smartCases).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
+export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  scheduledStartAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  scheduledEndAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  estimatedDurationMinutes: z.number().min(15).max(480).optional().default(120), // 15 min to 8 hours
+}).refine((data) => {
+  // Ensure end time is after start time
+  const start = data.scheduledStartAt instanceof Date ? data.scheduledStartAt : new Date(data.scheduledStartAt);
+  const end = data.scheduledEndAt instanceof Date ? data.scheduledEndAt : new Date(data.scheduledEndAt);
+  return end > start;
+}, {
+  message: "Scheduled end time must be after start time",
+  path: ["scheduledEndAt"],
+});
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
 export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true, parentRecurringId: true }).extend({
   dueAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
