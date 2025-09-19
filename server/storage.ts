@@ -2946,10 +2946,11 @@ export class DatabaseStorage implements IStorage {
 
   // ✅ Mailla AI Triage Agent methods
   async createTriageConversation(conversation: any): Promise<string> {
-    const [newConversation] = await db.insert(triageConversations).values({
-      id: nanoid(),
+    const conversationData = {
+      id: conversation.id || nanoid(), // Use provided ID or generate new one
       ...conversation
-    }).returning();
+    };
+    const [newConversation] = await db.insert(triageConversations).values(conversationData).returning();
     return newConversation.id;
   }
 

@@ -75,6 +75,7 @@ export class MaillaAIService {
       // 1. Create conversation record
       const conversationId = nanoid();
       const conversation: InsertTriageConversation = {
+        id: conversationId, // Explicitly include the ID
         studentId,
         orgId,
         initialRequest,
