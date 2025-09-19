@@ -211,30 +211,122 @@ Consider factors like:
   }
 
   /**
-   * Creates smart case with AI triage results and scheduling recommendations
+   * Creates complete smart case workflow with automated contractor assignment and scheduling
    */
-  async createSmartCaseFromTriage(request: MaintenanceRequest, triageResult: TriageResult): Promise<{
+  async createSmartCaseWorkflow(smartCaseId: string, triageResult: TriageResult, contractorRecommendations: any[]): Promise<{
     caseId: string;
     status: string;
-    recommendedActions: string[];
-    estimatedCompletion: string;
+    workflowSteps: string[];
+    autoScheduling: {
+      enabled: boolean;
+      priority: string;
+      estimatedDuration: string;
+      contractorAssigned?: string;
+      schedulingNotes: string;
+    };
   }> {
-    console.log(`🤖 Creating smart case for ${triageResult.urgency} urgency ${triageResult.category} issue`);
+    console.log(`🔄 Initializing smart case workflow for case ${smartCaseId} - ${triageResult.urgency} priority`);
     
-    const recommendedActions = [
-      `Schedule ${triageResult.contractorType} for ${triageResult.estimatedDuration}`,
-      ...triageResult.troubleshootingSteps,
-      `Priority: ${triageResult.urgency}`,
-      `Safety Risk: ${triageResult.safetyRisk}`
+    const workflowSteps = [
+      '✅ AI triage analysis completed',
+      `📋 Categorized as ${triageResult.category} (${triageResult.estimatedComplexity} complexity)`,
+      `⚡ Priority set to ${triageResult.urgency}`,
+      ...triageResult.troubleshootingSteps.map(step => `🔧 ${step}`),
+      `🏗️ ${triageResult.contractorType} contractor required`
     ];
 
-    // This will integrate with smart cases table when we implement the complete workflow
-    return {
-      caseId: 'ai-generated-case',
-      status: triageResult.urgency === 'Critical' ? 'Emergency' : 'Scheduled',
-      recommendedActions,
-      estimatedCompletion: triageResult.estimatedDuration
+    // Determine auto-scheduling based on urgency and contractor availability
+    const autoScheduling = {
+      enabled: triageResult.urgency === 'Critical' || triageResult.urgency === 'High',
+      priority: triageResult.urgency,
+      estimatedDuration: triageResult.estimatedDuration,
+      schedulingNotes: ''
     };
+
+    // Auto-assign contractor if available
+    if (contractorRecommendations && contractorRecommendations.length > 0) {
+      const bestMatch = contractorRecommendations[0];
+      autoScheduling.contractorAssigned = bestMatch.contractorId;
+      autoScheduling.schedulingNotes = `Auto-assigned to ${bestMatch.contractorName} (${bestMatch.matchScore}% match)`;
+      workflowSteps.push(`👷 Auto-assigned to ${bestMatch.contractorName}`);
+      
+      // For critical issues, add immediate scheduling
+      if (triageResult.urgency === 'Critical') {
+        workflowSteps.push('🚨 Emergency scheduling initiated');
+        autoScheduling.schedulingNotes += ' | Emergency response activated';
+      }
+    } else {
+      workflowSteps.push('⏳ Awaiting contractor assignment');
+      autoScheduling.schedulingNotes = 'Manual contractor assignment required';
+    }
+
+    // Add safety escalation for high-risk issues
+    if (triageResult.safetyRisk === 'High' || triageResult.safetyRisk === 'Medium') {
+      workflowSteps.push(`⚠️ Safety escalation: ${triageResult.safetyRisk} risk identified`);
+      autoScheduling.schedulingNotes += ` | Safety risk: ${triageResult.safetyRisk}`;
+    }
+
+    const finalStatus = this.determineInitialCaseStatus(triageResult, contractorRecommendations);
+    
+    console.log(`🎯 Smart case workflow initialized: ${workflowSteps.length} steps, auto-scheduling: ${autoScheduling.enabled}`);
+    
+    return {
+      caseId: smartCaseId,
+      status: finalStatus,
+      workflowSteps,
+      autoScheduling
+    };
+  }
+
+  /**
+   * Determines initial case status based on AI triage and contractor availability
+   */
+  private determineInitialCaseStatus(triageResult: TriageResult, contractorRecommendations: any[]): string {
+    // Critical issues get immediate scheduling
+    if (triageResult.urgency === 'Critical') {
+      return 'Scheduled'; // Ready for immediate contractor dispatch
+    }
+    
+    // High priority with available contractors
+    if (triageResult.urgency === 'High' && contractorRecommendations && contractorRecommendations.length > 0) {
+      return 'Scheduled'; // Can be scheduled with available contractor
+    }
+    
+    // Safety risks need review
+    if (triageResult.safetyRisk === 'High') {
+      return 'In Review'; // Safety review required before scheduling
+    }
+    
+    // Standard cases start as new
+    return 'New';
+  }
+
+  /**
+   * Creates automated case events for audit trail and notifications
+   */
+  async createCaseEvents(caseId: string, triageResult: TriageResult, workflowData: any): Promise<string[]> {
+    const events = [];
+    
+    // AI analysis event
+    events.push(`AI Triage Analysis Completed - Category: ${triageResult.category}, Urgency: ${triageResult.urgency}`);
+    
+    // Contractor assignment event
+    if (workflowData.autoScheduling.contractorAssigned) {
+      events.push(`Contractor Auto-Assigned: ${workflowData.autoScheduling.contractorAssigned}`);
+    }
+    
+    // Safety event
+    if (triageResult.safetyRisk !== 'None') {
+      events.push(`Safety Risk Identified: ${triageResult.safetyRisk} level - ${triageResult.reasoning}`);
+    }
+    
+    // Scheduling event  
+    if (workflowData.autoScheduling.enabled) {
+      events.push(`Auto-Scheduling Enabled: ${workflowData.autoScheduling.priority} priority case`);
+    }
+    
+    console.log(`📝 Created ${events.length} case events for audit trail`);
+    return events;
   }
 
   /**

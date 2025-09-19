@@ -321,6 +321,7 @@ export const smartCases = pgTable("smart_cases", {
   orgId: varchar("org_id").notNull().references(() => organizations.id),
   unitId: varchar("unit_id").references(() => units.id),
   propertyId: varchar("property_id").references(() => properties.id),
+  contractorId: varchar("contractor_id").references(() => vendors.id), // ✅ Added for AI contractor assignment
   title: varchar("title").notNull(),
   description: text("description"),
   status: caseStatusEnum("status").default("New"),
