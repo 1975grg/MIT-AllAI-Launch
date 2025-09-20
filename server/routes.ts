@@ -251,8 +251,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 🔧 Contractor/vendor middleware for maintenance operations
   const requireVendor = requireRole(['vendor', 'contractor', 'admin']);
 
-  // 🔧 Temporary role assignment endpoint for testing contractor functionality
-  app.post('/api/auth/assign-contractor-role', isAuthenticated, async (req: any, res) => {
+  // 🔧 Temporary role assignment endpoint for testing contractor functionality (ADMIN ONLY)
+  app.post('/api/auth/assign-contractor-role', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
@@ -2078,6 +2078,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // 🤝 CONTRACTOR ACCEPTANCE/REJECTION ENDPOINTS
+  // ========================================
+  
+  // Input validation schemas
+  const acceptCaseSchema = z.object({
+    estimatedArrival: z.string().optional(),
+    notes: z.string().max(500).optional()
+  });
+
+  const declineCaseSchema = z.object({
+    reason: z.string().min(1, "Decline reason is required").max(200),
+    notes: z.string().max(500).optional()
+  });
+  
+  // Contractor accepts a maintenance case
+  app.post('/api/contractor/cases/:caseId/accept', isAuthenticated, requireVendor, async (req: any, res) => {
+    try {
+      const { caseId } = req.params;
+      const validatedInput = acceptCaseSchema.parse(req.body);
+      const { estimatedArrival, notes } = validatedInput;
+      const userId = req.user.claims.sub;
+      const userOrg = await storage.getUserOrganization(userId);
+      
+      if (!userOrg) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Get contractor info FIRST (before any checks that reference it)
+      const contractor = await storage.getVendorByUserId(userId);
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor profile not found" });
+      }
+
+      // Get the case and verify it exists and is available
+      const smartCase = await storage.getSmartCase(caseId);
+      if (!smartCase) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // 🚨 SECURITY FIX: Verify contractor belongs to same org as case
+      if (smartCase.orgId !== userOrg.id) {
+        return res.status(403).json({ message: "Access denied to this case" });
+      }
+
+      // Allow idempotency: if already accepted by same contractor, return success
+      if (smartCase.status === 'Accepted' && smartCase.assignedContractor === contractor.id) {
+        return res.json({ 
+          message: "Case already accepted by you",
+          contractor: contractor.name,
+          estimatedArrival
+        });
+      }
+
+      // Check if case is available for acceptance (only allow specific initial states)
+      const acceptableStates = ['New', 'Unassigned', 'Open'];
+      if (!acceptableStates.includes(smartCase.status)) {
+        return res.status(400).json({ message: "Case is no longer available for acceptance" });
+      }
+      
+      // Check if case is already assigned to someone else
+      if (smartCase.assignedContractor && smartCase.assignedContractor !== contractor.id) {
+        return res.status(400).json({ message: "Case is already assigned to another contractor" });
+      }
+
+      // 🚨 ATOMIC UPDATE: Use optimistic concurrency control
+      // This is the best we can do with current storage interface
+      const finalCheck = await storage.getSmartCase(caseId);
+      
+      // Final atomic checks before update
+      if (!finalCheck || 
+          !acceptableStates.includes(finalCheck.status) ||
+          (finalCheck.assignedContractor && finalCheck.assignedContractor !== contractor.id) ||
+          finalCheck.orgId !== userOrg.id) {
+        return res.status(409).json({ 
+          message: "Case was accepted by another contractor or is no longer available" 
+        });
+      }
+
+      // Update case to Accepted status (best effort atomicity)
+      await storage.updateSmartCase(caseId, {
+        status: 'Accepted',
+        assignedContractor: contractor.id,
+        acceptedAt: new Date(),
+        contractorNotes: notes || 'Case accepted'
+      });
+
+      // Send notifications about case acceptance
+      await notifyOfCaseAcceptance(smartCase, contractor, estimatedArrival, userOrg.id);
+
+      res.json({ 
+        message: "Case accepted successfully",
+        contractor: contractor.name,
+        estimatedArrival
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid input", 
+          details: error.errors 
+        });
+      }
+      console.error("Error accepting case:", error);
+      res.status(500).json({ message: "Failed to accept case" });
+    }
+  });
+
+  // Contractor declines a maintenance case
+  app.post('/api/contractor/cases/:caseId/decline', isAuthenticated, requireVendor, async (req: any, res) => {
+    try {
+      const { caseId } = req.params;
+      const validatedInput = declineCaseSchema.parse(req.body);
+      const { reason, notes } = validatedInput;
+      const userId = req.user.claims.sub;
+      const userOrg = await storage.getUserOrganization(userId);
+      
+      if (!userOrg) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Get the case
+      const smartCase = await storage.getSmartCase(caseId);
+      if (!smartCase) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // 🚨 SECURITY FIX: Verify contractor belongs to same org as case
+      if (smartCase.orgId !== userOrg.id) {
+        return res.status(403).json({ message: "Access denied to this case" });
+      }
+
+      // Get contractor info
+      const contractor = await storage.getVendorByUserId(userId);
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor profile not found" });
+      }
+
+      // Log the decline and potentially escalate
+      await handleCaseDecline(smartCase, contractor, reason, notes);
+
+      res.json({ message: "Case declined successfully" });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid input", 
+          details: error.errors 
+        });
+      }
+      console.error("Error declining case:", error);
+      res.status(500).json({ message: "Failed to decline case" });
+    }
+  });
+
+  // Get available cases for contractor
+  app.get('/api/contractor/available-cases', isAuthenticated, requireVendor, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userOrg = await storage.getUserOrganization(userId);
+      
+      if (!userOrg) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Get contractor profile to check specializations
+      const contractor = await storage.getVendorByUserId(userId);
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor profile not found" });
+      }
+
+      // Get unassigned cases that match contractor's skills
+      const availableCases = await storage.getAvailableSmartCases(userOrg.id);
+      
+      // Sort by urgency (Critical first, then by creation time)
+      const sortedCases = availableCases.sort((a: any, b: any) => {
+        const urgencyOrder = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+        const aUrgency = urgencyOrder[a.priority as keyof typeof urgencyOrder] || 1;
+        const bUrgency = urgencyOrder[b.priority as keyof typeof urgencyOrder] || 1;
+        
+        if (aUrgency !== bUrgency) return bUrgency - aUrgency;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+      res.json(sortedCases);
+
+    } catch (error) {
+      console.error("Error fetching available cases:", error);
+      res.status(500).json({ message: "Failed to fetch available cases" });
+    }
+  });
+
   // AI Override endpoint - allows humans to override AI triage decisions
   const aiOverrideSchema = z.object({
     category: z.string().min(1, "Category is required"),
@@ -2355,6 +2547,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // The architect identified this as a critical security vulnerability (IDOR)
   // Students should only access their conversations through the startTriage response
   // which includes the conversation ID for subsequent continue/complete calls
+
+  // ========================================
+  // 📬 NOTIFICATION SERVICE: Send real-time alerts to contractors and admins
+  // ========================================
+  async function sendSmartCaseNotifications(smartCase: any, workflowData: any, aiTriage: any, orgId: string) {
+    try {
+      console.log(`📬 Sending notifications for case ${smartCase.id} - ${aiTriage.urgency} priority`);
+      
+      // 1. Notify assigned contractor (if auto-assigned)
+      if (workflowData.autoScheduling.contractorAssigned) {
+        const contractor = await storage.getVendor(workflowData.autoScheduling.contractorAssigned);
+        if (contractor && contractor.userId) {
+          await storage.createNotification(
+            contractor.userId,
+            `🔧 New Maintenance Assignment: ${smartCase.title}`,
+            `You've been assigned a ${aiTriage.urgency.toLowerCase()} priority maintenance case at ${smartCase.buildingName || 'MIT Housing'}. ${smartCase.description.substring(0, 100)}...`,
+            'urgent'
+          );
+          console.log(`🔔 Notified assigned contractor: ${contractor.name}`);
+        }
+      } else {
+        // 2. Notify all available contractors in the category
+        const availableContractors = await storage.getVendors(orgId);
+        const categoryContractors = availableContractors.filter(c => c.isActiveContractor);
+        
+        for (const contractor of categoryContractors.slice(0, 5)) { // Limit to 5 contractors
+          if (contractor.userId) {
+            await storage.createNotification(
+              contractor.userId,
+              `🆕 New Maintenance Request Available: ${smartCase.title}`,
+              `A ${aiTriage.urgency.toLowerCase()} priority ${aiTriage.category} maintenance request is available at ${smartCase.buildingName || 'MIT Housing'}. First to accept gets the job!`,
+              aiTriage.urgency === 'Critical' ? 'urgent' : 'info'
+            );
+          }
+        }
+        console.log(`🔔 Notified ${categoryContractors.length} available contractors`);
+      }
+      
+      // 3. Always notify admins for oversight
+      const adminMembers = await storage.getOrganizationMembersByRole(orgId, 'admin');
+      for (const admin of adminMembers) {
+        await storage.createNotification(
+          admin.userId,
+          `🎯 New Maintenance Case Created: ${smartCase.title}`,
+          `Case #${smartCase.id.substring(0, 8)} - ${aiTriage.urgency} priority ${aiTriage.category} case ${workflowData.autoScheduling.contractorAssigned ? 'auto-assigned' : 'awaiting contractor'}. Building: ${smartCase.buildingName || 'Not specified'}`,
+          aiTriage.urgency === 'Critical' ? 'urgent' : 'info'
+        );
+      }
+      console.log(`🔔 Notified ${adminMembers.length} administrators`);
+      
+      // 4. Emergency notifications for critical cases
+      if (aiTriage.urgency === 'Critical' || aiTriage.safetyRisk === 'High') {
+        // Create emergency escalation reminder for 15 minutes if no contractor accepts
+        await storage.createReminder({
+          orgId,
+          title: `EMERGENCY: Case ${smartCase.id.substring(0, 8)} Unassigned`,
+          type: 'Maintenance', 
+          dueAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
+          leadDays: 0,
+          channels: ['inapp'],
+          payloadJson: { caseId: smartCase.id, escalationType: 'emergency_unassigned' }
+        });
+        console.log(`🚨 Emergency escalation reminder set for 15 minutes`);
+      }
+      
+      console.log(`✅ Notifications sent successfully for case ${smartCase.id}`);
+    } catch (error) {
+      console.error(`❌ Failed to send notifications for case ${smartCase.id}:`, error);
+      // Don't throw - notification failures shouldn't block case creation
+    }
+  }
+
+  // ========================================
+  // 📬 HELPER FUNCTIONS: Case acceptance and decline notifications
+  // ========================================
+  async function notifyOfCaseAcceptance(smartCase: any, contractor: any, estimatedArrival: string, orgId: string) {
+    try {
+      // Notify admins that case was accepted
+      const adminMembers = await storage.getOrganizationMembersByRole(orgId, 'admin');
+      for (const admin of adminMembers) {
+        await storage.createNotification(
+          admin.userId,
+          `✅ Case Accepted: ${smartCase.title}`,
+          `${contractor.name} has accepted case #${smartCase.id.substring(0, 8)}. ${estimatedArrival ? `Estimated arrival: ${estimatedArrival}` : 'Starting work soon.'}`,
+          'success'
+        );
+      }
+      
+      console.log(`✅ Notifications sent for case acceptance by ${contractor.name}`);
+    } catch (error) {
+      console.error('Failed to send case acceptance notifications:', error);
+    }
+  }
+
+  async function handleCaseDecline(smartCase: any, contractor: any, reason: string, notes?: string) {
+    try {
+      // Log the decline
+      console.log(`❌ Case ${smartCase.id} declined by ${contractor.name}: ${reason}`);
+      
+      // Check if this was a critical case and needs immediate escalation
+      if (smartCase.priority === 'Critical') {
+        // Notify admins immediately for critical cases
+        const adminMembers = await storage.getOrganizationMembersByRole(smartCase.orgId, 'admin');
+        for (const admin of adminMembers) {
+          await storage.createNotification(
+            admin.userId,
+            `🚨 URGENT: Critical Case Declined`,
+            `${contractor.name} declined critical case #${smartCase.id.substring(0, 8)}. Reason: ${reason}. Immediate reassignment needed!`,
+            'urgent'
+          );
+        }
+        
+        // Find backup contractors and notify them
+        const backupContractors = await storage.getVendors(smartCase.orgId);
+        const activeBackups = backupContractors.filter(c => 
+          c.isActiveContractor && c.id !== contractor.id
+        ).slice(0, 3); // Top 3 backup contractors
+
+        for (const backup of activeBackups) {
+          if (backup.userId) {
+            await storage.createNotification(
+              backup.userId,
+              `🚨 URGENT: Critical Case Needs Immediate Attention`,
+              `Critical ${smartCase.category} maintenance case at ${smartCase.buildingName || 'MIT Housing'} was declined by another contractor. URGENT response needed!`,
+              'urgent'
+            );
+          }
+        }
+      } else {
+        // For non-critical cases, just notify admins for tracking
+        const adminMembers = await storage.getOrganizationMembersByRole(smartCase.orgId, 'admin');
+        for (const admin of adminMembers) {
+          await storage.createNotification(
+            admin.userId,
+            `↩️ Case Declined: ${smartCase.title}`,
+            `${contractor.name} declined case #${smartCase.id.substring(0, 8)}. Reason: ${reason}. Case returned to available pool.`,
+            'info'
+          );
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to handle case decline:', error);
+    }
+  }
 
   // Public student maintenance request endpoint (no authentication required)
   app.post('/api/cases/public', publicRateLimit, async (req: any, res) => {
@@ -2651,6 +2988,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiTriage,
         workflowData
       );
+      
+      // 🚨 NEW: Send real-time notifications to contractors and admins
+      await sendSmartCaseNotifications(smartCase, workflowData, aiTriage, org.id);
       
       // 🔄 PERSISTENCE: Update case status and contractor assignment
       const updateData: any = {};
