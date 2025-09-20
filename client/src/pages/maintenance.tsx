@@ -269,7 +269,7 @@ export default function MaintenancePage() {
       description: smartCase.description || "",
       propertyId: smartCase.propertyId || "",
       unitId: smartCase.unitId || "",
-      priority: (smartCase.priority as "Low" | "Medium" | "High" | "Urgent") || "Medium",
+      priority: smartCase.priority || "Medium",
       category: smartCase.category || "",
       createReminder: false,
     });
@@ -304,7 +304,7 @@ export default function MaintenancePage() {
 
   const filteredProperties = entityFilter === "all" 
     ? (properties as Property[] | undefined) || []
-    : (properties as Property[] | undefined)?.filter((p: Property) => p.entityId === entityFilter) || [];
+    : (properties as Property[] | undefined)?.filter((p: Property) => (p as any).entityId === entityFilter) || [];
 
   const filteredCases = (smartCases as SmartCase[] || []).filter((smartCase: SmartCase) => {
     const matchesSearch = !searchTerm || 
@@ -312,7 +312,7 @@ export default function MaintenancePage() {
       smartCase.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesEntity = entityFilter === "all" || 
-      (properties as Property[] | undefined)?.find((p: Property) => p.id === smartCase.propertyId)?.entityId === entityFilter;
+      ((properties as Property[] | undefined)?.find((p: Property) => p.id === smartCase.propertyId) as any)?.entityId === entityFilter;
     
     const matchesProperty = propertyFilter === "all" || smartCase.propertyId === propertyFilter;
     
@@ -343,7 +343,7 @@ export default function MaintenancePage() {
                 {property && (
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    {property.name} {unit ? `- ${unit.name}` : ''}
+                    {property.name} {unit ? `- ${unit.label}` : ''}
                   </span>
                 )}
               </div>
