@@ -2515,7 +2515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               specializations: c.specializations || [],
               availabilityPattern: c.availabilityPattern,
               responseTimeHours: c.responseTimeHours,
-              estimatedHourlyRate: c.estimatedHourlyRate,
+              estimatedHourlyRate: Number(c.estimatedHourlyRate) || 75,
               rating: c.rating,
               maxJobsPerDay: c.maxJobsPerDay,
               currentWorkload: 0, // TODO: Calculate from current cases

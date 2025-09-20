@@ -1267,7 +1267,7 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
           specializations: c.specializations || [],
           availabilityPattern: c.availabilityPattern || 'standard',
           responseTimeHours: c.responseTimeHours || 24,
-          estimatedHourlyRate: c.estimatedHourlyRate || 75,
+          estimatedHourlyRate: Number(c.estimatedHourlyRate) || 75,
           rating: 4.5,
           maxJobsPerDay: c.maxJobsPerDay || 3,
           currentWorkload: 0,
@@ -1284,7 +1284,7 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         // Assign contractor to the case
         await storage.updateSmartCase(caseId, { 
           contractorId: bestContractor.contractorId,
-          status: 'Assigned' as any
+          status: 'In Progress' as any
         });
 
         // Create assignment event
