@@ -23,9 +23,9 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             AI-Powered Maintenance Automation
-            <span className="block mit-heading">For University Student Housing</span>
+            <span className="block mit-heading bg-gradient-to-r from-red-800 via-red-600 to-red-400 bg-clip-text text-transparent">For University Student Housing</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto">
             Revolutionize student housing maintenance with intelligent triage, automated contractor coordination, 
