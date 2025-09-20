@@ -563,82 +563,82 @@ export default function MaintenancePage() {
               </Button>
             </div>
 
-            {/* Stats and View Switcher */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
+            {/* Stats and View Switcher - Clean neutral design */}
+            <div className="flex items-center justify-between bg-white dark:bg-card p-4 rounded-lg border border-border">
+              <div className="flex items-center gap-8">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-base font-medium text-gray-700 dark:text-gray-300">
                     {filteredCases.length} Total Cases
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-base font-medium text-gray-700 dark:text-gray-300">
                     {filteredCases.filter((c: SmartCase) => c.priority === "Urgent").length} Urgent
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-base font-medium text-gray-700 dark:text-gray-300">
                     {filteredCases.filter((c: SmartCase) => c.priority === "High").length} High
                   </span>
                 </div>
               </div>
 
-              {/* View Mode Switcher - clean with pink hover */}
-              <div className="flex items-center space-x-1">
+              {/* View Mode Switcher - Clean with no backgrounds */}
+              <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 p-1 rounded-lg">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("cards")}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
                     smartCasesViewMode === "cards" 
-                      ? "bg-pink-100 text-pink-700 border border-pink-200" 
-                      : "text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-transparent"
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" 
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-700"
                   }`}
                   data-testid="button-view-cards"
                 >
-                  <Grid3X3 className="h-4 w-4 mr-1" />
+                  <Grid3X3 className="h-4 w-4 mr-2" />
                   Cards
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("list")}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
                     smartCasesViewMode === "list" 
-                      ? "bg-pink-100 text-pink-700 border border-pink-200" 
-                      : "text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-transparent"
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" 
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-700"
                   }`}
                   data-testid="button-view-list"
                 >
-                  <List className="h-4 w-4 mr-1" />
+                  <List className="h-4 w-4 mr-2" />
                   List
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("heatmap")}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
                     smartCasesViewMode === "heatmap" 
-                      ? "bg-pink-100 text-pink-700 border border-pink-200" 
-                      : "text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-transparent"
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" 
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-700"
                   }`}
                   data-testid="button-view-heatmap"
                 >
-                  <MapIcon className="h-4 w-4 mr-1" />
+                  <MapIcon className="h-4 w-4 mr-2" />
                   Heat Map
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("kanban")}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
                     smartCasesViewMode === "kanban" 
-                      ? "bg-pink-100 text-pink-700 border border-pink-200" 
-                      : "text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-transparent"
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" 
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-700"
                   }`}
                   data-testid="button-view-kanban"
                 >
-                  <Columns3 className="h-4 w-4 mr-1" />
+                  <Columns3 className="h-4 w-4 mr-2" />
                   Kanban
                 </Button>
               </div>
