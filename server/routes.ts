@@ -249,8 +249,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Convenience middleware for admin/manager/staff only
   const requireAdmin = requireRole(['admin', 'manager', 'staff']);
   
-  // Convenience middleware for vendors only
-  const requireVendor = requireRole(['vendor']);
+  // 🔧 Contractor/vendor middleware for maintenance operations
+  const requireVendor = requireRole(['vendor', 'contractor']);
+
+  // 🔧 Temporary role assignment endpoint for testing contractor functionality
+  app.post('/api/auth/assign-contractor-role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get or create organization for user
+      let userOrg = await storage.getUserOrganization(userId);
+      if (!userOrg) {
+        const user = await storage.getUser(userId);
+        if (user) {
+          userOrg = await storage.createOrganization({
+            name: `${user.firstName || user.email || 'User'}'s Maintenance`,
+            ownerId: userId,
+          });
+        }
+      }
+      
+      if (!userOrg) {
+        return res.status(404).json({ message: "Could not create organization" });
+      }
+      
+      // Update user role to contractor
+      await db.update(organizationMembers)
+        .set({ role: 'contractor' })
+        .where(and(
+          eq(organizationMembers.orgId, userOrg.id),
+          eq(organizationMembers.userId, userId)
+        ));
+      
+      res.json({ message: "Contractor role assigned successfully", role: 'contractor' });
+    } catch (error) {
+      console.error("Error assigning contractor role:", error);
+      res.status(500).json({ message: "Failed to assign contractor role" });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -275,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validate role is one of expected values
-      const validRoles = ['admin', 'manager', 'staff', 'vendor'];
+      const validRoles = ['admin', 'manager', 'staff', 'vendor', 'contractor'];
       if (!validRoles.includes(userRole)) {
         return res.status(403).json({ 
           message: "Invalid user role. Please contact administrator." 

@@ -278,15 +278,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Organization operations
-  async getUserOrganization(userId: string): Promise<Organization | undefined> {
-    const [org] = await db
-      .select()
+  async getUserOrganization(userId: string): Promise<(Organization & { role?: string }) | undefined> {
+    const [result] = await db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        createdAt: organizations.createdAt,
+        ownerId: organizations.ownerId,
+        timezone: organizations.timezone,
+        schedulingMode: organizations.schedulingMode,
+        defaultAccessApprovalHours: organizations.defaultAccessApprovalHours,
+        role: organizationMembers.role
+      })
       .from(organizations)
       .leftJoin(organizationMembers, eq(organizations.id, organizationMembers.orgId))
       .where(eq(organizationMembers.userId, userId))
       .limit(1);
     
-    return org?.organizations;
+    return result;
   }
 
   async createOrganization(orgData: InsertOrganization): Promise<Organization> {
