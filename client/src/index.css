@@ -352,35 +352,47 @@
     background: var(--gradient-button-hover);
   }
   
-  /* Allow blue colors to remain blue for better UI balance */
-  .bg-blue-500 {
-    background: hsl(217 91% 60%) !important;
+  /* Pink color overrides for clean UI */
+  .bg-pink-50 {
+    background: hsl(330 100% 98%) !important;
+  }
+  
+  .bg-pink-100 {
+    background: hsl(329 100% 94%) !important;
+  }
+  
+  .bg-pink-500 {
+    background: hsl(330 81% 60%) !important;
     color: white !important;
   }
   
-  .bg-blue-600 {
-    background: hsl(217 91% 53%) !important;
+  .bg-pink-600 {
+    background: hsl(330 81% 54%) !important;
     color: white !important;
   }
   
-  .hover\\:bg-blue-600:hover {
-    background: hsl(217 91% 53%) !important;
+  .hover\\:bg-pink-50:hover {
+    background: hsl(330 100% 98%) !important;
   }
   
-  .bg-blue-50 {
-    background: hsl(214 100% 97%) !important;
+  .hover\\:bg-pink-600:hover {
+    background: hsl(330 81% 54%) !important;
   }
   
-  .hover\\:bg-blue-50:hover {
-    background: hsl(214 100% 97%) !important;
+  .text-pink-600 {
+    color: hsl(330 81% 60%) !important;
   }
   
-  .text-blue-600 {
-    color: hsl(217 91% 60%) !important;
+  .text-pink-700 {
+    color: hsl(330 81% 50%) !important;
   }
   
-  .hover\\:text-blue-600:hover {
-    color: hsl(217 91% 60%) !important;
+  .hover\\:text-pink-600:hover {
+    color: hsl(330 81% 60%) !important;
+  }
+  
+  .border-pink-200 {
+    border-color: hsl(329 100% 88%) !important;
   }
   
   /* Primary buttons keep red for brand consistency */

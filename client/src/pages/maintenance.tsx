@@ -557,7 +557,7 @@ export default function MaintenancePage() {
                 <h1 className="text-2xl font-semibold text-foreground">Maintenance Cases</h1>
                 <p className="text-muted-foreground">Track and manage maintenance requests</p>
               </div>
-              <Button onClick={() => setShowCaseForm(true)} className="bg-blue-500 hover:bg-blue-600 text-white" data-testid="button-create-case">
+              <Button onClick={() => setShowCaseForm(true)} className="bg-pink-500 hover:bg-pink-600 text-white" data-testid="button-create-case">
                 <Plus className="h-4 w-4 mr-2" />
                 Quick Add
               </Button>
@@ -583,16 +583,16 @@ export default function MaintenancePage() {
                 </div>
               </div>
 
-              {/* View Mode Switcher - clean blue like AllAI Property */}
-              <div className="flex items-center bg-white dark:bg-card rounded-lg border border-border p-1">
+              {/* View Mode Switcher - clean with pink hover */}
+              <div className="flex items-center space-x-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("cards")}
-                  className={`px-3 py-1 ${
+                  className={`px-3 py-1.5 rounded-md transition-colors ${
                     smartCasesViewMode === "cards" 
-                      ? "bg-blue-500 text-white hover:bg-blue-600" 
-                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                      ? "bg-pink-100 text-pink-700 border border-pink-200" 
+                      : "text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-transparent"
                   }`}
                   data-testid="button-view-cards"
                 >
@@ -603,10 +603,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("list")}
-                  className={`px-3 py-1 ${
+                  className={`px-3 py-1.5 rounded-md transition-colors ${
                     smartCasesViewMode === "list" 
-                      ? "bg-blue-500 text-white hover:bg-blue-600" 
-                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                      ? "bg-pink-100 text-pink-700 border border-pink-200" 
+                      : "text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-transparent"
                   }`}
                   data-testid="button-view-list"
                 >
@@ -617,10 +617,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("heatmap")}
-                  className={`px-3 py-1 ${
+                  className={`px-3 py-1.5 rounded-md transition-colors ${
                     smartCasesViewMode === "heatmap" 
-                      ? "bg-blue-500 text-white hover:bg-blue-600" 
-                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                      ? "bg-pink-100 text-pink-700 border border-pink-200" 
+                      : "text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-transparent"
                   }`}
                   data-testid="button-view-heatmap"
                 >
@@ -631,10 +631,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("kanban")}
-                  className={`px-3 py-1 ${
+                  className={`px-3 py-1.5 rounded-md transition-colors ${
                     smartCasesViewMode === "kanban" 
-                      ? "bg-blue-500 text-white hover:bg-blue-600" 
-                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                      ? "bg-pink-100 text-pink-700 border border-pink-200" 
+                      : "text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-transparent"
                   }`}
                   data-testid="button-view-kanban"
                 >
