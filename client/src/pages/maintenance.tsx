@@ -557,7 +557,7 @@ export default function MaintenancePage() {
                 <h1 className="text-2xl font-semibold text-foreground">Maintenance Cases</h1>
                 <p className="text-muted-foreground">Track and manage maintenance requests</p>
               </div>
-              <Button onClick={() => setShowCaseForm(true)} className="bg-pink-500 hover:bg-pink-600 text-white" data-testid="button-create-case">
+              <Button onClick={() => setShowCaseForm(true)} variant="ghost" className="hover:bg-pink-50 hover:text-pink-700" data-testid="button-create-case">
                 <Plus className="h-4 w-4 mr-2" />
                 Quick Add
               </Button>
@@ -589,10 +589,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("cards")}
-                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-transparent ${
+                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-pink-50 hover:text-pink-700 ${
                     smartCasesViewMode === "cards" 
                       ? "text-foreground font-semibold underline underline-offset-4" 
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground"
                   }`}
                   data-testid="button-view-cards"
                 >
@@ -603,10 +603,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("list")}
-                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-transparent ${
+                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-pink-50 hover:text-pink-700 ${
                     smartCasesViewMode === "list" 
                       ? "text-foreground font-semibold underline underline-offset-4" 
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground"
                   }`}
                   data-testid="button-view-list"
                 >
@@ -617,10 +617,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("heatmap")}
-                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-transparent ${
+                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-pink-50 hover:text-pink-700 ${
                     smartCasesViewMode === "heatmap" 
                       ? "text-foreground font-semibold underline underline-offset-4" 
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground"
                   }`}
                   data-testid="button-view-heatmap"
                 >
@@ -631,10 +631,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("kanban")}
-                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-transparent ${
+                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-pink-50 hover:text-pink-700 ${
                     smartCasesViewMode === "kanban" 
                       ? "text-foreground font-semibold underline underline-offset-4" 
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground"
                   }`}
                   data-testid="button-view-kanban"
                 >
