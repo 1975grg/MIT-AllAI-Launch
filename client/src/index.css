@@ -14,33 +14,33 @@
   --card-foreground: hsl(220 25% 8%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(220 25% 8%);
-  --primary: hsl(220 20% 50%); /* Neutral primary instead of red */
+  --primary: hsl(355 70% 40%); /* Softer MIT Cardinal Red for better contrast */
   --primary-foreground: hsl(0 0% 100%);
   --secondary: hsl(220 15% 97%); /* Neutral secondary */
   --secondary-foreground: hsl(220 25% 8%);
   --muted: hsl(220 15% 97%); /* Neutral muted background */
   --muted-foreground: hsl(220 20% 50%); /* Readable muted text */
-  --accent: hsl(220 15% 96%); /* Neutral accent */
-  --accent-foreground: hsl(220 25% 25%);
-  --destructive: hsl(15 70% 50%); /* Orange instead of red */
+  --accent: hsl(355 70% 96%); /* Light red accent */
+  --accent-foreground: hsl(355 70% 25%);
+  --destructive: hsl(0 70% 50%); /* Readable destructive red */
   --destructive-foreground: hsl(0 0% 100%);
   --border: hsl(220 15% 90%); /* Neutral borders */
   --input: hsl(220 15% 98%); /* Neutral input backgrounds */
-  --ring: hsl(220 20% 50%); /* Neutral focus rings */
+  --ring: hsl(355 70% 40%); /* MIT Cardinal focus rings */
   
   /* Additional neutral surface tokens */
   --surface: hsl(0 0% 100%); /* Pure white surface */
   --surface-muted: hsl(220 15% 97%); /* Light gray surface */
   --border-muted: hsl(220 15% 90%); /* Subtle borders */
   
-  /* Neutral gradients instead of red */
-  --gradient-primary: hsl(220 20% 50%);
+  /* Subtle gradients - only for buttons and accents */
+  --gradient-primary: hsl(355 70% 40%);
   --gradient-secondary: hsl(220 15% 97%);
-  --gradient-ai: hsl(220 20% 50%);
-  --gradient-hover: hsl(220 20% 45%);
-  --gradient-glow: hsl(220 20% 50%);
-  --gradient-button: hsl(220 20% 50%);
-  --gradient-button-hover: hsl(220 20% 45%);
+  --gradient-ai: hsl(355 70% 40%);
+  --gradient-hover: hsl(355 70% 35%);
+  --gradient-glow: hsl(355 70% 40%);
+  --gradient-button: hsl(355 70% 40%);
+  --gradient-button-hover: hsl(355 70% 35%);
   --gradient-page-bg: hsl(0 0% 100%);
   --chart-1: hsl(355 85% 45%); /* MIT Cardinal Red */
   --chart-2: hsl(340 85% 55%); /* Cardinal Red Variant */
@@ -79,19 +79,19 @@
   --card-foreground: hsl(0 0% 90%);
   --popover: hsl(220 25% 6%);
   --popover-foreground: hsl(0 0% 95%);
-  --primary: hsl(220 20% 60%); /* Neutral primary for dark mode */
+  --primary: hsl(355 70% 60%); /* Softer Cardinal for dark mode */
   --primary-foreground: hsl(220 25% 6%);
   --secondary: hsl(220 25% 15%); /* Neutral secondary for dark */
   --secondary-foreground: hsl(220 25% 90%);
   --muted: hsl(220 25% 18%);
   --muted-foreground: hsl(220 25% 65%);
-  --accent: hsl(220 25% 15%);
-  --accent-foreground: hsl(220 25% 75%);
-  --destructive: hsl(15 70% 60%); /* Orange instead of red */
+  --accent: hsl(355 70% 15%);
+  --accent-foreground: hsl(355 70% 75%);
+  --destructive: hsl(0 70% 60%);
   --destructive-foreground: hsl(220 25% 6%);
   --border: hsl(220 25% 20%);
   --input: hsl(220 25% 15%);
-  --ring: hsl(220 20% 60%); /* Neutral focus rings */
+  --ring: hsl(355 70% 60%);
   
   /* Dark mode neutral surfaces */
   --surface: hsl(220 25% 10%);
