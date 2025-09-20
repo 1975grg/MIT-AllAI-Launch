@@ -892,10 +892,16 @@ NEVER ask for information you already have!\n`;
     
     // Common patterns students use
     const patterns = [
-      // "Tang 201", "Next 123", "Simmons 456"
+      // "Tang room 301", "Next room 123" - NEW: handles "building room number"
+      /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\s+(?:room|rm)\s+(\d+[a-z]?)\b/gi,
+      
+      // "Tang Hall room 301", "Next House room 123" - NEW: handles full building name + room 
+      /\b(tang hall|next house|simmons hall|macgregor house|burton conner|new house|baker house|mccormick hall|random hall|senior house|ashdown house|sidney pacific|sidney-pacific)\s+(?:room|rm)\s+(\d+[a-z]?)\b/gi,
+      
+      // "Tang 201", "Next 123", "Simmons 456" - EXISTING: direct adjacency
       /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\s+(\d+[a-z]?)\b/gi,
       
-      // "Tang Hall 201", "Next House 123"  
+      // "Tang Hall 201", "Next House 123" - EXISTING: full building name + number
       /\b(tang hall|next house|simmons hall|macgregor house|burton conner|new house|baker house|mccormick hall|random hall|senior house|ashdown house|sidney pacific|sidney-pacific)\s+(\d+[a-z]?)\b/gi,
       
       // "I'm in Tang", "from Next"

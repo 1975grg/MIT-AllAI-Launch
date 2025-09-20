@@ -240,7 +240,25 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
     );
     
     if (activeContractors.length === 0) {
-      return [];
+      // ✅ NO CONTRACTORS AVAILABLE - SUGGEST ADMIN INTERVENTION
+      console.log(`🚨 No contractors available for ${caseData.category} case "${caseData.title}"`);
+      
+      // Return special admin intervention recommendation
+      return [{
+        contractorId: 'admin-intervention-required',
+        contractorName: '⚡ Admin Intervention Needed',
+        matchScore: 0,
+        reasoning: `No ${caseData.category} contractors available. Suggested actions: 1) Flag general maintenance contractor, 2) Contact external emergency service, 3) Reassign to available contractor with different specialization`,
+        estimatedResponseTime: 'Immediate admin action required',
+        riskFactors: ['no_specialized_contractors', 'potential_delay'],
+        availability: {
+          contractorId: 'admin-intervention',
+          isAvailable: false,
+          currentWorkload: 0,
+          maxCapacity: 0,
+          availabilityReason: `No active ${caseData.category} contractors found. Admin should: reassign to general contractor or contact external services`
+        }
+      }];
     }
     
     // Score contractors based on simple rules

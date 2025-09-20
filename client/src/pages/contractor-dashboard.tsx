@@ -65,6 +65,8 @@ export default function ContractorDashboard() {
   const { toast } = useToast();
   const { effectiveRole, originalRole, setPreviewRole, isPreviewing } = useRolePreview();
   const [selectedTab, setSelectedTab] = useState("cases");
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
 
   // Get assigned cases
   const { data: assignedCases = [], isLoading: casesLoading } = useQuery<ContractorCase[]>({
@@ -139,6 +141,67 @@ export default function ContractorDashboard() {
       default:
         return <Clock className="h-4 w-4" />;
     }
+  };
+
+  // Create appointment mutation
+  const createAppointmentMutation = useMutation({
+    mutationFn: async ({ caseId, scheduledStartAt }: { caseId: string; scheduledStartAt: string }) => {
+      const assignedCase = assignedCases.find(c => c.id === caseId);
+      
+      // ✅ FIX: Get contractorId from the assigned case (since case is assigned to current contractor)
+      if (!assignedCase) {
+        throw new Error("Case not found");
+      }
+      
+      const appointmentData = {
+        caseId: caseId,
+        contractorId: assignedCase.contractorId || 'current-contractor-id', // Get from case assignment
+        title: `Maintenance Visit - ${assignedCase?.title || 'Case'}`,
+        description: `Scheduled maintenance visit for: ${assignedCase?.description || ''}`,
+        scheduledStartAt: scheduledStartAt,
+        scheduledEndAt: new Date(new Date(scheduledStartAt).getTime() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours later
+        priority: assignedCase?.priority || 'Medium',
+        locationDetails: assignedCase?.buildingName && assignedCase?.roomNumber ? 
+          `${assignedCase.buildingName} - Room ${assignedCase.roomNumber}` : 
+          assignedCase?.locationText || 'Location TBD',
+        isEmergency: assignedCase?.priority === 'Urgent',
+        requiresTenantAccess: true
+      };
+      return await apiRequest("POST", "/api/appointments", appointmentData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/cases'] });
+      // Update case status to Scheduled
+      updateCaseStatus.mutate({ caseId: selectedCaseId!, status: "Scheduled" });
+      toast({
+        title: "Appointment Scheduled",
+        description: "Appointment has been scheduled successfully. Student will be notified."
+      });
+      setScheduleDialogOpen(false);
+      setSelectedCaseId(null);
+    },
+    onError: () => {
+      toast({
+        title: "Scheduling Failed",
+        description: "Failed to schedule appointment. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Handle scheduling appointment
+  const handleScheduleAppointment = (caseId: string) => {
+    setSelectedCaseId(caseId);
+    // Quick schedule for tomorrow at 10 AM (in production, would show date/time picker)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    
+    createAppointmentMutation.mutate({ 
+      caseId, 
+      scheduledStartAt: tomorrow.toISOString() 
+    });
   };
 
   return (
@@ -309,14 +372,46 @@ export default function ContractorDashboard() {
                         
                         <div className="flex gap-2">
                           {case_.status === "New" && (
-                            <Button
-                              size="sm"
-                              onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Progress" })}
-                              disabled={updateCaseStatus.isPending}
-                              data-testid={`button-start-case-${case_.id}`}
-                            >
-                              Start Work
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Review" })}
+                                disabled={updateCaseStatus.isPending}
+                                data-testid={`button-accept-case-${case_.id}`}
+                              >
+                                Accept Job
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleScheduleAppointment(case_.id)}
+                                disabled={updateCaseStatus.isPending}
+                                data-testid={`button-schedule-case-${case_.id}`}
+                              >
+                                Schedule Appointment
+                              </Button>
+                            </>
+                          )}
+                          {case_.status === "In Review" && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Progress" })}
+                                disabled={updateCaseStatus.isPending}
+                                data-testid={`button-start-case-${case_.id}`}
+                              >
+                                Start Work
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleScheduleAppointment(case_.id)}
+                                disabled={updateCaseStatus.isPending}
+                                data-testid={`button-schedule-case-${case_.id}`}
+                              >
+                                Schedule Visit
+                              </Button>
+                            </>
                           )}
                           {case_.status === "In Progress" && (
                             <Button
