@@ -95,8 +95,8 @@ export default function Header({ title }: HeaderProps) {
                 className="h-6 w-auto flex-shrink-0 opacity-90"
                 data-testid="img-mit-logo"
               />
-              <div className="flex flex-col min-w-0 max-w-40 !bg-transparent">
-                <h1 className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate" data-testid="text-header-title">MIT Housing</h1>
+              <div className="flex flex-col min-w-0 max-w-36 !bg-transparent">
+                <h1 className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate" data-testid="text-header-title">Housing</h1>
                 <span className="text-xs text-gray-500 dark:text-gray-400 truncate" data-testid="text-subtitle">{title}</span>
               </div>
             </div>
@@ -128,7 +128,7 @@ export default function Header({ title }: HeaderProps) {
             onClick={() => setShowReminderForm(true)}
             data-testid="button-notifications"
           >
-            <Bell className="h-5 w-5" />
+            <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             {unreadNotifications > 0 && (
               <Badge className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center p-0" data-testid="badge-notification-count">
                 {unreadNotifications}
@@ -145,7 +145,7 @@ export default function Header({ title }: HeaderProps) {
                 onValueChange={(value) => setPreviewRole(value === "original" ? null : value as UserRole)}
                 data-testid="select-role-preview"
               >
-                <SelectTrigger className="w-32 h-7 text-xs bg-transparent border-none shadow-none">
+                <SelectTrigger className="w-32 h-7 text-xs !bg-white dark:!bg-gray-800 !text-gray-800 dark:!text-gray-200 border border-gray-300 shadow-none">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
