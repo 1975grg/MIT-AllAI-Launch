@@ -469,7 +469,7 @@ export default function PropertyAssistant({ context = "dashboard", exampleQuesti
                   key={index}
                   variant="outline"
                   size="sm"
-                  className="text-xs h-auto py-2 px-3 hover:bg-muted/50"
+                  className="text-xs h-auto py-2 px-3 !bg-transparent hover:!bg-pink-50 hover:!text-pink-700 !text-gray-700 dark:!text-gray-300 !border-gray-300 dark:!border-gray-600"
                   onClick={() => handleExampleClick(example)}
                   disabled={isAsking}
                   data-testid={`button-example-${index}`}

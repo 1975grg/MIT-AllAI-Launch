@@ -410,7 +410,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto h-[600px] flex flex-col">
+    <Card className="w-full max-w-4xl mx-auto h-[600px] flex flex-col !border-2 !border-gray-300 dark:!border-gray-600 shadow-lg">
       <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
