@@ -35,9 +35,8 @@ import { startCronJobs } from "./cronJobs";
 
 // ✅ Mailla AI Triage validation schemas
 const startTriageSchema = z.object({
-  studentId: z.string().min(1).max(100),
-  orgId: z.string().min(1).max(100), 
   initialRequest: z.string().min(10).max(2000)
+  // studentId and orgId will be inferred from authenticated session
 });
 
 const continueTriageSchema = z.object({
@@ -273,13 +272,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Could not create organization" });
       }
       
-      // Update user role to contractor
-      await db.update(organizationMembers)
-        .set({ role: 'contractor' })
-        .where(and(
-          eq(organizationMembers.orgId, userOrg.id),
-          eq(organizationMembers.userId, userId)
-        ));
+      // Update user role to contractor using proper storage method
+      await storage.updateOrganizationMemberRole(userId, userOrg.id, 'contractor');
+      console.log(`✅ User ${userId} assigned contractor role in org ${userOrg.id}`);
       
       res.json({ message: "Contractor role assigned successfully", role: 'contractor' });
     } catch (error) {

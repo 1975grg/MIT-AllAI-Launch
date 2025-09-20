@@ -298,6 +298,16 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  // 🔧 Organization member role management
+  async updateOrganizationMemberRole(userId: string, orgId: string, role: string): Promise<void> {
+    await db.update(organizationMembers)
+      .set({ role })
+      .where(and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.orgId, orgId)
+      ));
+  }
+
   async createOrganization(orgData: InsertOrganization): Promise<Organization> {
     const [org] = await db.insert(organizations).values(orgData).returning();
     
