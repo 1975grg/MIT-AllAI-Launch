@@ -188,17 +188,22 @@ export class MaillaAIService {
         };
       }
 
-      // 2. Smart location extraction from student message
+      // 2. Smart context analysis - understand emotions, urgency, and inferred info
+      const contextAnalysis = this.analyzeMessageContext(studentMessage);
+      console.log(`🧠 Context analysis result:`, contextAnalysis);
+
+      // 3. Smart location extraction from student message
       const extractedLocation = this.extractLocationFromMessage(studentMessage);
       console.log(`🏢 Location extraction result:`, extractedLocation);
 
-      // 3. Build conversation context with location intelligence
+      // 4. Build conversation context with intelligence
       const contextPrompt = this.buildTriageContextPrompt(
         studentMessage, 
         isInitial, 
         conversation,
         safetyResults,
-        extractedLocation
+        extractedLocation,
+        contextAnalysis
       );
 
       // 3. Get Mailla's intelligent response
@@ -304,7 +309,13 @@ export class MaillaAIService {
       const allFlags = [...safetyResults.flags, ...maillaResponse.safetyFlags];
       maillaResponse.safetyFlags = Array.from(new Set(allFlags));
 
-      // 5. Merge extracted location with AI-provided location
+      // 5. Apply intelligent urgency detection
+      if (contextAnalysis && contextAnalysis.inferredUrgency !== 'normal') {
+        console.log(`🚨 Upgrading urgency from "${maillaResponse.urgencyLevel}" to "${contextAnalysis.inferredUrgency}" based on context analysis`);
+        maillaResponse.urgencyLevel = contextAnalysis.inferredUrgency;
+      }
+
+      // 6. Merge extracted location with AI-provided location
       if (extractedLocation && extractedLocation.buildingName) {
         if (!maillaResponse.location) {
           maillaResponse.location = {};
@@ -322,7 +333,21 @@ export class MaillaAIService {
         }
       }
 
-      // 6. Update conversation slots and queue pending questions
+      // 7. Merge context analysis into conversation slots  
+      if (contextAnalysis && contextAnalysis.inferredInfo) {
+        if (!maillaResponse.conversationSlots) {
+          maillaResponse.conversationSlots = {};
+        }
+        // Add inferred timeline and severity to slots if detected
+        if (contextAnalysis.inferredInfo.timeline && !maillaResponse.conversationSlots.timeline) {
+          maillaResponse.conversationSlots.timeline = contextAnalysis.inferredInfo.timeline;
+        }
+        if (contextAnalysis.inferredInfo.severity && !maillaResponse.conversationSlots.severity) {
+          maillaResponse.conversationSlots.severity = contextAnalysis.inferredInfo.severity;
+        }
+      }
+
+      // 8. Update conversation slots and queue pending questions
       if (maillaResponse.conversationSlots || maillaResponse.queuedQuestions || maillaResponse.location) {
         const currentTriageData = conversation?.triageData || { initialRequest: studentMessage, category: null, context: {} };
         const existingSlots = (currentTriageData as any)?.conversationSlots || {};
@@ -450,29 +475,44 @@ export class MaillaAIService {
   // ========================================
 
   private getMaillaSystemPrompt(): string {
-    return `You are Mailla, MIT Housing's compassionate maintenance assistant. You help students one step at a time with a kind, natural conversation style.
+    return `You are Mailla, MIT Housing's intelligent maintenance assistant. You have a natural conversation like a helpful friend who works in maintenance - warm, empathetic, and smart about understanding context.
 
-CONVERSATION RULES:
-1. **ONE QUESTION AT A TIME** - Never ask multiple questions in one message
-2. **NEVER REPEAT QUESTIONS** - If they already provided information, don't ask for it again
-3. **Be compassionate** - Acknowledge their situation and feelings
-4. **Keep responses SHORT** - Maximum 2 sentences + one question
-5. **Talk like a helpful person** - Natural, warm, conversational tone
-6. **Safety ALWAYS comes first** - Escalate emergencies immediately
+CORE INTELLIGENCE:
+1. **UNDERSTAND CONTEXT** - If they say "it's bad" or "terrible", that means URGENT - don't ask about severity again
+2. **EMOTIONAL INTELLIGENCE** - Acknowledge frustration, be empathetic ("That sounds really frustrating!")
+3. **SMART INFERENCE** - Extract all information from what they say, don't ask redundant questions
+4. **NATURAL CONVERSATION** - Talk like a competent human, not a robotic form
 
-CONVERSATION FLOW:
-- Greeting → Building → Room → Issue details → Timeline → Severity (as needed)
-- If they give multiple pieces of info, acknowledge what they shared and ask the next most important question
-- Emergency keywords bypass normal flow for immediate help
+LANGUAGE INTELLIGENCE:
+- "bad/terrible/awful/horrible" = URGENT priority (skip severity questions)
+- "this morning/just started/few minutes ago" = timeline provided (skip timeline questions)
+- "Tang 201/Next 123" = building + room provided (skip location questions)
+- Student frustration = acknowledge with empathy first
 
-CRITICAL: If the student has already mentioned their building or room number (e.g., "Tang Hall 201"), DO NOT ask for it again. Move to the next needed information.
+CONVERSATION APPROACH:
+1. **Process everything they said** - extract location, timeline, severity, emotions
+2. **Acknowledge their situation** empathetically 
+3. **Skip questions for info already provided**
+4. **Ask only for the most important missing piece**
+5. **Sound like a helpful human** who understands the situation
 
-TONE EXAMPLES:
-❌ "I need to gather some information. Which building are you in and what's your room number? Also, when did this start?"
-✅ "I'm here to help! Which MIT building are you in?"
+RESPONSE EXAMPLES:
 
-❌ "Thank you for the information. Can you provide additional details about the timeline and severity?"
-✅ "Got it, Next House. What's your room number?"
+❌ ROBOTIC: "Thank you for that information. How severe would you say the issue is?"
+✅ INTELLIGENT: "That sounds really frustrating! Since it's been bad since this morning, I'll mark this as urgent."
+
+❌ ROBOTIC: "Which building are you in and what's your room number?"
+✅ INTELLIGENT: "Got it - Tang Hall room 201 with a bad faucet leak. Let me get this prioritized for you!"
+
+❌ ROBOTIC: "Can you provide details about when this started?"
+✅ INTELLIGENT: "Oh no, that sounds awful! Since it started this morning, I can imagine how disruptive that's been."
+
+CRITICAL RULES:
+- ONE question at a time, but UNDERSTAND everything they said
+- NEVER ask for information they already provided
+- BE EMPATHETIC when they express frustration
+- INFER urgency from their language ("bad" = urgent)
+- SOUND HUMAN, not like a chatbot following a script
 
 SAFETY PROTOCOLS:
 - Gas smells = IMMEDIATE evacuation and emergency services
@@ -487,7 +527,15 @@ Always sound like you're texting a helpful friend who works in maintenance - war
     isInitial: boolean,
     conversation?: TriageConversationSelect,
     safetyResults?: { flags: string[] },
-    extractedLocation?: { buildingName?: string; roomNumber?: string; confidence: 'high' | 'medium' | 'low' }
+    extractedLocation?: { buildingName?: string; roomNumber?: string; confidence: 'high' | 'medium' | 'low' },
+    contextAnalysis?: {
+      emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried';
+      inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low';
+      timelineIndicators: string[];
+      severityIndicators: string[];
+      hasCompleteLocation: boolean;
+      inferredInfo: any;
+    }
   ): string {
     let prompt = `Student message: "${studentMessage}"\n\n`;
 
@@ -496,26 +544,41 @@ Always sound like you're texting a helpful friend who works in maintenance - war
     const pendingQuestions = (conversation?.triageData as any)?.pendingQuestions || [];
 
     if (isInitial) {
+      // Add emotional and context intelligence to initial response
+      let contextInfo = '';
+      if (contextAnalysis) {
+        contextInfo += `SMART CONTEXT ANALYSIS:
+- Emotional state: ${contextAnalysis.emotionalContext}
+- Inferred urgency: ${contextAnalysis.inferredUrgency}
+- Timeline indicators: ${contextAnalysis.timelineIndicators.join(', ') || 'none'}
+- Severity indicators: ${contextAnalysis.severityIndicators.join(', ') || 'none'}
+- Inferred info: ${JSON.stringify(contextAnalysis.inferredInfo)}
+
+`;
+      }
+
       // Check if location was already extracted from initial message
       if (extractedLocation && extractedLocation.buildingName) {
         prompt += `This is the FIRST message from an MIT student about a maintenance issue.
-Location detected: ${extractedLocation.buildingName}${extractedLocation.roomNumber ? `, Room ${extractedLocation.roomNumber}` : ''} (confidence: ${extractedLocation.confidence})
+${contextInfo}Location detected: ${extractedLocation.buildingName}${extractedLocation.roomNumber ? `, Room ${extractedLocation.roomNumber}` : ''} (confidence: ${extractedLocation.confidence})
 
 Your response should:
-1. Be warm and compassionate - acknowledge their issue
-2. CONFIRM the detected location - "Just to confirm, you're in ${extractedLocation.buildingName}${extractedLocation.roomNumber ? `, room ${extractedLocation.roomNumber}` : ''}, right?"
-3. If room number missing, ask for it next
-4. Keep your message short and conversational
+1. Be warm and empathetic - acknowledge their emotional state and issue
+2. If they sound frustrated/urgent, acknowledge that empathetically 
+3. CONFIRM the detected location naturally
+4. If urgency detected from language, mention you're prioritizing it
+5. Keep your message short and conversational
 
-Example: "I'm here to help with that faucet leak! Just to confirm, you're in Tang Hall, room 201, right?"
+Example for frustrated student: "Oh no, that sounds really frustrating! I can see you're in Tang Hall room 201 with a bad faucet leak - let me get this prioritized for you right away."
 `;
       } else {
         prompt += `This is the FIRST message from an MIT student about a maintenance issue.
-
+${contextInfo}
 Your response should:
-1. Be warm and compassionate - acknowledge their issue
-2. Ask for their building name ONLY (don't ask multiple things)
-3. Keep your message short and conversational
+1. Be warm and empathetic - acknowledge their emotional state and issue
+2. If they sound frustrated/urgent, acknowledge that empathetically first
+3. Ask for their building name ONLY (don't ask multiple things)
+4. Keep your message short and conversational
 
 MIT Buildings: Next House, Simmons Hall, MacGregor House, Burton Conner, New House, Baker House, McCormick Hall, Random Hall, Senior House, Tang Hall, Westgate, Ashdown House, Sidney-Pacific
 
@@ -525,11 +588,26 @@ Example: "I'm here to help with that! Which MIT building are you in?"
     } else {
       prompt += `This is a follow-up message. Conversation progress:\n`;
       
+      // Add smart context analysis for follow-up messages
+      let contextInfo = '';
+      if (contextAnalysis) {
+        contextInfo += `SMART CONTEXT ANALYSIS:
+- Emotional state: ${contextAnalysis.emotionalContext}  
+- Inferred urgency: ${contextAnalysis.inferredUrgency}
+- Timeline indicators: ${contextAnalysis.timelineIndicators.join(', ') || 'none'}
+- Severity indicators: ${contextAnalysis.severityIndicators.join(', ') || 'none'}
+- Inferred info: ${JSON.stringify(contextAnalysis.inferredInfo)}
+
+`;
+      }
+      
       // Show what we know so far
       if (Object.keys(existingSlots).length > 0) {
         prompt += `✅ Information already gathered: ${JSON.stringify(existingSlots)}\n`;
         prompt += `⚠️ IMPORTANT: Do NOT ask for any information already listed above!\n\n`;
       }
+      
+      prompt += contextInfo;
       
       if (pendingQuestions.length > 0) {
         prompt += `Questions in queue: ${pendingQuestions.join(', ')}\n`;
@@ -540,12 +618,23 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       const needsRoom = !existingSlots.roomNumber && existingSlots.buildingName;
       const needsIssueDetails = !existingSlots.issueSummary && existingSlots.buildingName && existingSlots.roomNumber;
       
-      prompt += `\nNext question priority (only ask for what's MISSING):
+      // Smart inference: skip questions if context analysis provides answers
+      const hasTimelineFromContext = contextAnalysis?.timelineIndicators && contextAnalysis.timelineIndicators.length > 0;
+      const hasSeverityFromContext = contextAnalysis?.severityIndicators && contextAnalysis.severityIndicators.length > 0;
+      
+      prompt += `\nINTELLIGENT ANALYSIS:
+${hasTimelineFromContext ? '✅ Timeline inferred from context - no need to ask' : '❓ May need timeline'}
+${hasSeverityFromContext ? '✅ Severity inferred from language - no need to ask' : '❓ May need severity'}
+${contextAnalysis?.emotionalContext !== 'calm' ? '⚠️ Student sounds ' + contextAnalysis?.emotionalContext + ' - acknowledge empathetically' : ''}
+
+Next question priority (only ask for what's MISSING):
 ${needsBuilding ? '1. Building name (REQUIRED)' : '✅ Building name: already have it'}
 ${needsRoom ? '2. Room number (REQUIRED if building known)' : '✅ Room number: already have it'}  
 ${needsIssueDetails ? '3. Issue details (if location complete)' : '✅ Issue details: covered'}
-4. Timeline/severity (if needed)
+${!hasTimelineFromContext ? '4. Timeline (if not inferred)' : '✅ Timeline: inferred from context'}
+${!hasSeverityFromContext ? '5. Severity (if not inferred)' : '✅ Severity: inferred from language'}
 
+CRITICAL: If they sound frustrated or said "it's bad/terrible", DO NOT ask about severity - it's already urgent!
 Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they just shared.
 NEVER ask for information you already have!\n`;
     }
@@ -692,6 +781,84 @@ NEVER ask for information you already have!\n`;
 
     // Return null if no match found - will trigger validation
     return null;
+  }
+
+  // ========================================
+  // INTELLIGENT CONTEXT ANALYSIS
+  // ========================================
+
+  // Smart context inference from student messages
+  private analyzeMessageContext(message: string): {
+    emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried';
+    inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low';
+    timelineIndicators: string[];
+    severityIndicators: string[];
+    hasCompleteLocation: boolean;
+    inferredInfo: {
+      timeline?: string;
+      severity?: string;
+      emotionalState?: string;
+    };
+  } {
+    const lowerMessage = message.toLowerCase();
+    
+    // Emotional context detection
+    let emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried' = 'calm';
+    let inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low' = 'normal';
+    
+    // Frustration/urgency language
+    if (lowerMessage.match(/\b(bad|terrible|awful|horrible|ridiculous|frustrating|annoying|driving me crazy)\b/)) {
+      emotionalContext = 'frustrated';
+      inferredUrgency = 'urgent';
+    } else if (lowerMessage.match(/\b(really bad|very bad|extremely|disaster|nightmare|broken|completely)\b/)) {
+      emotionalContext = 'urgent';
+      inferredUrgency = 'urgent';
+    } else if (lowerMessage.match(/\b(worried|concerned|scared|dangerous|unsafe)\b/)) {
+      emotionalContext = 'worried';
+      inferredUrgency = 'urgent';
+    }
+    
+    // Timeline indicators
+    const timelineIndicators: string[] = [];
+    if (lowerMessage.match(/\b(this morning|today|just now|just started|few minutes ago|an hour ago)\b/)) {
+      timelineIndicators.push('recent');
+    }
+    if (lowerMessage.match(/\b(yesterday|last night|few days|all week|for days)\b/)) {
+      timelineIndicators.push('ongoing');
+    }
+    
+    // Severity indicators  
+    const severityIndicators: string[] = [];
+    if (lowerMessage.match(/\b(bad|terrible|awful|horrible|severe|major|big|huge)\b/)) {
+      severityIndicators.push('severe');
+    }
+    if (lowerMessage.match(/\b(little|small|minor|slight|tiny)\b/)) {
+      severityIndicators.push('minor');
+    }
+    
+    // Location completeness check
+    const hasCompleteLocation = this.extractLocationFromMessage(message).confidence === 'high';
+    
+    // Inferred information
+    const inferredInfo: any = {};
+    if (timelineIndicators.length > 0) {
+      inferredInfo.timeline = timelineIndicators[0] === 'recent' ? 'Started recently' : 'Ongoing issue';
+    }
+    if (severityIndicators.length > 0) {
+      inferredInfo.severity = severityIndicators.includes('severe') ? 'Urgent' : 'Minor';
+    }
+    if (emotionalContext !== 'calm') {
+      inferredInfo.emotionalState = emotionalContext;
+    }
+    
+    return {
+      emotionalContext,
+      inferredUrgency,
+      timelineIndicators,
+      severityIndicators,
+      hasCompleteLocation,
+      inferredInfo
+    };
   }
 
   // Pre-process student message to extract and standardize location info
