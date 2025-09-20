@@ -27,14 +27,14 @@
   --input: hsl(355 15% 97%);
   --ring: hsl(355 85% 45%); /* MIT Cardinal focus rings */
   
-  /* Enhanced MIT Red AI Gradients - Dark to Light */
-  --gradient-primary: linear-gradient(135deg, hsl(355 85% 25%) 0%, hsl(355 85% 45%) 40%, hsl(340 85% 65%) 100%);
-  --gradient-secondary: linear-gradient(135deg, hsl(355 75% 35%) 0%, hsl(355 75% 55%) 50%, hsl(340 75% 75%) 100%);
-  --gradient-ai: linear-gradient(135deg, hsl(355 85% 20%) 0%, hsl(355 85% 45%) 30%, hsl(340 85% 55%) 70%, hsl(325 85% 75%) 100%);
-  --gradient-hover: linear-gradient(135deg, hsl(355 90% 30%) 0%, hsl(355 90% 50%) 50%, hsl(340 90% 70%) 100%);
-  --gradient-glow: linear-gradient(135deg, hsl(355 85% 15%) 0%, hsl(355 85% 45%) 25%, hsl(340 85% 55%) 60%, hsl(325 85% 75%) 100%);
-  --gradient-button: linear-gradient(135deg, hsl(355 85% 30%) 0%, hsl(355 85% 45%) 60%, hsl(340 85% 65%) 100%);
-  --gradient-button-hover: linear-gradient(135deg, hsl(355 90% 35%) 0%, hsl(355 90% 50%) 50%, hsl(340 90% 70%) 100%);
+  /* Refined MIT Red AI Gradients - Subtle and Readable */
+  --gradient-primary: linear-gradient(135deg, hsl(355 65% 45%) 0%, hsl(355 65% 55%) 60%, hsl(340 65% 65%) 100%);
+  --gradient-secondary: linear-gradient(135deg, hsl(355 55% 50%) 0%, hsl(355 55% 60%) 50%, hsl(340 55% 70%) 100%);
+  --gradient-ai: linear-gradient(135deg, hsl(355 45% 35%) 0%, hsl(355 55% 45%) 30%, hsl(340 55% 55%) 70%, hsl(325 55% 65%) 100%);
+  --gradient-hover: linear-gradient(135deg, hsl(355 70% 50%) 0%, hsl(355 70% 60%) 50%, hsl(340 70% 70%) 100%);
+  --gradient-glow: linear-gradient(135deg, hsl(355 50% 40%) 0%, hsl(355 60% 50%) 25%, hsl(340 60% 60%) 60%, hsl(325 60% 70%) 100%);
+  --gradient-button: linear-gradient(135deg, hsl(355 65% 45%) 0%, hsl(355 65% 55%) 60%, hsl(340 65% 65%) 100%);
+  --gradient-button-hover: linear-gradient(135deg, hsl(355 70% 50%) 0%, hsl(355 70% 60%) 50%, hsl(340 70% 70%) 100%);
   --gradient-page-bg: linear-gradient(180deg, hsl(0 0% 99%) 0%, hsl(355 25% 98%) 50%, hsl(355 15% 97%) 100%);
   --chart-1: hsl(355 85% 45%); /* MIT Cardinal Red */
   --chart-2: hsl(340 85% 55%); /* Cardinal Red Variant */
@@ -87,14 +87,14 @@
   --input: hsl(220 25% 15%);
   --ring: hsl(355 85% 65%);
   
-  /* Enhanced Dark Mode MIT Red AI Gradients - Dark to Light */
-  --gradient-primary: linear-gradient(135deg, hsl(355 85% 45%) 0%, hsl(355 85% 65%) 40%, hsl(340 85% 80%) 100%);
-  --gradient-secondary: linear-gradient(135deg, hsl(355 75% 55%) 0%, hsl(355 75% 75%) 50%, hsl(340 75% 85%) 100%);
-  --gradient-ai: linear-gradient(135deg, hsl(355 85% 40%) 0%, hsl(355 85% 65%) 30%, hsl(340 85% 70%) 70%, hsl(325 85% 85%) 100%);
-  --gradient-hover: linear-gradient(135deg, hsl(355 90% 50%) 0%, hsl(355 90% 70%) 50%, hsl(340 90% 85%) 100%);
-  --gradient-glow: linear-gradient(135deg, hsl(355 85% 35%) 0%, hsl(355 85% 65%) 25%, hsl(340 85% 70%) 60%, hsl(325 85% 85%) 100%);
-  --gradient-button: linear-gradient(135deg, hsl(355 85% 50%) 0%, hsl(355 85% 65%) 60%, hsl(340 85% 80%) 100%);
-  --gradient-button-hover: linear-gradient(135deg, hsl(355 90% 55%) 0%, hsl(355 90% 70%) 50%, hsl(340 90% 85%) 100%);
+  /* Refined Dark Mode MIT Red AI Gradients - Subtle and Readable */
+  --gradient-primary: linear-gradient(135deg, hsl(355 65% 55%) 0%, hsl(355 65% 65%) 40%, hsl(340 65% 75%) 100%);
+  --gradient-secondary: linear-gradient(135deg, hsl(355 55% 65%) 0%, hsl(355 55% 75%) 50%, hsl(340 55% 80%) 100%);
+  --gradient-ai: linear-gradient(135deg, hsl(355 45% 50%) 0%, hsl(355 55% 65%) 30%, hsl(340 55% 70%) 70%, hsl(325 55% 80%) 100%);
+  --gradient-hover: linear-gradient(135deg, hsl(355 70% 60%) 0%, hsl(355 70% 70%) 50%, hsl(340 70% 80%) 100%);
+  --gradient-glow: linear-gradient(135deg, hsl(355 50% 50%) 0%, hsl(355 60% 65%) 25%, hsl(340 60% 70%) 60%, hsl(325 60% 80%) 100%);
+  --gradient-button: linear-gradient(135deg, hsl(355 65% 55%) 0%, hsl(355 65% 65%) 60%, hsl(340 65% 75%) 100%);
+  --gradient-button-hover: linear-gradient(135deg, hsl(355 70% 60%) 0%, hsl(355 70% 70%) 50%, hsl(340 70% 80%) 100%);
   --gradient-page-bg: linear-gradient(180deg, hsl(220 25% 6%) 0%, hsl(355 25% 8%) 50%, hsl(355 15% 10%) 100%);
   
   --chart-1: hsl(355 85% 65%); /* Bright Cardinal */
@@ -135,13 +135,11 @@
     min-height: 100vh;
   }
   
-  /* Enhanced MIT heading styling */
+  /* Enhanced MIT heading styling - More readable */
   .mit-heading {
-    background: var(--gradient-ai);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 2px 10px rgba(163, 31, 52, 0.3);
+    color: hsl(355 85% 45%);
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
   /* Make placeholders more faded/subtle */
@@ -329,7 +327,7 @@
     z-index: 1;
   }
   
-  /* Enhanced Button Gradient Classes for All Clickable Elements */
+  /* Enhanced Button Gradient Classes - More Subtle */
   .btn-gradient, button {
     background: var(--gradient-button);
     border: none;
@@ -343,27 +341,32 @@
   
   .btn-gradient:hover, button:hover {
     background: var(--gradient-button-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(163, 31, 52, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 15px rgba(163, 31, 52, 0.25);
   }
   
-  /* Override Tailwind button styles with gradients */
+  /* Override Tailwind button styles with subtle gradients */
   .bg-blue-500, .bg-blue-600, .from-blue-500, .to-blue-600,
   .hover\\:from-blue-600, .hover\\:to-blue-700 {
     background: var(--gradient-button) !important;
+    color: white !important;
   }
   
   .bg-gradient-to-r {
     background: var(--gradient-button) !important;
+    color: white !important;
   }
   
-  /* All primary buttons get gradient treatment */
+  /* Primary buttons with better contrast */
   .bg-primary {
-    background: var(--gradient-primary) !important;
+    background: var(--gradient-button) !important;
+    color: white !important;
   }
   
+  /* Secondary buttons - more subtle */
   .bg-secondary {
-    background: var(--gradient-secondary) !important;
+    background: hsl(355 30% 85%) !important;
+    color: hsl(355 85% 45%) !important;
   }
   
   /* Enhance all interactive elements */
