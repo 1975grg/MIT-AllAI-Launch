@@ -485,7 +485,8 @@ CORE INTELLIGENCE:
 
 LANGUAGE INTELLIGENCE:
 - "bad/terrible/awful/horrible" = URGENT priority (skip severity questions)
-- "this morning/just started/few minutes ago" = timeline provided (skip timeline questions)
+- "40 degrees/freezing/no heat" = IMMEDIATE URGENT (temperature emergency)
+- "this morning/just started/few minutes ago/after class/came back" = timeline provided (skip timeline questions)
 - "Tang 201/Next 123" = building + room provided (skip location questions)
 - Student frustration = acknowledge with empathy first
 
@@ -806,8 +807,20 @@ NEVER ask for information you already have!\n`;
     let emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried' = 'calm';
     let inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low' = 'normal';
     
+    // 🌡️ CRITICAL: Temperature-based urgency detection
+    if (lowerMessage.match(/\b(freezing|frozen|cold|40 degrees|below 50|no heat|heating.*not working|heat.*out|extremely cold)\b/)) {
+      emotionalContext = 'urgent';
+      inferredUrgency = 'urgent';
+      console.log('🌡️ Temperature emergency detected - upgrading to urgent');
+    }
+    // 🔥 Hot temperature emergencies  
+    else if (lowerMessage.match(/\b(boiling|scalding|burning hot|100 degrees|over 85|no cooling|ac.*not working|air.*out|extremely hot)\b/)) {
+      emotionalContext = 'urgent';
+      inferredUrgency = 'urgent';
+      console.log('🔥 Extreme heat detected - upgrading to urgent');
+    }
     // Frustration/urgency language
-    if (lowerMessage.match(/\b(bad|terrible|awful|horrible|ridiculous|frustrating|annoying|driving me crazy)\b/)) {
+    else if (lowerMessage.match(/\b(bad|terrible|awful|horrible|ridiculous|frustrating|annoying|driving me crazy)\b/)) {
       emotionalContext = 'frustrated';
       inferredUrgency = 'urgent';
     } else if (lowerMessage.match(/\b(really bad|very bad|extremely|disaster|nightmare|broken|completely)\b/)) {
@@ -818,22 +831,33 @@ NEVER ask for information you already have!\n`;
       inferredUrgency = 'urgent';
     }
     
-    // Timeline indicators
+    // 📚 Enhanced timeline indicators with class schedule awareness
     const timelineIndicators: string[] = [];
-    if (lowerMessage.match(/\b(this morning|today|just now|just started|few minutes ago|an hour ago)\b/)) {
+    if (lowerMessage.match(/\b(this morning|today|just now|just started|few minutes ago|an hour ago|right now|currently)\b/)) {
       timelineIndicators.push('recent');
     }
-    if (lowerMessage.match(/\b(yesterday|last night|few days|all week|for days)\b/)) {
+    // 🎓 Class schedule language patterns  
+    if (lowerMessage.match(/\b(after class|came back|got back|returned|when i got here|after lecture|post-class|back from)\b/)) {
+      timelineIndicators.push('recent');
+      console.log('🎓 Class schedule pattern detected - interpreting as recent/today');
+    }
+    if (lowerMessage.match(/\b(yesterday|last night|few days|all week|for days|been going on)\b/)) {
       timelineIndicators.push('ongoing');
     }
     
-    // Severity indicators  
+    // 🚨 Enhanced severity indicators with temperature context
     const severityIndicators: string[] = [];
-    if (lowerMessage.match(/\b(bad|terrible|awful|horrible|severe|major|big|huge)\b/)) {
+    if (lowerMessage.match(/\b(bad|terrible|awful|horrible|severe|major|big|huge|freezing|boiling|emergency)\b/)) {
       severityIndicators.push('severe');
     }
-    if (lowerMessage.match(/\b(little|small|minor|slight|tiny)\b/)) {
+    if (lowerMessage.match(/\b(little|small|minor|slight|tiny|barely)\b/)) {
       severityIndicators.push('minor');
+    }
+    // Temperature-specific severity
+    if (lowerMessage.match(/\b(40|41|42|43|44|45).*(degrees|cold|freezing)\b/) || 
+        lowerMessage.match(/\b(85|86|87|88|89|90).*(degrees|hot|burning)\b/)) {
+      severityIndicators.push('severe');
+      console.log('🌡️ Extreme temperature reading detected - marking as severe');
     }
     
     // Location completeness check
@@ -938,24 +962,36 @@ NEVER ask for information you already have!\n`;
         throw new Error(`Unable to route maintenance request: Building "${locationData.buildingName}" not recognized. Please contact support.`);
       }
 
-      // Create smart case with rich triage context and location
+      // 🎯 Enhanced category detection from conversation
+      const detectedCategory = this.detectMaintenanceCategory(conversation);
+      
+      // 👤 Get student full name from user data
+      const studentInfo = await this.getStudentFullName(conversation.studentId);
+      
+      // 🎬 Get media analysis insights if available
+      const mediaInsights = await this.analyzeConversationMedia(conversation);
+      
+      // Create enhanced smart case with comprehensive context
       const caseData = {
         orgId: conversation.orgId,
-        title: `Maintenance Request: ${conversation.initialRequest.substring(0, 50)}...`,
-        description: `${conversation.initialRequest}${locationData ? `\n\nLocation: ${locationData.buildingName || 'Unknown building'}${locationData.roomNumber ? `, Room ${locationData.roomNumber}` : ''}` : ''}`,
-        category: "general", // Will be updated by AI
+        title: `${detectedCategory.toUpperCase()}: ${conversation.initialRequest.substring(0, 40)}...`,
+        description: this.buildEnhancedTicketDescription(conversation, locationData, studentInfo, mediaInsights),
+        category: detectedCategory, // 🎯 AI-detected category
         priority: conversation.urgencyLevel as any,
         status: "Open" as any,
         reportedBy: conversation.studentId,
-        propertyId: propertyId, // Now uses location data
-        unitId: unitId,        // Now uses location data
+        propertyId: propertyId,
+        unitId: unitId,
         metadata: {
           triageConversationId: conversationId,
           safetyFlags: conversation.safetyFlags,
           triageData: conversation.triageData,
           urgencyLevel: conversation.urgencyLevel,
           mitBuilding: locationData?.buildingName,
-          roomNumber: locationData?.roomNumber
+          roomNumber: locationData?.roomNumber,
+          studentName: `${studentInfo?.firstName || ''} ${studentInfo?.lastName || ''}`.trim(),
+          category: detectedCategory,
+          mediaInsights: mediaInsights || null
         }
       };
 
@@ -1021,6 +1057,16 @@ NEVER ask for information you already have!\n`;
       // Schedule intelligent follow-up based on emotional context and urgency
       await this.scheduleIntelligentFollowUp(caseId, conversationId, conversation);
 
+      // 🎬 Analyze uploaded media for contractor insights
+      const mediaInsights = await this.analyzeConversationMedia(conversation);
+      if (mediaInsights) {
+        await this.createTicketEvent(caseId, conversationId, "media_analyzed", 
+          `AI Analysis: ${mediaInsights.summary}`, {
+          insights: mediaInsights,
+          contractorRecommendations: mediaInsights.contractorRecommendations
+        });
+      }
+
       console.log(`✅ Post-escalation workflow initiated for case ${caseId}`);
     } catch (error) {
       console.error('Error initiating post-escalation workflow:', error);
@@ -1067,25 +1113,34 @@ NEVER ask for information you already have!\n`;
       return { 
         request: true, 
         types: ['photo'], 
-        reason: 'Photos help contractors bring the right tools and parts' 
+        reason: 'Photos help contractors assess damage severity and bring the right tools and parts' 
       };
     }
 
     // Strange noises that benefit from audio
-    if (description.match(/\b(noise|sound|loud|buzz|hum|rattle|clank|bang)\b/)) {
+    if (description.match(/\b(noise|sound|loud|buzz|hum|rattle|clank|bang|grinding|squealing|clicking)\b/)) {
       return { 
         request: true, 
         types: ['audio'], 
-        reason: 'Audio recording helps identify the specific problem' 
+        reason: 'Audio recording helps contractors identify the specific equipment problem and estimate repair time' 
       };
     }
 
-    // Appliance issues that benefit from error code photos
-    if (description.match(/\b(appliance|fridge|microwave|oven|dishwasher|washer|dryer|error|code|display)\b/)) {
+    // Appliance/HVAC issues that benefit from error code photos
+    if (description.match(/\b(appliance|fridge|microwave|oven|dishwasher|washer|dryer|error|code|display|thermostat|hvac|heat|cool)\b/)) {
       return { 
         request: true, 
         types: ['photo'], 
-        reason: 'Photos of error codes or displays help with faster diagnosis' 
+        reason: 'Photos of error codes, displays, or equipment help contractors diagnose issues faster and bring replacement parts' 
+      };
+    }
+
+    // Electrical issues that benefit from visual assessment
+    if (description.match(/\b(electrical|electric|outlet|switch|breaker|power|lights|wiring)\b/)) {
+      return { 
+        request: true, 
+        types: ['photo'], 
+        reason: 'Photos help contractors assess electrical safety and plan the repair approach' 
       };
     }
 
@@ -1193,6 +1248,365 @@ NEVER ask for information you already have!\n`;
       frequency: followUpMinutes,
       reason: `Based on ${contextAnalysis.emotionalContext} emotional state and ${conversation.urgencyLevel} urgency`
     });
+  }
+
+  // ========================================
+  // ENHANCED MEDIA ANALYSIS FOR CONTRACTORS
+  // ========================================
+
+  private async analyzeConversationMedia(conversation: any): Promise<any> {
+    try {
+      // Extract media from conversation history and triage data
+      const mediaUrls: string[] = [];
+      const audioUrls: string[] = [];
+      
+      // Check conversation history for media
+      if (conversation.conversationHistory) {
+        for (const entry of conversation.conversationHistory) {
+          if (entry.mediaUrls) {
+            for (const url of entry.mediaUrls) {
+              if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                mediaUrls.push(url);
+              } else if (url.match(/\.(mp3|wav|m4a|ogg)$/i)) {
+                audioUrls.push(url);
+              }
+            }
+          }
+        }
+      }
+
+      // Check triage data for media uploads
+      if (conversation.mediaUploads) {
+        for (const upload of conversation.mediaUploads) {
+          if (upload.type === 'image') {
+            mediaUrls.push(upload.url);
+          } else if (upload.type === 'audio') {
+            audioUrls.push(upload.url);
+          }
+        }
+      }
+
+      if (mediaUrls.length === 0 && audioUrls.length === 0) {
+        return null; // No media to analyze
+      }
+
+      console.log(`🎬 Analyzing media for contractor insights: ${mediaUrls.length} images, ${audioUrls.length} audio files`);
+
+      let analysisResults = [];
+
+      // Analyze photos for contractor insights
+      if (mediaUrls.length > 0) {
+        const photoAnalysis = await this.analyzePhotosForContractors(mediaUrls, conversation);
+        if (photoAnalysis) {
+          analysisResults.push(photoAnalysis);
+        }
+      }
+
+      // Analyze audio for contractor insights  
+      if (audioUrls.length > 0) {
+        const audioAnalysis = await this.analyzeAudioForContractors(audioUrls, conversation);
+        if (audioAnalysis) {
+          analysisResults.push(audioAnalysis);
+        }
+      }
+
+      if (analysisResults.length === 0) {
+        return null;
+      }
+
+      // Combine insights for comprehensive contractor summary
+      return this.synthesizeContractorInsights(analysisResults, conversation);
+
+    } catch (error) {
+      console.error('Error analyzing conversation media:', error);
+      return null;
+    }
+  }
+
+  private async analyzePhotosForContractors(imageUrls: string[], conversation: any): Promise<any> {
+    try {
+      const firstImage = imageUrls[0]; // Focus on first image for now
+      
+      // Get OpenAI integration - using same pattern as other AI services
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const prompt = `You are an expert maintenance contractor analyzing this photo from a MIT student housing maintenance request.
+
+ORIGINAL REQUEST: "${conversation.initialRequest}"
+LOCATION: ${conversation.triageData?.location?.buildingName || 'Unknown'} ${conversation.triageData?.location?.roomNumber || ''}
+URGENCY: ${conversation.urgencyLevel}
+
+Please analyze this image and provide a comprehensive contractor assessment in JSON format:
+
+{
+  "damageAssessment": "Detailed description of what you see",
+  "severity": "minor|moderate|major|critical", 
+  "estimatedRepairTime": "15-30 minutes|1-2 hours|2-4 hours|4+ hours|multi-day",
+  "toolsRequired": ["specific tools needed"],
+  "partsRequired": ["specific parts that may be needed"],
+  "safetyNotes": ["any safety concerns visible"],
+  "contractorPrep": "What contractor should bring/prepare",
+  "urgencyConfirmation": "Does photo confirm/change urgency level?",
+  "costEstimate": "rough cost range if visible",
+  "accessRequirements": "any special access needs",
+  "summary": "2-sentence contractor summary"
+}
+
+Focus on practical details that help contractors prepare effectively.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { 
+              type: "image_url", 
+              image_url: { url: firstImage }
+            }
+          ]
+        }],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 800
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content || '{}');
+      console.log(`📸 Photo analysis completed for contractor insights`);
+      return { type: 'photo', ...analysis };
+
+    } catch (error) {
+      console.error('Error analyzing photos for contractors:', error);
+      return null;
+    }
+  }
+
+  private async analyzeAudioForContractors(audioUrls: string[], conversation: any): Promise<any> {
+    try {
+      // For now, provide structured analysis based on audio description patterns
+      // This can be enhanced with actual audio analysis APIs later
+      const description = conversation.initialRequest?.toLowerCase() || '';
+      
+      let audioInsights = {
+        type: 'audio',
+        soundAnalysis: 'Audio analysis not yet implemented',
+        estimatedRepairTime: '1-2 hours',
+        toolsRequired: ['diagnostic tools'],
+        summary: 'Audio recording provided - contractor should listen for specific equipment sounds'
+      };
+
+      // Pattern-based audio analysis for now
+      if (description.match(/\b(grinding|squealing|screeching)\b/)) {
+        audioInsights = {
+          type: 'audio',
+          soundAnalysis: 'Grinding/squealing sounds typically indicate worn bearings or mechanical issues',
+          estimatedRepairTime: '2-4 hours',
+          toolsRequired: ['diagnostic tools', 'replacement bearings', 'lubricants'],
+          summary: 'Mechanical wear sounds detected - likely bearing or motor issues requiring parts replacement'
+        };
+      } else if (description.match(/\b(clicking|ticking)\b/)) {
+        audioInsights = {
+          type: 'audio',
+          soundAnalysis: 'Clicking sounds often indicate electrical relay issues or loose connections',
+          estimatedRepairTime: '1-2 hours',
+          toolsRequired: ['electrical tester', 'replacement relays', 'wire connectors'],
+          summary: 'Electrical clicking detected - likely relay or connection issue'
+        };
+      }
+
+      console.log(`🔊 Audio analysis completed for contractor insights`);
+      return audioInsights;
+
+    } catch (error) {
+      console.error('Error analyzing audio for contractors:', error);
+      return null;
+    }
+  }
+
+  private synthesizeContractorInsights(analysisResults: any[], conversation: any): any {
+    try {
+      // Combine all analysis results into comprehensive contractor recommendations
+      const photoResults = analysisResults.filter(r => r.type === 'photo');
+      const audioResults = analysisResults.filter(r => r.type === 'audio');
+
+      let combinedInsights = {
+        hasMedia: true,
+        photoCount: photoResults.length,
+        audioCount: audioResults.length,
+        overallSeverity: 'moderate',
+        estimatedRepairTime: '1-2 hours',
+        toolsRequired: [] as string[],
+        partsRequired: [] as string[],
+        safetyNotes: [] as string[],
+        contractorRecommendations: {
+          preparation: 'Standard maintenance response',
+          urgencyLevel: conversation.urgencyLevel,
+          specialConsiderations: []
+        },
+        summary: 'Media analysis completed - see detailed breakdown for contractor insights'
+      };
+
+      // Synthesize photo insights
+      if (photoResults.length > 0) {
+        const photo = photoResults[0];
+        combinedInsights.overallSeverity = photo.severity || 'moderate';
+        combinedInsights.estimatedRepairTime = photo.estimatedRepairTime || '1-2 hours';
+        combinedInsights.toolsRequired = [...(photo.toolsRequired || [])];
+        combinedInsights.partsRequired = [...(photo.partsRequired || [])];
+        combinedInsights.safetyNotes = [...(photo.safetyNotes || [])];
+        combinedInsights.contractorRecommendations.preparation = photo.contractorPrep || 'Bring standard tools based on photo assessment';
+      }
+
+      // Add audio insights
+      if (audioResults.length > 0) {
+        const audio = audioResults[0];
+        combinedInsights.toolsRequired.push(...(audio.toolsRequired || []));
+        combinedInsights.contractorRecommendations.specialConsiderations.push(audio.summary || 'Audio provided for equipment diagnosis');
+      }
+
+      // Generate comprehensive summary
+      const mediaTypes = [];
+      if (photoResults.length > 0) mediaTypes.push(`${photoResults.length} photo(s)`);
+      if (audioResults.length > 0) mediaTypes.push(`${audioResults.length} audio file(s)`);
+      
+      combinedInsights.summary = `Student provided ${mediaTypes.join(' and ')} showing ${combinedInsights.overallSeverity} severity issue. Estimated repair time: ${combinedInsights.estimatedRepairTime}. ${combinedInsights.contractorRecommendations.preparation}`;
+
+      return combinedInsights;
+
+    } catch (error) {
+      console.error('Error synthesizing contractor insights:', error);
+      return {
+        summary: 'Media analysis encountered errors - proceed with standard assessment',
+        hasMedia: true,
+        analysisError: true
+      };
+    }
+  }
+
+  // ========================================
+  // ENHANCED TICKET CREATION SYSTEM
+  // ========================================
+
+  private detectMaintenanceCategory(conversation: any): string {
+    const description = conversation.initialRequest?.toLowerCase() || '';
+    
+    // 🌡️ HVAC Issues
+    if (description.match(/\b(heat|heating|hvac|ac|air conditioning|thermostat|furnace|boiler|radiator|vent|temperature|cold|hot|freezing|cooling|fan)\b/)) {
+      return 'HVAC';
+    }
+    
+    // ⚡ Electrical Issues
+    if (description.match(/\b(electrical|electric|power|outlet|switch|light|lamp|breaker|fuse|wiring|electricity|shock|spark)\b/)) {
+      return 'Electrical';
+    }
+    
+    // 🔧 Plumbing Issues
+    if (description.match(/\b(water|plumbing|pipe|leak|drain|toilet|sink|shower|faucet|bathroom|flooding|drip)\b/)) {
+      return 'Plumbing';
+    }
+    
+    // 🏠 Structural Issues
+    if (description.match(/\b(wall|ceiling|floor|door|window|paint|crack|hole|damage|structural|broken)\b/)) {
+      return 'Structural';
+    }
+    
+    // 🔐 Security/Access Issues
+    if (description.match(/\b(lock|key|security|door.*won.*open|can.*get.*in|locked out|access|entry)\b/)) {
+      return 'Security';
+    }
+    
+    // 🧹 General Maintenance
+    return 'General';
+  }
+
+  private async getStudentFullName(studentId: string): Promise<{ firstName?: string; lastName?: string } | null> {
+    try {
+      // Get user information from storage
+      const user = await storage.getUser(studentId);
+      if (user) {
+        return {
+          firstName: user.firstName || undefined,
+          lastName: user.lastName || undefined
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting student name:', error);
+      return null;
+    }
+  }
+
+  private buildEnhancedTicketDescription(
+    conversation: any, 
+    locationData: any, 
+    studentInfo: any, 
+    mediaInsights: any
+  ): string {
+    let description = `**Student Report:**\n${conversation.initialRequest}\n\n`;
+    
+    // 📍 Location Information
+    if (locationData?.buildingName) {
+      description += `**Location:** ${locationData.buildingName}`;
+      if (locationData.roomNumber) {
+        description += `, Room ${locationData.roomNumber}`;
+      }
+      description += '\n\n';
+    }
+    
+    // 👤 Student Information
+    if (studentInfo?.firstName || studentInfo?.lastName) {
+      description += `**Reported by:** ${studentInfo.firstName || ''} ${studentInfo.lastName || ''}`.trim() + '\n\n';
+    }
+    
+    // 🚨 Urgency & Safety
+    if (conversation.urgencyLevel !== 'normal') {
+      description += `**Urgency Level:** ${conversation.urgencyLevel.toUpperCase()}\n\n`;
+    }
+    
+    if (conversation.safetyFlags && conversation.safetyFlags.length > 0) {
+      description += `**⚠️ Safety Concerns:** ${conversation.safetyFlags.join(', ')}\n\n`;
+    }
+    
+    // 🎬 Media Analysis Insights
+    if (mediaInsights && mediaInsights.summary) {
+      description += `**📸 AI Media Analysis:**\n${mediaInsights.summary}\n\n`;
+      
+      if (mediaInsights.estimatedRepairTime) {
+        description += `**Estimated Repair Time:** ${mediaInsights.estimatedRepairTime}\n`;
+      }
+      
+      if (mediaInsights.toolsRequired && mediaInsights.toolsRequired.length > 0) {
+        description += `**Recommended Tools:** ${mediaInsights.toolsRequired.join(', ')}\n`;
+      }
+      
+      if (mediaInsights.partsRequired && mediaInsights.partsRequired.length > 0) {
+        description += `**Potential Parts Needed:** ${mediaInsights.partsRequired.join(', ')}\n`;
+      }
+      
+      if (mediaInsights.safetyNotes && mediaInsights.safetyNotes.length > 0) {
+        description += `**Safety Notes:** ${mediaInsights.safetyNotes.join(', ')}\n`;
+      }
+      
+      description += '\n';
+    }
+    
+    // 📝 Triage Context
+    if (conversation.triageData) {
+      const contextItems = [];
+      if (conversation.triageData.timeline) {
+        contextItems.push(`Timeline: ${conversation.triageData.timeline}`);
+      }
+      if (conversation.triageData.severity) {
+        contextItems.push(`Severity: ${conversation.triageData.severity}`);
+      }
+      if (contextItems.length > 0) {
+        description += `**Additional Context:** ${contextItems.join(' | ')}\n\n`;
+      }
+    }
+    
+    description += `**Ticket created:** ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`;
+    
+    return description;
   }
 }
 
