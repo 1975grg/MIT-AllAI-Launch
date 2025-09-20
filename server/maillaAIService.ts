@@ -1029,7 +1029,7 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         description: this.buildEnhancedTicketDescription(conversation, locationData, studentInfo, mediaInsights),
         category: detectedCategory, // 🎯 AI-detected category
         priority: conversation.urgencyLevel as any,
-        status: "Open" as any,
+        status: "New" as any,
         reportedBy: conversation.studentId,
         propertyId: propertyId,
         unitId: unitId,
