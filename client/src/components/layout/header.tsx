@@ -124,11 +124,11 @@ export default function Header({ title }: HeaderProps) {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="relative" 
+            className="relative !bg-pink-100 hover:!bg-pink-200" 
             onClick={() => setShowReminderForm(true)}
             data-testid="button-notifications"
           >
-            <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            <Bell className="h-5 w-5 text-pink-700" />
             {unreadNotifications > 0 && (
               <Badge className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center p-0" data-testid="badge-notification-count">
                 {unreadNotifications}
@@ -136,42 +136,17 @@ export default function Header({ title }: HeaderProps) {
             )}
           </Button>
           
-          {/* Dev Role Preview Toggle */}
-          {isDevMode && (
-            <div className="flex items-center space-x-2 px-2 py-1 !bg-transparent border-0 rounded-md">
-              <Settings className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-              <Select 
-                value={previewRole ?? "original"} 
-                onValueChange={(value) => setPreviewRole(value === "original" ? null : value as UserRole)}
-                data-testid="select-role-preview"
-              >
-                <SelectTrigger className="w-32 h-7 text-xs !bg-white dark:!bg-gray-800 !text-gray-800 dark:!text-gray-200 border border-gray-300 shadow-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {originalRole && (
-                    <SelectItem value="original" data-testid="option-original-role">
-                      Original ({originalRole})
-                    </SelectItem>
-                  )}
-                  <SelectItem value="admin" data-testid="option-admin">Admin</SelectItem>
-                  <SelectItem value="manager" data-testid="option-manager">Manager</SelectItem>
-                  <SelectItem value="staff" data-testid="option-staff">Staff</SelectItem>
-                  <SelectItem value="vendor" data-testid="option-vendor">Contractor</SelectItem>
-                </SelectContent>
-              </Select>
-              {isPreviewing && (
-                <Badge variant="outline" className="text-xs !bg-transparent border-gray-300 text-gray-700 dark:text-gray-300">
-                  Preview
-                </Badge>
-              )}
-            </div>
+          {/* Dev Role Preview Toggle - Removed white box */}
+          {isDevMode && isPreviewing && (
+            <span className="text-xs text-gray-600 dark:text-gray-400">
+              Preview Mode
+            </span>
           )}
           
           {/* Quick Add */}
           <Button onClick={() => setShowQuickAdd(true)} data-testid="button-quick-add">
             <Plus className="h-4 w-4 mr-2" />
-            Quick Add
+            Adding a maintenance
           </Button>
         </div>
       </header>
