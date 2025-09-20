@@ -42,23 +42,23 @@ interface ContractorAppointment {
 }
 
 const PRIORITY_COLORS = {
-  Low: "bg-green-100 text-green-800 border-green-200",
-  Medium: "bg-yellow-100 text-yellow-800 border-yellow-200", 
-  High: "bg-orange-100 text-orange-800 border-orange-200",
-  Urgent: "bg-orange-100 text-orange-800 border-orange-200"
+  Low: "text-green-700 border-green-300",
+  Medium: "text-amber-700 border-amber-300", 
+  High: "text-orange-600 border-orange-300",
+  Urgent: "text-orange-700 border-orange-300"
 };
 
 const STATUS_COLORS = {
-  New: "bg-blue-100 text-blue-800 border-blue-200",
-  "In Review": "bg-yellow-100 text-yellow-800 border-yellow-200",
-  Scheduled: "bg-purple-100 text-purple-800 border-purple-200",
-  "In Progress": "bg-orange-100 text-orange-800 border-orange-200",
-  "On Hold": "bg-gray-100 text-gray-800 border-gray-200",
-  Resolved: "bg-green-100 text-green-800 border-green-200",
-  Closed: "bg-gray-100 text-gray-800 border-gray-200",
-  Pending: "bg-blue-100 text-blue-800 border-blue-200",
-  Confirmed: "bg-green-100 text-green-800 border-green-200",
-  Completed: "bg-green-100 text-green-800 border-green-200"
+  New: "text-blue-700 border-blue-300",
+  "In Review": "text-amber-700 border-amber-300",
+  Scheduled: "text-purple-700 border-purple-300",
+  "In Progress": "text-orange-600 border-orange-300",
+  "On Hold": "text-gray-700 border-gray-300",
+  Resolved: "text-green-700 border-green-300",
+  Closed: "text-gray-600 border-gray-300",
+  Pending: "text-blue-700 border-blue-300",
+  Confirmed: "text-green-700 border-green-300",
+  Completed: "text-green-700 border-green-300"
 };
 
 export default function ContractorDashboard() {
@@ -346,7 +346,7 @@ export default function ContractorDashboard() {
                           </CardDescription>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <Badge className={PRIORITY_COLORS[case_.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
+                          <Badge variant="outline" className={PRIORITY_COLORS[case_.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
                             {case_.priority}
                           </Badge>
                           <Badge variant="outline" className={STATUS_COLORS[case_.status as keyof typeof STATUS_COLORS] || "bg-gray-100"}>
@@ -466,7 +466,7 @@ export default function ContractorDashboard() {
                           </CardDescription>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <Badge className={PRIORITY_COLORS[appointment.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
+                          <Badge variant="outline" className={PRIORITY_COLORS[appointment.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
                             {appointment.priority}
                           </Badge>
                           <Badge variant="outline" className={STATUS_COLORS[appointment.status as keyof typeof STATUS_COLORS] || "bg-gray-100"}>

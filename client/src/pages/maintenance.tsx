@@ -245,10 +245,10 @@ export default function MaintenancePage() {
 
   const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
-      case "Urgent": return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{priority}</Badge>;
-      case "High": return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{priority}</Badge>;
-      case "Medium": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{priority}</Badge>;
-      case "Low": return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{priority}</Badge>;
+      case "Urgent": return <Badge variant="outline" className="text-orange-700 border-orange-300">{priority}</Badge>;
+      case "High": return <Badge variant="outline" className="text-orange-600 border-orange-300">{priority}</Badge>;
+      case "Medium": return <Badge variant="outline" className="text-amber-700 border-amber-300">{priority}</Badge>;
+      case "Low": return <Badge variant="outline" className="text-green-700 border-green-300">{priority}</Badge>;
       default: return <Badge variant="secondary">{priority}</Badge>;
     }
   };
