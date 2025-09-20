@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 :root {
-  /* Vibrant University Color Scheme */
-  /* Bright Blue Primary - Energetic and trustworthy */
-  /* Vibrant Red Accent - MIT heritage with energy */
-  /* Clean whites and bright contrasts */
+  /* MIT Authentic Color Scheme */
+  /* Cardinal Red Primary - MIT's signature color */
+  /* Silver Gray Secondary - Professional elegance */
+  /* Clean whites and crisp contrasts */
   
   --background: hsl(0 0% 100%);
   --foreground: hsl(210 40% 8%);
@@ -14,32 +14,32 @@
   --card-foreground: hsl(210 40% 8%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(210 40% 8%);
-  --primary: hsl(217 89% 61%); /* Vibrant Blue */
+  --primary: hsl(350 66% 38%); /* MIT Cardinal Red */
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(217 89% 51%); /* Darker Vibrant Blue */
+  --secondary: hsl(220 3% 54%); /* MIT Silver Gray */
   --secondary-foreground: hsl(0 0% 100%);
-  --muted: hsl(217 33% 94%); /* Light Blue Tint */
-  --muted-foreground: hsl(215 25% 27%);
-  --accent: hsl(217 89% 96%); /* Very Light Blue */
-  --accent-foreground: hsl(217 89% 51%); /* Vibrant Blue for accent text */
-  --destructive: hsl(0 84% 60%); /* Vibrant Red */
+  --muted: hsl(220 6% 94%); /* Light Silver Tint */
+  --muted-foreground: hsl(220 8% 30%);
+  --accent: hsl(350 66% 96%); /* Very Light Cardinal */
+  --accent-foreground: hsl(350 66% 38%); /* Cardinal Red for accent text */
+  --destructive: hsl(0 84% 60%); /* Bright Red for alerts */
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(217 33% 90%);
-  --input: hsl(217 33% 97%);
-  --ring: hsl(217 89% 61%); /* Vibrant Blue for focus rings */
-  --chart-1: hsl(217 89% 61%); /* Vibrant Blue */
-  --chart-2: hsl(142 72% 29%); /* Vibrant Green */
-  --chart-3: hsl(45 93% 47%); /* Vibrant Yellow */
-  --chart-4: hsl(271 81% 56%); /* Vibrant Purple */
-  --chart-5: hsl(0 84% 60%); /* Vibrant Red */
-  --sidebar: hsl(217 33% 98%);
+  --border: hsl(220 6% 90%);
+  --input: hsl(220 6% 97%);
+  --ring: hsl(350 66% 38%); /* Cardinal Red for focus rings */
+  --chart-1: hsl(350 66% 38%); /* MIT Cardinal Red */
+  --chart-2: hsl(142 72% 29%); /* Professional Green */
+  --chart-3: hsl(45 93% 47%); /* Warm Yellow */
+  --chart-4: hsl(220 3% 54%); /* MIT Silver Gray */
+  --chart-5: hsl(0 84% 60%); /* Alert Red */
+  --sidebar: hsl(220 6% 98%);
   --sidebar-foreground: hsl(210 40% 8%);
-  --sidebar-primary: hsl(217 89% 61%); /* Vibrant Blue */
+  --sidebar-primary: hsl(350 66% 38%); /* MIT Cardinal Red */
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(217 89% 96%);
-  --sidebar-accent-foreground: hsl(217 89% 51%); /* Vibrant Blue */
-  --sidebar-border: hsl(217 33% 90%);
-  --sidebar-ring: hsl(217 89% 61%); /* Vibrant Blue */
+  --sidebar-accent: hsl(350 66% 96%);
+  --sidebar-accent-foreground: hsl(350 66% 38%); /* MIT Cardinal Red */
+  --sidebar-border: hsl(220 6% 90%);
+  --sidebar-ring: hsl(350 66% 38%); /* MIT Cardinal Red */
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
