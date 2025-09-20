@@ -340,6 +340,7 @@ export const duplicateStatusEnum = pgEnum("duplicate_status", [
 
 export const smartCases = pgTable("smart_cases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  caseNumber: varchar("case_number").notNull(), // Structured format: L{1-4}-{Building}-{Unit}-{YYYYMMDD}
   orgId: varchar("org_id").notNull().references(() => organizations.id),
   unitId: varchar("unit_id").references(() => units.id),
   propertyId: varchar("property_id").references(() => properties.id),

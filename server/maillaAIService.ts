@@ -388,45 +388,45 @@ export class MaillaAIService {
           ? [...pendingQuestions, ...maillaResponse.queuedQuestions]
           : pendingQuestions;
 
-        // 🧠 SMART TRIAGE: Only create tickets when AI explicitly decides to complete OR emergency
+        // 🧠 SMART TRIAGE: Restore AI intelligence with expanded auto-create conditions
         const hasLocation = !!(updatedLocation.buildingName && updatedLocation.roomNumber);
         const hasIssueType = !!(updatedSlots.issueSummary || studentMessage?.includes('heating') || studentMessage?.includes('plumbing') || studentMessage?.includes('electrical') || studentMessage?.includes('water') || studentMessage?.includes('leak') || studentMessage?.includes('broken'));
         const hasBasicInfo = hasLocation && hasIssueType;
         
-        console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, AI action=${maillaResponse.nextAction}`);
+        // AI-driven intelligent conditions for case creation
+        const autoCreate = hasBasicInfo && (
+          maillaResponse.nextAction === 'complete_triage' ||
+          maillaResponse.nextAction === 'escalate_immediate' ||
+          maillaResponse.urgencyLevel === 'emergency' ||
+          maillaResponse.urgencyLevel === 'urgent' ||
+          (contextAnalysis && contextAnalysis.inferredUrgency === 'urgent') ||
+          (safetyResults && safetyResults.flags.some(f => f.startsWith('urgent_')))
+        );
         
-        // 🚨 Emergency escalation - bypass diagnostic steps
-        if (maillaResponse.nextAction === 'escalate_immediate') {
-          console.log(`🚨 EMERGENCY: Creating case immediately for safety`);
+        console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, AI action=${maillaResponse.nextAction}, urgency=${maillaResponse.urgencyLevel}`);
+        console.log(`🎯 Auto-create decision: ${autoCreate} (hasBasicInfo=${hasBasicInfo})`);
+        
+        if (autoCreate) {
+          const isEmergency = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
+          console.log(`${isEmergency ? '🚨 EMERGENCY' : '✅ SMART'} CREATION: AI intelligence triggered case creation`);
+          
           try {
             const caseResult = await this.completeTriageConversation(conversationId);
             if (caseResult.success && caseResult.caseId) {
-              const friendlyNumber = this.generateFriendlyCaseNumber(caseResult.caseId);
-              maillaResponse.message += `\n\n🚨 Emergency case #${friendlyNumber} created - help is being dispatched immediately!`;
-              maillaResponse.isComplete = true;
-            }
-          } catch (error) {
-            console.error('❌ Emergency case creation failed:', error);
-          }
-        }
-        // 🎯 AI-driven completion - only when AI says "complete_triage"
-        else if (hasBasicInfo && maillaResponse.nextAction === 'complete_triage') {
-          console.log(`✅ AI COMPLETION: AI decided triage is complete - creating case`);
-          try {
-            const caseResult = await this.completeTriageConversation(conversationId);
-            if (caseResult.success && caseResult.caseId) {
-              const friendlyNumber = this.generateFriendlyCaseNumber(caseResult.caseId);
-              maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${friendlyNumber} - help is on the way!`;
+              const caseNumber = caseResult.caseNumber || this.generateStructuredCaseNumber(maillaResponse.urgencyLevel, updatedLocation);
+              if (isEmergency) {
+                maillaResponse.message += `\n\n🚨 Emergency case #${caseNumber} created - help is being dispatched immediately!`;
+              } else {
+                maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseNumber} - help is on the way!`;
+              }
               maillaResponse.isComplete = true;
             }
           } catch (error) {
             console.error('❌ Case creation failed:', error);
             maillaResponse.message += `\n\n⚡ I'm getting help dispatched right away - you'll get updates soon!`;
           }
-        }
-        // 🤖 Let AI decide - don't force completion, trust the intelligence
-        else {
-          console.log(`🤖 AI CONTROL: Letting AI continue diagnostic conversation (${maillaResponse.nextAction})`);
+        } else {
+          console.log(`🤖 AI CONTROL: Continuing diagnostic conversation (${maillaResponse.nextAction})`);
         }
         
         await storage.updateTriageConversation(conversationId, {
@@ -450,6 +450,41 @@ export class MaillaAIService {
         nextAction: 'escalate_immediate'
       };
     }
+  }
+
+  // ========================================
+  // STRUCTURED CASE NUMBER GENERATION
+  // ========================================
+
+  private generateStructuredCaseNumber(
+    urgencyLevel: 'emergency' | 'urgent' | 'normal' | 'low',
+    location: { buildingName?: string; roomNumber?: string }
+  ): string {
+    // Emergency level mapping (1=highest priority)
+    const levelMap = {
+      'emergency': '1',
+      'urgent': '2', 
+      'normal': '3',
+      'low': '4'
+    };
+    
+    // Clean building name (remove spaces, special chars)
+    const building = (location.buildingName || 'Unknown')
+      .replace(/\s+/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .substring(0, 8); // Max 8 chars
+    
+    // Room number or default
+    const unit = (location.roomNumber || 'XX').replace(/[^a-zA-Z0-9]/g, '');
+    
+    // Date in YYYYMMDD format
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    
+    // Format: L{level}-{building}-{unit}-{date}
+    const caseNumber = `L${levelMap[urgencyLevel]}-${building}-${unit}-${date}`;
+    
+    console.log(`🏷️ Generated structured case number: ${caseNumber} (urgency=${urgencyLevel}, location=${location.buildingName} ${location.roomNumber})`);
+    return caseNumber;
   }
 
   // ========================================
@@ -537,16 +572,16 @@ export class MaillaAIService {
 - **Issue details**: What's broken/not working (required)
 - **Urgency**: Severe language like "freezing/terrible" = urgent (required)
 
-**DIAGNOSTIC STEPS FIRST (always do these before creating tickets):**
-- **Electrical problems**: "Before I send someone out, let's check something quick - can you look at your breaker panel? Any switches that look like they're in the middle position or not fully 'on'? Try flipping them all the way off then back on. This fixes most electrical issues instantly!"
-- **Heating issues**: "Quick check first - is your thermostat set to heat mode and showing the right temperature? Also, check if there's a heating breaker in your electrical panel that might have tripped."
-- **No hot water**: "Let's troubleshoot - first, check if other people in your building have hot water. Then look for a water heater breaker in your electrical panel that might have tripped."
-- **Plumbing leaks**: "Find your water shutoff valve (usually under your sink or behind toilet) in case it gets worse. A photo would help me see how urgent this really is."
+**SMART TROUBLESHOOTING (offer when appropriate, skip if urgent/emergency):**
+- **Electrical problems**: "Quick check - can you look at your breaker panel? Any switches that look like they're in the middle position? Try flipping them off then back on - this fixes most electrical issues instantly!"
+- **Heating issues**: "Let me ask - is your thermostat set to heat mode? Also, check if there's a heating breaker that might have tripped."
+- **No hot water**: "First, check if other people have hot water. Then look for a water heater breaker - sometimes they trip."
+- **Plumbing leaks**: "Find your water shutoff valve if it gets worse. A photo would help me see how urgent this is."
 
-**ONLY CREATE TICKETS WHEN:**
-- Student confirms diagnostic steps didn't work
-- Emergency/safety issue requiring immediate help  
-- Issue is clearly beyond student troubleshooting (major repairs)
+**USE CONTEXTUAL INTELLIGENCE:**
+- Skip diagnostics for safety issues, emergency language, or when student sounds urgent
+- Create tickets when appropriate based on urgency, context, and student needs
+- Trust your judgment - you're smart and contextual, not a rigid workflow bot
 
 **COMFORT & ALTERNATIVES:**
 - Cold rooms: "Try to stay warm with blankets, or hang out with friends if you want"
@@ -1062,8 +1097,20 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
           mediaInsights: mediaInsights || null
         }
       };
+      
+      // Generate structured case number
+      const caseNumber = this.generateStructuredCaseNumber(
+        conversation.urgencyLevel as 'emergency' | 'urgent' | 'normal' | 'low',
+        locationData || {}
+      );
+      
+      // Add caseNumber to case data
+      const caseDataWithNumber = {
+        ...caseData,
+        caseNumber
+      };
 
-      const newCase = await storage.createSmartCase(caseData);
+      const newCase = await storage.createSmartCase(caseDataWithNumber);
       const caseId = newCase.id;
 
       // Update conversation as complete (consistent with schema)
@@ -1081,6 +1128,7 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         success: true,
         conversationId,
         caseId,
+        caseNumber: newCase.caseNumber,
         message: "Triage completed successfully. A maintenance case has been created.",
         triageData: conversation.triageData,
         safetyFlags: conversation.safetyFlags
