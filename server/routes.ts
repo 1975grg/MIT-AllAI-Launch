@@ -2242,7 +2242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Anonymous student - create temporary identity
         studentId = `anonymous-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        orgId = "mit-housing"; // Default to MIT housing for anonymous users
+        orgId = "30033c31-7111-4c83-b796-5f7f33786774"; // MIT Housing Maintenance organization
       }
 
       // ✅ Validate only the request content, not identity
