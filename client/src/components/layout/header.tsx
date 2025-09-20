@@ -92,12 +92,12 @@ export default function Header({ title }: HeaderProps) {
               <img 
                 src={mitLogoUrl} 
                 alt="MIT" 
-                className="h-7 w-auto flex-shrink-0 opacity-90"
+                className="h-6 w-auto flex-shrink-0 opacity-90"
                 data-testid="img-mit-logo"
               />
-              <div className="flex flex-col min-w-0 max-w-xs">
-                <h1 className="text-base font-bold text-gray-800 dark:text-gray-200 truncate" data-testid="text-header-title">MIT Student Housing</h1>
-                <span className="text-xs text-gray-500 dark:text-gray-400 truncate" data-testid="text-subtitle">Campus Management - {title}</span>
+              <div className="flex flex-col min-w-0 max-w-48">
+                <h1 className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate" data-testid="text-header-title">MIT Housing</h1>
+                <span className="text-xs text-gray-500 dark:text-gray-400 truncate" data-testid="text-subtitle">{title}</span>
               </div>
             </div>
           </div>

@@ -421,7 +421,7 @@ export default function Reminders() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Pending": return <Badge className="bg-yellow-100 text-yellow-800">Due</Badge>;
-      case "Overdue": return <Badge className="bg-red-100 text-red-800">Overdue</Badge>;
+      case "Overdue": return <Badge className="bg-orange-100 text-orange-800">Overdue</Badge>;
       case "Completed": return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
       case "Cancelled": return <Badge className="bg-gray-100 text-gray-800">Cancelled</Badge>;
       default: return <Badge variant="secondary">{status}</Badge>;
@@ -794,8 +794,8 @@ export default function Reminders() {
                       {overdueReminders}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                    <AlertTriangle className="text-red-600" />
+                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="text-orange-600" />
                   </div>
                 </div>
               </CardContent>
