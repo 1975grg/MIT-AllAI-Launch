@@ -86,20 +86,20 @@ export default function Header({ title }: HeaderProps) {
   return (
     <>
       <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6" data-testid="header">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4 min-w-0 flex-1">
+          <div className="flex items-center space-x-3 min-w-0">
             <img 
               src={mitLogoUrl} 
               alt="MIT" 
-              className="h-8 w-auto"
+              className="h-8 w-auto flex-shrink-0"
               data-testid="img-mit-logo"
             />
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold text-primary mit-heading" data-testid="text-header-title">MIT Student Housing</h1>
-              <span className="text-xs text-muted-foreground mit-subtitle" data-testid="text-subtitle">AI-Powered Campus Housing Management - {title}</span>
+            <div className="flex flex-col min-w-0 max-w-md">
+              <h1 className="text-lg font-bold text-primary truncate" data-testid="text-header-title">MIT Student Housing</h1>
+              <span className="text-xs text-muted-foreground truncate" data-testid="text-subtitle">AI-Powered Campus Housing Management - {title}</span>
             </div>
           </div>
-          <span className="text-sm text-muted-foreground" data-testid="text-welcome">
+          <span className="text-sm text-muted-foreground hidden md:block" data-testid="text-welcome">
             Welcome back, {user?.firstName || "User"}
           </span>
         </div>
