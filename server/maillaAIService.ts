@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { storage } from './storage';
+import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import type { 
   TriageConversationSelect, 
@@ -1107,6 +1108,32 @@ NEVER ask for information you already have!\n`;
   // CONTRACTOR ASSIGNMENT SYSTEM
   // ========================================
 
+  /**
+   * Maps database priority enum to AI Coordinator urgency format
+   */
+  private mapPriorityToUrgency(priority: string): 'Low' | 'Medium' | 'High' | 'Critical' {
+    const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Critical'> = {
+      'Low': 'Low',
+      'Medium': 'Medium', 
+      'High': 'High',
+      'Urgent': 'Critical'  // Database 'Urgent' becomes AI Coordinator 'Critical'
+    };
+    return mapping[priority] || 'Medium';
+  }
+
+  /**
+   * Maps Mailla urgency levels to AI Coordinator urgency format
+   */
+  private mapMaillaUrgencyToCoordinator(urgencyLevel: string): 'Low' | 'Medium' | 'High' | 'Critical' {
+    const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Critical'> = {
+      'low': 'Low',
+      'normal': 'Medium',
+      'urgent': 'High', 
+      'emergency': 'Critical'
+    };
+    return mapping[urgencyLevel] || 'Medium';
+  }
+
   private async assignOptimalContractor(caseId: string, conversationId: string, conversation: any) {
     try {
       console.log(`🔧 Starting contractor assignment for case ${caseId}`);
@@ -1135,17 +1162,25 @@ NEVER ask for information you already have!\n`;
 
       // Use AI Coordinator to find optimal contractor
       const { aiCoordinatorService } = await import('./aiCoordinator');
+      
+      // 🔧 FIX: Properly map urgency from conversation + database priority
+      const mappedUrgency = conversation.urgencyLevel 
+        ? this.mapMaillaUrgencyToCoordinator(conversation.urgencyLevel)
+        : this.mapPriorityToUrgency(smartCase.priority || 'Medium');
+
+      console.log(`🔄 Urgency Mapping: conversation=${conversation.urgencyLevel} → database=${smartCase.priority} → coordinator=${mappedUrgency}`);
+
       const contractorRequest = {
         caseData: {
           id: caseId,
           category: smartCase.category || 'General Maintenance',
-          priority: smartCase.priority || 'Medium' as any,
+          priority: this.mapPriorityToUrgency(smartCase.priority || 'Medium'),
           description: smartCase.description || '',
           location: smartCase.buildingName || 'Unknown',
-          urgency: smartCase.priority || 'Medium' as any,
+          urgency: mappedUrgency,
           estimatedDuration: '2-4 hours',
           safetyRisk: 'None' as any,
-          contractorType: smartCase.category
+          contractorType: smartCase.category || undefined
         },
         availableContractors: availableContractors.map(c => ({
           id: c.id,
@@ -1559,7 +1594,8 @@ Focus on practical details that help contractors prepare effectively.`;
       if (audioResults.length > 0) {
         const audio = audioResults[0];
         combinedInsights.toolsRequired.push(...(audio.toolsRequired || []));
-        combinedInsights.contractorRecommendations.specialConsiderations.push(audio.summary || 'Audio provided for equipment diagnosis');
+        const audioSummary = audio.summary || 'Audio provided for equipment diagnosis';
+        combinedInsights.contractorRecommendations.specialConsiderations.push(audioSummary);
       }
 
       // Generate comprehensive summary
@@ -1578,6 +1614,100 @@ Focus on practical details that help contractors prepare effectively.`;
         hasMedia: true,
         analysisError: true
       };
+    }
+  }
+
+  // ========================================
+  // APPOINTMENT RELAY SYSTEM
+  // ========================================
+
+  /**
+   * Automatically relay appointment details to student when contractor schedules
+   */
+  async relayAppointmentToStudent(appointment: any) {
+    try {
+      console.log(`🔔 Starting appointment relay for appointment ${appointment.id}`);
+
+      // Get the smart case to find student information
+      const smartCase = await storage.getSmartCase(appointment.caseId);
+      if (!smartCase) {
+        console.error(`❌ Case ${appointment.caseId} not found for appointment relay`);
+        return;
+      }
+
+      // Get contractor details
+      const contractor = await storage.getVendor(appointment.contractorId);
+      if (!contractor) {
+        console.error(`❌ Contractor ${appointment.contractorId} not found for appointment relay`);
+        return;
+      }
+
+      // Generate approval token with 24-hour expiry
+      const approvalToken = crypto.randomBytes(32).toString('hex');
+      const approvalExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Update appointment with approval details
+      await storage.updateAppointment(appointment.id, {
+        approvalToken,
+        approvalExpiresAt,
+        status: 'Proposed' as any
+      });
+
+      // Format appointment time for student
+      const startTime = new Date(appointment.scheduledStartAt);
+      const endTime = new Date(appointment.scheduledEndAt);
+      const dateStr = startTime.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      const timeStr = `${startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+
+      // Create relay message for student
+      const relayMessage = `🔧 **Maintenance Appointment Scheduled** 🔧
+
+Good news! Your maintenance request for "${smartCase.title}" has been scheduled.
+
+**📅 Appointment Details:**
+• **Date:** ${dateStr}
+• **Time:** ${timeStr}
+• **Contractor:** ${contractor.name}
+• **Location:** ${appointment.locationDetails || smartCase.buildingName || 'Your building'}
+
+**🏠 Room Access Required:** ${appointment.requiresTenantAccess ? 'Yes - please be available' : 'No - contractor has building access'}
+
+**✅ Please confirm this appointment works for your schedule:**
+• **Accept:** Reply "CONFIRM" or "YES"
+• **Reschedule:** Reply "RESCHEDULE" if you need a different time
+
+This appointment confirmation expires in 24 hours. If you don't respond, we'll reach out to reschedule.
+
+Questions? Just ask! I'm here to help coordinate your maintenance needs.`;
+
+      // Create student notification event
+      await this.createTicketEvent(
+        appointment.caseId,
+        '', // No specific conversation ID for relay
+        "appointment_scheduled",
+        relayMessage,
+        {
+          appointmentId: appointment.id,
+          contractorId: appointment.contractorId,
+          contractorName: contractor.name,
+          scheduledStartAt: appointment.scheduledStartAt,
+          scheduledEndAt: appointment.scheduledEndAt,
+          approvalToken,
+          approvalExpiresAt,
+          requiresTenantAccess: appointment.requiresTenantAccess
+        }
+      );
+
+      console.log(`✅ Appointment relay completed for case ${smartCase.id} - student notified of ${dateStr} appointment`);
+
+    } catch (error) {
+      console.error('❌ Error relaying appointment to student:', error);
+      throw error; // Let caller handle gracefully
     }
   }
 

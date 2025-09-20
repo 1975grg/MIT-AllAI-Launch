@@ -2917,6 +2917,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const appointment = await storage.createAppointment(validatedData);
+      
+      // 🔔 APPOINTMENT RELAY SYSTEM - Mailla notifies student automatically
+      try {
+        const { maillaAIService } = await import('./maillaAIService');
+        await maillaAIService.relayAppointmentToStudent(appointment);
+        console.log(`✅ Appointment relay sent to student for appointment ${appointment.id}`);
+      } catch (relayError) {
+        console.error('❌ Failed to relay appointment to student:', relayError);
+        // Don't fail the appointment creation if relay fails
+      }
+      
       res.status(201).json(appointment);
     } catch (error) {
       console.error("Error creating appointment:", error);
