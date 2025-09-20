@@ -244,7 +244,7 @@ export default function Dashboard() {
                               <p className="font-medium text-foreground" data-testid={`text-amount-${index}`}>${item.amount?.toLocaleString()}</p>
                               <p className={`text-sm ${
                                 item.status === 'paid' ? 'text-green-600' : 
-                                item.status === 'overdue' ? 'text-red-600' : 'text-yellow-600'
+                                item.status === 'overdue' ? 'text-orange-600' : 'text-yellow-600'
                               }`} data-testid={`text-status-${index}`}>
                                 {item.status === 'paid' ? `Paid ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : ''}` :
                                  item.status === 'overdue' ? 'Overdue' : `Due ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : ''}`}

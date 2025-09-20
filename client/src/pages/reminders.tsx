@@ -922,7 +922,7 @@ export default function Reminders() {
                               </Badge>
                             )}
                             {isOverdue(reminder.dueAt) && reminder.status === "Pending" && (
-                              <Badge className="bg-red-100 text-red-800">Overdue</Badge>
+                              <Badge className="bg-orange-100 text-orange-800">Overdue</Badge>
                             )}
                           </div>
                         </div>
