@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, User } from "lucide-react";
+import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, User, Settings, ArrowLeft } from "lucide-react";
+import { useRolePreview } from "@/contexts/RolePreviewContext";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import ContractorAvailability from "@/pages/contractor-availability";
@@ -62,6 +63,7 @@ const STATUS_COLORS = {
 
 export default function ContractorDashboard() {
   const { toast } = useToast();
+  const { effectiveRole, originalRole, setPreviewRole, isPreviewing } = useRolePreview();
   const [selectedTab, setSelectedTab] = useState("cases");
 
   // Get assigned cases
@@ -154,9 +156,25 @@ export default function ContractorDashboard() {
                 <p className="text-sm text-muted-foreground">Manage your assigned maintenance cases</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date().toLocaleDateString()}</span>
+            <div className="flex items-center space-x-4">
+              {/* Role Switching */}
+              {(originalRole === 'admin' || originalRole === 'manager' || originalRole === 'staff') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewRole(null)}
+                  className="flex items-center space-x-2"
+                  data-testid="button-switch-to-admin"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to Admin View</span>
+                </Button>
+              )}
+              
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>{new Date().toLocaleDateString()}</span>
+              </div>
             </div>
           </div>
         </div>
