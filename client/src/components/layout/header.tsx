@@ -88,18 +88,20 @@ export default function Header({ title }: HeaderProps) {
       <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6" data-testid="header">
         <div className="flex items-center space-x-4 min-w-0 flex-1">
           <div className="flex items-center space-x-3 min-w-0">
-            <img 
-              src={mitLogoUrl} 
-              alt="MIT" 
-              className="h-8 w-auto flex-shrink-0"
-              data-testid="img-mit-logo"
-            />
-            <div className="flex flex-col min-w-0 max-w-xs">
-              <h1 className="text-base font-bold text-primary truncate" data-testid="text-header-title">MIT Student Housing</h1>
-              <span className="text-xs text-muted-foreground truncate" data-testid="text-subtitle">Campus Management - {title}</span>
+            <div className="flex items-center space-x-2 min-w-0">
+              <img 
+                src={mitLogoUrl} 
+                alt="MIT" 
+                className="h-7 w-auto flex-shrink-0 opacity-90"
+                data-testid="img-mit-logo"
+              />
+              <div className="flex flex-col min-w-0 max-w-xs">
+                <h1 className="text-base font-bold text-gray-800 dark:text-gray-200 truncate" data-testid="text-header-title">MIT Student Housing</h1>
+                <span className="text-xs text-gray-500 dark:text-gray-400 truncate" data-testid="text-subtitle">Campus Management - {title}</span>
+              </div>
             </div>
           </div>
-          <span className="text-sm text-muted-foreground hidden md:block" data-testid="text-welcome">
+          <span className="text-sm text-gray-500 dark:text-gray-400 hidden md:block" data-testid="text-welcome">
             Welcome back, {user?.firstName || "User"}
           </span>
         </div>
