@@ -1057,6 +1057,9 @@ NEVER ask for information you already have!\n`;
       // Schedule intelligent follow-up based on emotional context and urgency
       await this.scheduleIntelligentFollowUp(caseId, conversationId, conversation);
 
+      // 🔧 CONTRACTOR ASSIGNMENT - Find and assign optimal contractor
+      await this.assignOptimalContractor(caseId, conversationId, conversation);
+
       // 🎬 Analyze uploaded media for contractor insights
       const mediaInsights = await this.analyzeConversationMedia(conversation);
       if (mediaInsights) {
@@ -1097,6 +1100,101 @@ NEVER ask for information you already have!\n`;
     } catch (error) {
       console.log(`⚠️ Could not create ticket event (table may not exist yet): ${error instanceof Error ? error.message : String(error)}`);
       // Continue without failing - this is for enhanced tracking
+    }
+  }
+
+  // ========================================
+  // CONTRACTOR ASSIGNMENT SYSTEM
+  // ========================================
+
+  private async assignOptimalContractor(caseId: string, conversationId: string, conversation: any) {
+    try {
+      console.log(`🔧 Starting contractor assignment for case ${caseId}`);
+
+      // Get the smart case details
+      const smartCase = await storage.getSmartCase(caseId);
+      if (!smartCase) {
+        console.error(`❌ Case ${caseId} not found for contractor assignment`);
+        return;
+      }
+
+      // Get available contractors for the organization
+      const allVendors = await storage.getVendors(smartCase.orgId);
+      const availableContractors = allVendors.filter(v => 
+        v.specializations && 
+        Array.isArray(v.specializations) && 
+        v.specializations.length > 0
+      );
+
+      if (availableContractors.length === 0) {
+        console.log(`⚠️ No contractors available for assignment in org ${smartCase.orgId}`);
+        await this.createTicketEvent(caseId, conversationId, "assignment_failed", 
+          "No contractors available for assignment. Manual assignment required.");
+        return;
+      }
+
+      // Use AI Coordinator to find optimal contractor
+      const { aiCoordinatorService } = await import('./aiCoordinator');
+      const contractorRequest = {
+        caseData: {
+          id: caseId,
+          category: smartCase.category || 'General Maintenance',
+          priority: smartCase.priority || 'Medium' as any,
+          description: smartCase.description || '',
+          location: smartCase.buildingName || 'Unknown',
+          urgency: smartCase.priority || 'Medium' as any,
+          estimatedDuration: '2-4 hours',
+          safetyRisk: 'None' as any,
+          contractorType: smartCase.category
+        },
+        availableContractors: availableContractors.map(c => ({
+          id: c.id,
+          name: c.name,
+          category: c.category || 'General',
+          specializations: c.specializations || [],
+          availabilityPattern: c.availabilityPattern || 'standard',
+          responseTimeHours: c.responseTimeHours || 24,
+          estimatedHourlyRate: c.estimatedHourlyRate || 75,
+          rating: 4.5,
+          maxJobsPerDay: c.maxJobsPerDay || 3,
+          currentWorkload: 0,
+          emergencyAvailable: c.emergencyAvailable || false,
+          isActiveContractor: true
+        }))
+      };
+
+      const recommendations = await aiCoordinatorService.findOptimalContractor(contractorRequest);
+      
+      if (recommendations && recommendations.length > 0) {
+        const bestContractor = recommendations[0];
+        
+        // Assign contractor to the case
+        await storage.updateSmartCase(caseId, { 
+          contractorId: bestContractor.contractorId,
+          status: 'Assigned' as any
+        });
+
+        // Create assignment event
+        await this.createTicketEvent(caseId, conversationId, "contractor_assigned", 
+          `Contractor assigned: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match)`, {
+          contractorId: bestContractor.contractorId,
+          contractorName: bestContractor.contractorName,
+          matchScore: bestContractor.matchScore,
+          estimatedResponseTime: bestContractor.estimatedResponseTime,
+          reasoning: bestContractor.reasoning
+        });
+
+        console.log(`✅ Contractor ${bestContractor.contractorName} assigned to case ${caseId}`);
+      } else {
+        console.log(`⚠️ No suitable contractor recommendations for case ${caseId}`);
+        await this.createTicketEvent(caseId, conversationId, "assignment_deferred", 
+          "No suitable contractors found. Case requires manual review.");
+      }
+
+    } catch (error) {
+      console.error('Error assigning contractor:', error);
+      await this.createTicketEvent(caseId, conversationId, "assignment_error", 
+        "Error occurred during contractor assignment. Manual assignment required.");
     }
   }
 
