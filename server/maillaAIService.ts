@@ -73,7 +73,6 @@ export class MaillaAIService {
       console.log(`🤖 Mailla starting triage for student ${studentId}: "${initialRequest}"`);
 
       // 1. Create conversation record
-      const conversationId = nanoid();
       const conversation: InsertTriageConversation = {
         studentId,
         orgId,
@@ -96,7 +95,8 @@ export class MaillaAIService {
         }
       };
 
-      await storage.createTriageConversation(conversation);
+      // ✅ Use the ID returned by storage
+      const conversationId = await storage.createTriageConversation(conversation);
 
       // 2. Generate initial Mailla response with safety-first assessment
       const maillaResponse = await this.processTriageMessage(conversationId, initialRequest, true);
