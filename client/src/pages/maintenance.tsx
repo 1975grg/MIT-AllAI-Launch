@@ -563,36 +563,36 @@ export default function MaintenancePage() {
               </Button>
             </div>
 
-            {/* Stats and View Switcher - Clean neutral design */}
-            <div className="flex items-center justify-between bg-white dark:bg-card p-4 rounded-lg border border-border">
+            {/* Stats and View Switcher - NO BACKGROUNDS */}
+            <div className="flex items-center justify-between py-4">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-base font-medium text-foreground">
                     {filteredCases.length} Total Cases
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-base font-medium text-foreground">
                     {filteredCases.filter((c: SmartCase) => c.priority === "Urgent").length} Urgent
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-base font-medium text-foreground">
                     {filteredCases.filter((c: SmartCase) => c.priority === "High").length} High
                   </span>
                 </div>
               </div>
 
-              {/* View Mode Switcher - Clean with no backgrounds */}
-              <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 p-1 rounded-lg">
+              {/* View Mode Switcher - NO BACKGROUNDS */}
+              <div className="flex items-center space-x-4">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("cards")}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-transparent ${
                     smartCasesViewMode === "cards" 
-                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" 
-                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-700"
+                      ? "text-foreground font-semibold underline underline-offset-4" 
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                   data-testid="button-view-cards"
                 >
@@ -603,10 +603,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("list")}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-transparent ${
                     smartCasesViewMode === "list" 
-                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" 
-                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-700"
+                      ? "text-foreground font-semibold underline underline-offset-4" 
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                   data-testid="button-view-list"
                 >
@@ -617,10 +617,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("heatmap")}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-transparent ${
                     smartCasesViewMode === "heatmap" 
-                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" 
-                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-700"
+                      ? "text-foreground font-semibold underline underline-offset-4" 
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                   data-testid="button-view-heatmap"
                 >
@@ -631,10 +631,10 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("kanban")}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-transparent ${
                     smartCasesViewMode === "kanban" 
-                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" 
-                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-700"
+                      ? "text-foreground font-semibold underline underline-offset-4" 
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                   data-testid="button-view-kanban"
                 >
