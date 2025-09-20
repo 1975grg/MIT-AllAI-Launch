@@ -20,8 +20,8 @@
   --secondary-foreground: hsl(220 25% 8%);
   --muted: hsl(220 15% 97%); /* Neutral muted background */
   --muted-foreground: hsl(220 20% 50%); /* Readable muted text */
-  --accent: hsl(355 70% 96%); /* Light red accent */
-  --accent-foreground: hsl(355 70% 25%);
+  --accent: hsl(220 15% 97%); /* Neutral light accent */
+  --accent-foreground: hsl(220 25% 30%);
   --destructive: hsl(0 70% 50%); /* Readable destructive red */
   --destructive-foreground: hsl(0 0% 100%);
   --border: hsl(220 15% 90%); /* Neutral borders */
@@ -85,8 +85,8 @@
   --secondary-foreground: hsl(220 25% 90%);
   --muted: hsl(220 25% 18%);
   --muted-foreground: hsl(220 25% 65%);
-  --accent: hsl(355 70% 15%);
-  --accent-foreground: hsl(355 70% 75%);
+  --accent: hsl(220 25% 18%);
+  --accent-foreground: hsl(220 25% 75%);
   --destructive: hsl(0 70% 60%);
   --destructive-foreground: hsl(220 25% 6%);
   --border: hsl(220 25% 20%);
@@ -417,40 +417,6 @@
     filter: brightness(1.1);
   }
   
-  /* Comprehensive Blue to Red Gradient Conversion */
-  .text-blue-600, .text-blue-500, .text-blue-700, .text-blue-800 {
-    color: hsl(var(--primary)) !important;
-  }
-  
-  .bg-blue-100, .bg-blue-50, .bg-blue-500, .bg-blue-600, .bg-blue-700 {
-    background: var(--gradient-primary) !important;
-  }
-  
-  .border-blue-200, .border-blue-500, .border-blue-600 {
-    border-color: hsl(var(--primary)) !important;
-  }
-  
-  .hover\\:bg-blue-50:hover, .hover\\:bg-blue-100:hover {
-    background: hsl(var(--primary) / 0.1) !important;
-  }
-  
-  .hover\\:border-blue-600:hover {
-    border-color: hsl(var(--primary)) !important;
-  }
-  
-  .hover\\:text-blue-700:hover {
-    color: hsl(var(--primary) / 0.8) !important;
-  }
-  
-  /* Blue gradient overrides */
-  .from-blue-50, .to-blue-50, .from-blue-100, .to-blue-100,
-  .from-blue-500, .to-blue-600, .from-blue-600, .to-blue-700 {
-    background: var(--gradient-primary) !important;
-  }
-  
-  /* Badge and status overrides */
-  .bg-blue-100.text-blue-800 {
-    background: var(--gradient-primary) !important;
-    color: white !important;
-  }
+  /* Remove blue to red overrides - let blue classes be blue */
+  /* Keep primary buttons red for MIT branding, but allow blue elements to be blue */
 }
