@@ -127,13 +127,13 @@ export default function MaintenancePage() {
 
   // Mutations
   const createCaseMutation = useMutation({
-    mutationFn: (data: any) => fetch("/api/smart-cases", {
+    mutationFn: (data: any) => fetch("/api/cases", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }).then(res => res.json()),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/smart-cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       toast({ title: "Success", description: "Maintenance case created successfully!" });
       
       // Handle reminder creation if requested
@@ -153,13 +153,13 @@ export default function MaintenancePage() {
   });
 
   const updateCaseMutation = useMutation({
-    mutationFn: ({ id, ...data }: any) => fetch(`/api/smart-cases/${id}`, {
+    mutationFn: ({ id, ...data }: any) => fetch(`/api/cases/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }).then(res => res.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/smart-cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       toast({ title: "Success", description: "Maintenance case updated successfully!" });
       handleCloseForm();
     },
@@ -170,13 +170,13 @@ export default function MaintenancePage() {
 
   const updateCaseStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => 
-      fetch(`/api/smart-cases/${id}`, {
+      fetch(`/api/cases/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       }).then(res => res.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/smart-cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       toast({ title: "Success", description: "Case status updated!" });
     },
     onError: () => {
@@ -185,9 +185,9 @@ export default function MaintenancePage() {
   });
 
   const deleteCaseMutation = useMutation({
-    mutationFn: (id: string) => fetch(`/api/smart-cases/${id}`, { method: "DELETE" }),
+    mutationFn: (id: string) => fetch(`/api/cases/${id}`, { method: "DELETE" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/smart-cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       toast({ title: "Success", description: "Maintenance case deleted!" });
     },
     onError: () => {
@@ -269,7 +269,7 @@ export default function MaintenancePage() {
       description: smartCase.description || "",
       propertyId: smartCase.propertyId || "",
       unitId: smartCase.unitId || "",
-      priority: smartCase.priority || "Medium",
+      priority: (smartCase.priority as "Low" | "Medium" | "High" | "Urgent") || "Medium",
       category: smartCase.category || "",
       createReminder: false,
     });
@@ -299,20 +299,20 @@ export default function MaintenancePage() {
   };
 
   // Filtered data
-  const selectedProperty = properties?.find(p => p.id === selectedPropertyId);
-  const selectedPropertyUnits = units.filter(unit => unit.propertyId === selectedPropertyId);
+  const selectedProperty = (properties as Property[] | undefined)?.find((p: Property) => p.id === selectedPropertyId);
+  const selectedPropertyUnits = (units as Unit[]).filter((unit: Unit) => unit.propertyId === selectedPropertyId);
 
   const filteredProperties = entityFilter === "all" 
-    ? properties || []
-    : properties?.filter(p => p.entityId === entityFilter) || [];
+    ? (properties as Property[] | undefined) || []
+    : (properties as Property[] | undefined)?.filter((p: Property) => p.entityId === entityFilter) || [];
 
-  const filteredCases = (smartCases || []).filter((smartCase: SmartCase) => {
+  const filteredCases = (smartCases as SmartCase[] || []).filter((smartCase: SmartCase) => {
     const matchesSearch = !searchTerm || 
       smartCase.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       smartCase.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesEntity = entityFilter === "all" || 
-      properties?.find(p => p.id === smartCase.propertyId)?.entityId === entityFilter;
+      (properties as Property[] | undefined)?.find((p: Property) => p.id === smartCase.propertyId)?.entityId === entityFilter;
     
     const matchesProperty = propertyFilter === "all" || smartCase.propertyId === propertyFilter;
     
@@ -328,11 +328,180 @@ export default function MaintenancePage() {
            matchesCategory && matchesStatus && matchesPriority;
   });
 
-  // Safe render function to avoid nested ternaries
+  // Smart Case Card Component
+  const SmartCaseCard = ({ smartCase, index }: { smartCase: SmartCase; index: number }) => {
+    const property = (properties as Property[] | undefined)?.find((p: Property) => p.id === smartCase.propertyId);
+    const unit = (units as Unit[]).find((u: Unit) => u.id === smartCase.unitId);
+    
+    return (
+      <Card key={smartCase.id} className="hover:shadow-lg transition-all duration-200 border-border bg-white dark:bg-card" data-testid={`card-case-${index}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg font-semibold text-foreground line-clamp-2">{smartCase.title}</CardTitle>
+              <div className="flex items-center gap-2 mt-2">
+                {property && (
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {property.name} {unit ? `- ${unit.name}` : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(smartCase.status)}
+              {smartCase.priority && getPriorityBadge(smartCase.priority)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {smartCase.description && (
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{smartCase.description}</p>
+          )}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              {smartCase.createdAt ? new Date(smartCase.createdAt).toLocaleDateString() : 'No date'}
+            </span>
+            {smartCase.category && (
+              <Badge variant="outline" className="text-xs">{smartCase.category}</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEditCase(smartCase)}
+              data-testid={`button-edit-case-${index}`}
+            >
+              <Edit className="h-3 w-3 mr-1" />
+              Edit
+            </Button>
+            {smartCase.status !== "Resolved" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => updateCaseStatusMutation.mutate({ id: smartCase.id, status: "Resolved" })}
+                data-testid={`button-resolve-case-${index}`}
+              >
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Resolve
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // View renderers
+  const renderCardsView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {filteredCases.map((smartCase: SmartCase, index: number) => (
+        <SmartCaseCard key={smartCase.id} smartCase={smartCase} index={index} />
+      ))}
+    </div>
+  );
+
+  const renderListView = () => (
+    <div className="space-y-4">
+      {filteredCases.map((smartCase: SmartCase, index: number) => (
+        <Card key={smartCase.id} className="hover:shadow-md transition-shadow bg-white dark:bg-card" data-testid={`list-case-${index}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(smartCase.status)}
+                  <div>
+                    <h3 className="font-semibold text-foreground">{smartCase.title}</h3>
+                    <p className="text-sm text-muted-foreground">{smartCase.description}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(smartCase.status)}
+                {smartCase.priority && getPriorityBadge(smartCase.priority)}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderKanbanView = () => {
+    const statusColumns = ["New", "In Progress", "Resolved", "Closed"];
+    
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statusColumns.map((status) => (
+          <div key={status} className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground">{status}</h3>
+              <Badge variant="outline">
+                {filteredCases.filter((c: SmartCase) => c.status === status).length}
+              </Badge>
+            </div>
+            <div className="space-y-3">
+              {filteredCases
+                .filter((c: SmartCase) => c.status === status)
+                .map((smartCase: SmartCase, index: number) => (
+                  <Card key={smartCase.id} className="cursor-pointer hover:shadow-md transition-shadow bg-white dark:bg-card" data-testid={`kanban-case-${index}`}>
+                    <CardContent className="p-3">
+                      <h4 className="font-medium text-sm mb-2">{smartCase.title}</h4>
+                      {smartCase.priority && (
+                        <div className="mb-2">{getPriorityBadge(smartCase.priority)}</div>
+                      )}
+                      <p className="text-xs text-muted-foreground line-clamp-2">{smartCase.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderHeatmapView = () => (
+    <Card className="bg-white dark:bg-card">
+      <CardHeader>
+        <CardTitle>Property Maintenance Heatmap</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {(properties as Property[] | undefined)?.map((property: Property) => {
+            const propertyCases = filteredCases.filter((c: SmartCase) => c.propertyId === property.id);
+            const urgentCount = propertyCases.filter((c: SmartCase) => c.priority === "Urgent").length;
+            const highCount = propertyCases.filter((c: SmartCase) => c.priority === "High").length;
+            
+            return (
+              <Card key={property.id} className={`${
+                urgentCount > 0 ? 'border-red-200 bg-red-50' :
+                highCount > 0 ? 'border-orange-200 bg-orange-50' :
+                propertyCases.length > 0 ? 'border-yellow-200 bg-yellow-50' :
+                'border-green-200 bg-green-50'
+              } transition-colors`}>
+                <CardContent className="p-4">
+                  <h4 className="font-semibold">{property.name}</h4>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="outline">{propertyCases.length} cases</Badge>
+                    {urgentCount > 0 && <Badge variant="destructive">{urgentCount} urgent</Badge>}
+                    {highCount > 0 && <Badge className="bg-orange-100 text-orange-800">{highCount} high</Badge>}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Main render function
   const renderSmartCases = () => {
     if (casesLoading) {
       return (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <Card key={i} data-testid={`skeleton-case-${i}`}>
               <CardContent className="p-6">
@@ -350,7 +519,7 @@ export default function MaintenancePage() {
 
     if (filteredCases.length === 0) {
       return (
-        <Card>
+        <Card className="bg-white dark:bg-card">
           <CardContent className="p-12 text-center">
             <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2" data-testid="text-no-cases">No Maintenance Cases</h3>
@@ -364,21 +533,14 @@ export default function MaintenancePage() {
       );
     }
 
-    // Temporarily simplified for debugging
-    return (
-      <div className="grid grid-cols-1 gap-6">
-        {filteredCases.map((smartCase, index) => (
-          <Card key={smartCase.id} className="hover:shadow-md transition-shadow" data-testid={`card-case-${index}`}>
-            <CardHeader>
-              <CardTitle>{smartCase.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>{smartCase.description}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    // Render based on view mode
+    switch (smartCasesViewMode) {
+      case "cards": return renderCardsView();
+      case "list": return renderListView();
+      case "kanban": return renderKanbanView();
+      case "heatmap": return renderHeatmapView();
+      default: return renderCardsView();
+    }
   };
 
   return (
@@ -387,6 +549,87 @@ export default function MaintenancePage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title={viewMode === "student" ? "Submit Maintenance Request" : "AI Maintenance Triage"} />
         <main className="flex-1 overflow-auto p-6 bg-muted/30">
+          
+          {/* Header with view controls like AllAI Property */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-foreground">Maintenance Cases</h1>
+                <p className="text-muted-foreground">Track and manage maintenance requests</p>
+              </div>
+              <Button onClick={() => setShowCaseForm(true)} data-testid="button-create-case">
+                <Plus className="h-4 w-4 mr-2" />
+                Quick Add
+              </Button>
+            </div>
+
+            {/* Stats and View Switcher */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {filteredCases.length} Total Cases
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {filteredCases.filter((c: SmartCase) => c.priority === "Urgent").length} Urgent
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {filteredCases.filter((c: SmartCase) => c.priority === "High").length} High
+                  </span>
+                </div>
+              </div>
+
+              {/* View Mode Switcher - like AllAI Property */}
+              <div className="flex items-center bg-white dark:bg-card rounded-lg border border-border p-1">
+                <Button
+                  variant={smartCasesViewMode === "cards" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setSmartCasesViewMode("cards")}
+                  className="px-3 py-1"
+                  data-testid="button-view-cards"
+                >
+                  <Grid3X3 className="h-4 w-4 mr-1" />
+                  Cards
+                </Button>
+                <Button
+                  variant={smartCasesViewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setSmartCasesViewMode("list")}
+                  className="px-3 py-1"
+                  data-testid="button-view-list"
+                >
+                  <List className="h-4 w-4 mr-1" />
+                  List
+                </Button>
+                <Button
+                  variant={smartCasesViewMode === "heatmap" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setSmartCasesViewMode("heatmap")}
+                  className="px-3 py-1"
+                  data-testid="button-view-heatmap"
+                >
+                  <MapIcon className="h-4 w-4 mr-1" />
+                  Heat Map
+                </Button>
+                <Button
+                  variant={smartCasesViewMode === "kanban" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setSmartCasesViewMode("kanban")}
+                  className="px-3 py-1"
+                  data-testid="button-view-kanban"
+                >
+                  <Columns3 className="h-4 w-4 mr-1" />
+                  Kanban
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Cases Display */}
           {renderSmartCases()}
         </main>
       </div>

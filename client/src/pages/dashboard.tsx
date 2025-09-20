@@ -375,74 +375,74 @@ export default function Dashboard() {
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50 bg-white dark:bg-card"
                       onClick={() => setLocation('/properties')}
                       data-testid="button-add-residence"
                     >
                       <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                         <Building className="h-5 w-5 text-primary" />
                       </div>
-                      <span className="text-sm font-medium">Residence</span>
+                      <span className="text-sm font-medium text-foreground">Residence</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50 bg-white dark:bg-card"
                       onClick={() => setLocation('/tenants')}
                       data-testid="button-add-student"
                     >
                       <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                         <Users className="h-5 w-5 text-green-600" />
                       </div>
-                      <span className="text-sm font-medium">Student</span>
+                      <span className="text-sm font-medium text-foreground">Student</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50 bg-white dark:bg-card"
                       onClick={() => setLocation('/maintenance')}
                       data-testid="button-create-maintenance"
                     >
                       <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
                         <Wrench className="h-5 w-5 text-orange-600" />
                       </div>
-                      <span className="text-sm font-medium">Maintenance</span>
+                      <span className="text-sm font-medium text-foreground">Maintenance</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50 bg-white dark:bg-card"
                       onClick={() => setLocation('/expenses')}
                       data-testid="button-log-expense"
                     >
                       <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
                         <Receipt className="h-5 w-5 text-yellow-600" />
                       </div>
-                      <span className="text-sm font-medium">Expense</span>
+                      <span className="text-sm font-medium text-foreground">Expense</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50 bg-white dark:bg-card"
                       onClick={() => setLocation('/revenue')}
                       data-testid="button-log-revenue"
                     >
                       <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                         <DollarSign className="h-5 w-5 text-green-600" />
                       </div>
-                      <span className="text-sm font-medium">Revenue</span>
+                      <span className="text-sm font-medium text-foreground">Revenue</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50 bg-white dark:bg-card"
                       onClick={() => setLocation('/reminders')}
                       data-testid="button-set-reminder"
                     >
                       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                         <Bell className="h-5 w-5 text-blue-600" />
                       </div>
-                      <span className="text-sm font-medium">Reminder</span>
+                      <span className="text-sm font-medium text-foreground">Reminder</span>
                     </Button>
 
                   </div>
