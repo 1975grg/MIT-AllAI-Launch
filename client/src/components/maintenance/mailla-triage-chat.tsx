@@ -251,11 +251,24 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
         await completeTriageConversation();
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error continuing triage:', error);
+      
+      // Handle specific error types
+      let title = "Connection Error";
+      let description = "Failed to send message to Mailla. Please try again.";
+      
+      if (error?.response?.status === 429) {
+        title = "Please slow down";
+        description = "I'm getting a lot of requests right now. Please wait a moment and try again.";
+      } else if (error?.message?.includes('rate limit') || error?.message?.includes('Too many')) {
+        title = "Rate limit reached";
+        description = "Please wait a moment before sending another message.";
+      }
+      
       toast({
-        title: "Connection Error", 
-        description: "Failed to send message to Mailla. Please try again.",
+        title,
+        description,
         variant: "destructive"
       });
     } finally {
@@ -574,7 +587,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex flex-wrap gap-2 p-3 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-3"
+              className="flex flex-wrap gap-2 p-2 bg-gray-50/50 dark:bg-gray-900/20 rounded-lg border border-gray-200 dark:border-gray-700 mb-3"
               data-testid="quick-replies"
             >
               {currentQuickReplies.map((reply, idx) => (
@@ -584,7 +597,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
                   size="sm"
                   onClick={() => handleQuickReply(reply)}
                   disabled={isLoading}
-                  className="text-sm px-3 py-1 bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 transition-colors"
+                  className="text-sm px-3 py-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
                   data-testid={`quick-reply-${idx}`}
                 >
                   {reply === 'Skip for now' ? (

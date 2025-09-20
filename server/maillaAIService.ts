@@ -75,7 +75,6 @@ export class MaillaAIService {
       // 1. Create conversation record
       const conversationId = nanoid();
       const conversation: InsertTriageConversation = {
-        id: conversationId, // Explicitly include the ID
         studentId,
         orgId,
         initialRequest,
@@ -92,7 +91,8 @@ export class MaillaAIService {
         triageData: {
           initialRequest,
           category: null,
-          context: {}
+          context: {},
+          conversationSlots: {}
         }
       };
 
@@ -415,15 +415,18 @@ export class MaillaAIService {
 
 CONVERSATION RULES:
 1. **ONE QUESTION AT A TIME** - Never ask multiple questions in one message
-2. **Be compassionate** - Acknowledge their situation and feelings
-3. **Keep responses SHORT** - Maximum 2 sentences + one question
-4. **Talk like a helpful person** - Natural, warm, conversational tone
-5. **Safety ALWAYS comes first** - Escalate emergencies immediately
+2. **NEVER REPEAT QUESTIONS** - If they already provided information, don't ask for it again
+3. **Be compassionate** - Acknowledge their situation and feelings
+4. **Keep responses SHORT** - Maximum 2 sentences + one question
+5. **Talk like a helpful person** - Natural, warm, conversational tone
+6. **Safety ALWAYS comes first** - Escalate emergencies immediately
 
 CONVERSATION FLOW:
 - Greeting → Building → Room → Issue details → Timeline → Severity (as needed)
 - If they give multiple pieces of info, acknowledge what they shared and ask the next most important question
 - Emergency keywords bypass normal flow for immediate help
+
+CRITICAL: If the student has already mentioned their building or room number (e.g., "Tang Hall 201"), DO NOT ask for it again. Move to the next needed information.
 
 TONE EXAMPLES:
 ❌ "I need to gather some information. Which building are you in and what's your room number? Also, when did this start?"
@@ -469,20 +472,27 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       
       // Show what we know so far
       if (Object.keys(existingSlots).length > 0) {
-        prompt += `Information gathered: ${JSON.stringify(existingSlots)}\n`;
+        prompt += `✅ Information already gathered: ${JSON.stringify(existingSlots)}\n`;
+        prompt += `⚠️ IMPORTANT: Do NOT ask for any information already listed above!\n\n`;
       }
       
       if (pendingQuestions.length > 0) {
         prompt += `Questions in queue: ${pendingQuestions.join(', ')}\n`;
       }
       
-      prompt += `\nNext question priority:
-1. Building name (if missing)
-2. Room number (if building known but room missing)
-3. Issue details (if location complete)
+      // Extract what we still need based on what's missing
+      const needsBuilding = !existingSlots.buildingName;
+      const needsRoom = !existingSlots.roomNumber && existingSlots.buildingName;
+      const needsIssueDetails = !existingSlots.issueSummary && existingSlots.buildingName && existingSlots.roomNumber;
+      
+      prompt += `\nNext question priority (only ask for what's MISSING):
+${needsBuilding ? '1. Building name (REQUIRED)' : '✅ Building name: already have it'}
+${needsRoom ? '2. Room number (REQUIRED if building known)' : '✅ Room number: already have it'}  
+${needsIssueDetails ? '3. Issue details (if location complete)' : '✅ Issue details: covered'}
 4. Timeline/severity (if needed)
 
-Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they just shared.\n`;
+Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they just shared.
+NEVER ask for information you already have!\n`;
     }
 
     if (safetyResults && safetyResults.flags.length > 0) {
