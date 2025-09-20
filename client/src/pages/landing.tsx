@@ -4,12 +4,9 @@ import { GraduationCap, Brain, Clock, CheckCircle, Users, Wrench, Bot, FileText 
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background relative">
-      {/* Enhanced gradient overlay for AI aesthetic */}
-      <div className="landing-gradient-overlay"></div>
-      
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border relative">
+      <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 ai-gradient-primary rounded-lg flex items-center justify-center">
@@ -24,7 +21,7 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4 relative z-10">
+      <section className="py-20 px-4">
         <div className="container mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             AI-Powered Maintenance Automation
