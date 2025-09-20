@@ -1049,7 +1049,7 @@ NEVER ask for information you already have!\n`;
       await storage.createTicketEvent(event);
       console.log(`📝 Ticket event created: ${eventType} for case ${caseId}`);
     } catch (error) {
-      console.log(`⚠️ Could not create ticket event (table may not exist yet): ${error.message}`);
+      console.log(`⚠️ Could not create ticket event (table may not exist yet): ${error instanceof Error ? error.message : String(error)}`);
       // Continue without failing - this is for enhanced tracking
     }
   }
