@@ -25,10 +25,10 @@ export default function Landing() {
       <section 
         className="relative py-32 px-4 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `linear-gradient(rgba(163, 31, 52, 0.85), rgba(163, 31, 52, 0.75)), url(${mitDomeImage})`,
+          backgroundImage: `linear-gradient(rgba(0, 45, 114, 0.75), rgba(0, 45, 114, 0.65)), url(${mitDomeImage})`,
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-primary/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/10 to-blue-900/20"></div>
         <div className="relative container mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
             AI-Powered Maintenance Automation
@@ -51,7 +51,7 @@ export default function Landing() {
             
             {/* Primary AI Chat Option */}
             <div className="space-y-4">
-              <Button size="lg" asChild className="text-lg px-8 py-3 bg-gradient-to-r from-primary to-red-700 hover:from-red-700 hover:to-primary shadow-lg transform hover:scale-105 transition-all" data-testid="button-ai-chat">
+              <Button size="lg" asChild className="text-lg px-8 py-3 bg-gradient-to-r from-primary to-blue-700 hover:from-blue-700 hover:to-primary shadow-lg transform hover:scale-105 transition-all" data-testid="button-ai-chat">
                 <a href="/student-mailla-triage">
                   <Bot className="h-5 w-5 mr-2" />
                   Chat with AI Assistant
