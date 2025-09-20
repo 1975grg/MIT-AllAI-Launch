@@ -407,8 +407,9 @@ export class MaillaAIService {
           try {
             const caseResult = await this.completeTriageConversation(conversationId);
             if (caseResult.success && caseResult.caseId) {
-              // Let AI keep its intelligent response, just append case confirmation
-              maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseResult.caseId} - help is on the way!`;
+              // Let AI keep its intelligent response, just append case confirmation with friendly number
+              const friendlyNumber = this.generateFriendlyCaseNumber(caseResult.caseId);
+              maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${friendlyNumber} - help is on the way!`;
               maillaResponse.nextAction = 'complete_triage';
               maillaResponse.isComplete = true;
               
@@ -1196,6 +1197,16 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
       'emergency': 'Urgent'
     };
     return mapping[urgencyLevel] || 'Medium';
+  }
+
+  /**
+   * Generates user-friendly case number from UUID
+   */
+  private generateFriendlyCaseNumber(caseId: string): string {
+    // Convert UUID to a short, memorable number
+    const hash = caseId.split('-')[0]; // Use first part of UUID
+    const num = parseInt(hash.substring(0, 6), 16) % 9000 + 1000; // Generate 1000-9999
+    return `MIT-${num}`;
   }
 
   private async assignOptimalContractor(caseId: string, conversationId: string, conversation: any) {

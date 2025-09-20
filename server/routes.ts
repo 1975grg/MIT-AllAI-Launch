@@ -2013,8 +2013,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
-      const cases = await storage.getSmartCases(org.id);
-      res.json(cases);
+      // ✅ DEMO FIX: Show both user's org AND MIT Housing cases for full demo experience
+      const userCases = await storage.getSmartCases(org.id);
+      const mitCases = await storage.getSmartCases("30033c31-7111-4c83-b796-5f7f33786774"); // MIT Housing
+      
+      // Combine and deduplicate cases, add user-friendly display numbers
+      const allCases = [...userCases, ...mitCases].filter((caseItem, index, self) => 
+        index === self.findIndex(c => c.id === caseItem.id)
+      );
+      
+      // Helper function to match Mailla's case number generation
+      const generateFriendlyCaseNumber = (caseId: string): string => {
+        const hash = caseId.split('-')[0]; // Use first part of UUID  
+        const num = parseInt(hash.substring(0, 6), 16) % 9000 + 1000; // Generate 1000-9999
+        return `MIT-${num}`;
+      };
+      
+      // Add user-friendly case numbers for display (keep original ID as primary key)
+      const casesWithFriendlyNumbers = allCases.map((caseItem) => ({
+        ...caseItem,
+        displayNumber: generateFriendlyCaseNumber(caseItem.id) // Same algorithm as Mailla
+      }));
+      
+      res.json(casesWithFriendlyNumbers);
     } catch (error) {
       console.error("Error fetching cases:", error);
       res.status(500).json({ message: "Failed to fetch cases" });
