@@ -225,7 +225,7 @@ export default function MaintenancePage() {
 
   const getPriorityCircleColor = (priority: string | null) => {
     switch (priority) {
-      case "Urgent": return "bg-red-100 text-red-800";
+      case "Urgent": return "bg-orange-100 text-orange-800";
       case "High": return "bg-orange-100 text-orange-800";
       case "Medium": return "bg-yellow-100 text-yellow-800";
       case "Low": return "bg-green-100 text-green-800";
@@ -245,7 +245,7 @@ export default function MaintenancePage() {
 
   const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
-      case "Urgent": return <Badge className="bg-red-100 text-red-800 border-red-200">{priority}</Badge>;
+      case "Urgent": return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{priority}</Badge>;
       case "High": return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{priority}</Badge>;
       case "Medium": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{priority}</Badge>;
       case "Low": return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{priority}</Badge>;
@@ -476,7 +476,7 @@ export default function MaintenancePage() {
             
             return (
               <Card key={property.id} className={`${
-                urgentCount > 0 ? 'border-red-200 bg-red-50' :
+                urgentCount > 0 ? 'border-orange-200 bg-orange-50' :
                 highCount > 0 ? 'border-orange-200 bg-orange-50' :
                 propertyCases.length > 0 ? 'border-yellow-200 bg-yellow-50' :
                 'border-green-200 bg-green-50'

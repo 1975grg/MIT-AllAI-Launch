@@ -99,7 +99,7 @@ export default function Dashboard() {
 
   const getPriorityColor = (type: string) => {
     switch (type) {
-      case "rent": return "bg-red-500";
+      case "rent": return "bg-gray-500";
       case "housing": return "bg-yellow-500";
       case "maintenance": return "bg-blue-500";
       default: return "bg-green-500";
@@ -125,8 +125,8 @@ export default function Dashboard() {
                       {statsLoading ? "..." : stats?.totalProperties || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Building className="text-primary" />
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Building className="text-gray-600" />
                   </div>
                 </div>
               </CardContent>
@@ -173,8 +173,8 @@ export default function Dashboard() {
                       {statsLoading ? "..." : stats?.dueReminders || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                    <Bell className="text-red-600" />
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Bell className="text-gray-600" />
                   </div>
                 </div>
               </CardContent>
@@ -375,19 +375,19 @@ export default function Dashboard() {
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-red-50 dark:hover:bg-red-950 bg-white dark:bg-card transition-colors"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/properties')}
                       data-testid="button-add-residence"
                     >
-                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Building className="h-5 w-5 text-primary" />
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <Building className="h-5 w-5 text-gray-600" />
                       </div>
                       <span className="text-sm font-medium text-foreground">Residence</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-red-50 dark:hover:bg-red-950 bg-white dark:bg-card transition-colors"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/tenants')}
                       data-testid="button-add-student"
                     >
@@ -399,7 +399,7 @@ export default function Dashboard() {
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-red-50 dark:hover:bg-red-950 bg-white dark:bg-card transition-colors"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/maintenance')}
                       data-testid="button-create-maintenance"
                     >
@@ -411,7 +411,7 @@ export default function Dashboard() {
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-red-50 dark:hover:bg-red-950 bg-white dark:bg-card transition-colors"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/expenses')}
                       data-testid="button-log-expense"
                     >
@@ -423,7 +423,7 @@ export default function Dashboard() {
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-red-50 dark:hover:bg-red-950 bg-white dark:bg-card transition-colors"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/revenue')}
                       data-testid="button-log-revenue"
                     >
@@ -435,7 +435,7 @@ export default function Dashboard() {
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-red-50 dark:hover:bg-red-950 bg-white dark:bg-card transition-colors"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/reminders')}
                       data-testid="button-set-reminder"
                     >
