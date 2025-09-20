@@ -209,7 +209,7 @@ export class MaillaAIService {
 
       // 3. Get Mailla's intelligent response
       const aiResponse = await this.openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-2024-11-20",
         messages: [
           { role: "system", content: this.getMaillaSystemPrompt() },
           { role: "user", content: contextPrompt }
@@ -399,53 +399,25 @@ export class MaillaAIService {
         console.log(`   Issue: ${updatedSlots.issueSummary || 'inferred from message'}`);
         console.log(`   Urgency: ${maillaResponse.urgencyLevel}`);
         
-        // 🔄 PROGRESSIVE TRIAGE: Create natural conversation flow instead of rushed completion
+        // 🤖 SMART ORCHESTRATOR: Let AI be intelligent, just ensure case creation when ready
         if (hasLocation && hasIssueType && hasUrgency) {
-          console.log(`🔄 PROGRESSIVE TRIAGE: All criteria met - starting natural triage flow`);
+          console.log(`✅ SMART COMPLETION: All slots filled - creating case and completing triage`);
           
-          if (maillaResponse.urgencyLevel === 'urgent' || maillaResponse.urgencyLevel === 'emergency') {
-            // URGENT: Acknowledge + reassure + dispatch help + light triage
-            if (studentMessage.includes('heating') || studentMessage.includes('heat') || studentMessage.includes('cold') || studentMessage.includes('freezing')) {
-              maillaResponse.nextAction = 'request_media';
-              maillaResponse.message = `Oh no, that sounds miserable! I'm getting emergency help on the way right now. While we wait, can you snap a quick pic of your thermostat? Also try flipping your heating breaker off and back on - it's in your electrical panel.`;
-              maillaResponse.mediaRequest = {
-                type: 'photo',
-                reason: 'thermostat photo helps me see what might be wrong'
-              };
-            } else if (studentMessage.includes('water') || studentMessage.includes('leak') || studentMessage.includes('plumbing')) {
-              maillaResponse.nextAction = 'request_media';
-              maillaResponse.message = `That sounds really stressful! I'm getting a plumber out there right away. While we wait, can you snap a photo of the leak area? If it gets worse, look for a water shutoff valve near your unit.`;
-              maillaResponse.mediaRequest = {
-                type: 'photo', 
-                reason: 'photo of the leak helps me assess urgency and helps plumber know what tools to bring'
-              };
-            } else if (studentMessage.includes('electrical') || studentMessage.includes('outlet') || studentMessage.includes('power')) {
-              maillaResponse.nextAction = 'request_media';
-              maillaResponse.message = `Got it! Maintenance is being dispatched right away. Please stay away from that area for safety. If it's safe, a photo from a distance would help me assess the situation.`;
-              maillaResponse.mediaRequest = {
-                type: 'photo',
-                reason: 'distant photo of electrical issue helps assess safety'
-              };
-            } else {
-              maillaResponse.nextAction = 'ask_followup';
-              maillaResponse.message = `Got it! Help is on the way right now. Can you describe what you're seeing or hearing? Any photos would help too!`;
-              maillaResponse.nextQuestion = `What exactly are you seeing or hearing with this issue?`;
+          // Create case immediately when criteria met
+          try {
+            const caseResult = await this.completeTriageConversation(conversationId);
+            if (caseResult.success && caseResult.caseId) {
+              // Let AI keep its intelligent response, just append case confirmation
+              maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseResult.caseId} - help is on the way!`;
+              maillaResponse.nextAction = 'complete_triage';
+              maillaResponse.isComplete = true;
+              
+              console.log(`🎉 Case ${caseResult.caseId} created successfully!`);
             }
-          } else {
-            // NON-URGENT: Try DIY first, then call help if needed
-            if (studentMessage.includes('heating') || studentMessage.includes('heat') || studentMessage.includes('cold')) {
-              maillaResponse.nextAction = 'recommend_diy';
-              maillaResponse.message = `Let me help you troubleshoot this first! Can you try flipping your heating breaker off and back on? It's in your electrical panel. Also, a pic of your thermostat would help me see what's going on.`;
-              maillaResponse.diyAction = {
-                action: 'Check heating breaker',
-                instructions: ['Find your electrical panel', 'Look for the heating/HVAC breaker', 'Flip it off for 30 seconds', 'Flip it back on'],
-                warnings: ['Only touch the breaker switch, not any wires', 'If you smell anything strange, stop immediately']
-              };
-            } else {
-              maillaResponse.nextAction = 'ask_followup';
-              maillaResponse.message = `I'm here to help! Let me get a bit more info first - what exactly are you seeing or experiencing?`;
-              maillaResponse.nextQuestion = `Can you describe what you're seeing or hearing with this issue?`;
-            }
+          } catch (error) {
+            console.error('❌ Case creation failed:', error);
+            // Don't block the conversation if case creation fails
+            maillaResponse.message += `\n\n⚡ I'm getting help dispatched right away - you'll get updates soon!`;
           }
         }
         
@@ -537,67 +509,42 @@ export class MaillaAIService {
   // ========================================
 
   private getMaillaSystemPrompt(): string {
-    return `You are Mailla, MIT Housing's caring maintenance assistant. You're like a helpful friend who actually works in maintenance - warm, empathetic, practical, and genuinely caring about students' comfort and wellbeing.
+    return `You are Mailla, MIT Housing's caring maintenance assistant. You're like a helpful friend who works in maintenance - warm, empathetic, and genuinely caring about students' wellbeing.
 
-🎯 **CORE PERSONALITY:**
-- **CARING & PRACTICAL** - Offer comfort, alternatives, and helpful tips
-- **EMOTIONALLY INTELLIGENT** - Acknowledge distress, show genuine concern
-- **SMART & EXPERIENCED** - Give context-appropriate advice like a seasoned maintenance person
-- **HUMAN & WARM** - Talk like texting a caring friend, not a corporate bot
+**CORE PERSONALITY:**
+- **Be naturally caring** - acknowledge their discomfort ("Oh no, that sounds awful!")
+- **Be practical** - offer helpful advice and alternatives
+- **Be reassuring** - let them know help is coming
+- **Be conversational** - talk like a caring friend, not a corporate bot
 
-🧠 **SMART INFERENCE:**
-- "bad/terrible/awful/horrible/freezing" = URGENT priority (acknowledge + skip severity questions)  
-- "40 degrees/no heat/can see my breath" = TEMPERATURE EMERGENCY (immediate comfort advice)
-- "this morning/just started/after class" = timeline provided (don't re-ask)
-- "Tang 201/Next 123" = complete location (confirm + proceed)
+**NATURAL CONVERSATION APPROACH:**
+1. **Acknowledge their situation** with empathy first
+2. **Extract key information** naturally through conversation
+3. **Offer practical help** when appropriate (photos, simple troubleshooting)
+4. **Provide comfort and alternatives** (blankets for cold, friends to stay with)
+5. **Stay connected** - promise updates and check-ins
 
-💝 **CARING RESPONSES BY ISSUE TYPE:**
+**WHAT YOU NEED TO COLLECT:**
+- **Location**: Building name + room number (required)
+- **Issue details**: What's broken/not working (required)
+- **Urgency**: Severe language like "freezing/terrible" = urgent (required)
 
-**HEATING ISSUES:**
-- Acknowledge discomfort: "Oh no, that sounds miserable!"
-- Offer comfort: "Try to stay warm with blankets, or hang out with friends if you want"  
-- Practical help: "Want to snap a pic of your thermostat? I can help see what's up"
-- DIY (if non-urgent): "You could try flipping your breaker - it's in your electrical panel"
-- DIY (if urgent): "Let me get emergency help coming first, then we can try troubleshooting"
+**HELPFUL SUGGESTIONS:**
+- For heating: "A pic of your thermostat might help! Also try your breaker if you feel comfortable."
+- For plumbing: "Know where your water shutoff is? A photo of the leak helps too."  
+- For electrical: "Stay away from the area for safety. Distant photo if safe."
 
-**PLUMBING ISSUES:**
-- Show concern: "That sounds really stressful!"
-- Practical help: "Know where your water shutoff is? If not, I can help you find it"
-- Photo request: "A quick pic of the leak helps me give the repair team better info"
-- Cleanup: "Grab some towels if you can - we'll get this fixed soon"
+**COMFORT & ALTERNATIVES:**
+- Cold rooms: "Try to stay warm with blankets, or hang out with friends if you want"
+- Leaks: "Grab some towels if you can"
+- Any urgent issue: "You don't need to be there while we fix this - I'll keep you updated"
 
-**ELECTRICAL ISSUES:**
-- Safety first: "Your safety comes first - stay away from that area"
-- Reassurance: "I'm getting someone out there right away"
-- Photo: "If it's safe, a pic from a distance helps, but don't get close"
+**SAFETY PRIORITIES:**
+- Gas smell → immediate evacuation
+- Electrical + water → stay away, call emergency
+- Sparking/burning → evacuate immediately
 
-🎬 **SMART PHOTO REQUESTS:**
-Instead of just "can you send a photo", explain WHY:
-- "If you can snap a quick pic of your thermostat, I can help interpret what might be wrong and give the repair team better info!"
-- "A photo of the leak area helps me see if it's urgent and helps the plumber know what tools to bring"
-- "If it's safe, a distant photo of the electrical issue helps me assess the situation"
-
-⭐ **COMPLETION CRITERIA - SET nextAction: 'complete_triage' WHEN YOU HAVE:**
-1. **Location confirmed** (building + room number)
-2. **Issue type clear** (heating, plumbing, electrical, etc.)  
-3. **Urgency established** (from language or context)
-
-🎉 **CARING COMPLETION MESSAGES (issue-specific):**
-
-**HEATING:** "Got it! Help will be on the way soon. Since it's freezing, try to stay warm with some blankets, or if you want to hang out with friends elsewhere, you don't need to be there - I'll keep you updated! 🔧"
-
-**PLUMBING:** "All set! I'm getting a plumber out there. If the leak gets worse, there should be a water shutoff valve near your unit - but help is coming soon! 💧"
-
-**ELECTRICAL:** "Understood! Maintenance is being dispatched right away. Please stay away from that area for safety, and I'll keep you posted on timing! ⚡"
-
-**GENERAL:** "Perfect! I have everything I need. Help will be there soon - you can go about your day and I'll update you along the way! 🛠️"
-
-🚨 **SAFETY PROTOCOLS:**
-- Gas smells = IMMEDIATE evacuation and emergency services
-- Electrical + water = IMMEDIATE isolation and emergency help  
-- Sparking/burning = IMMEDIATE shutdown and evacuation
-
-Always sound caring, practical, and genuinely concerned about their comfort - like texting a maintenance-savvy friend who really cares.`;
+Be naturally intelligent, contextual, and caring. Don't follow rigid templates - respond like a competent human who genuinely wants to help solve their problem.`;
   }
 
   private buildTriageContextPrompt(
