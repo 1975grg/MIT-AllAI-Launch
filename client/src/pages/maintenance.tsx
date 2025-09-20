@@ -235,20 +235,20 @@ export default function MaintenancePage() {
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
-      case "New": return <Badge variant="destructive">{status}</Badge>;
-      case "In Progress": return <Badge variant="default">{status}</Badge>;
-      case "Resolved": return <Badge variant="secondary" className="bg-green-100 text-green-800">{status}</Badge>;
-      case "Closed": return <Badge variant="outline">{status}</Badge>;
+      case "New": return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{status}</Badge>;
+      case "In Progress": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{status}</Badge>;
+      case "Resolved": return <Badge className="bg-green-100 text-green-800 border-green-200">{status}</Badge>;
+      case "Closed": return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{status}</Badge>;
       default: return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
-      case "Urgent": return <Badge variant="destructive">{priority}</Badge>;
-      case "High": return <Badge variant="destructive" className="bg-orange-100 text-orange-800">{priority}</Badge>;
-      case "Medium": return <Badge variant="default">{priority}</Badge>;
-      case "Low": return <Badge variant="outline">{priority}</Badge>;
+      case "Urgent": return <Badge className="bg-red-100 text-red-800 border-red-200">{priority}</Badge>;
+      case "High": return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{priority}</Badge>;
+      case "Medium": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{priority}</Badge>;
+      case "Low": return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{priority}</Badge>;
       default: return <Badge variant="secondary">{priority}</Badge>;
     }
   };
@@ -557,7 +557,7 @@ export default function MaintenancePage() {
                 <h1 className="text-2xl font-semibold text-foreground">Maintenance Cases</h1>
                 <p className="text-muted-foreground">Track and manage maintenance requests</p>
               </div>
-              <Button onClick={() => setShowCaseForm(true)} data-testid="button-create-case">
+              <Button onClick={() => setShowCaseForm(true)} className="bg-blue-500 hover:bg-blue-600 text-white" data-testid="button-create-case">
                 <Plus className="h-4 w-4 mr-2" />
                 Quick Add
               </Button>
@@ -583,43 +583,59 @@ export default function MaintenancePage() {
                 </div>
               </div>
 
-              {/* View Mode Switcher - like AllAI Property */}
+              {/* View Mode Switcher - clean blue like AllAI Property */}
               <div className="flex items-center bg-white dark:bg-card rounded-lg border border-border p-1">
                 <Button
-                  variant={smartCasesViewMode === "cards" ? "default" : "ghost"}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("cards")}
-                  className="px-3 py-1"
+                  className={`px-3 py-1 ${
+                    smartCasesViewMode === "cards" 
+                      ? "bg-blue-500 text-white hover:bg-blue-600" 
+                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                  }`}
                   data-testid="button-view-cards"
                 >
                   <Grid3X3 className="h-4 w-4 mr-1" />
                   Cards
                 </Button>
                 <Button
-                  variant={smartCasesViewMode === "list" ? "default" : "ghost"}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("list")}
-                  className="px-3 py-1"
+                  className={`px-3 py-1 ${
+                    smartCasesViewMode === "list" 
+                      ? "bg-blue-500 text-white hover:bg-blue-600" 
+                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                  }`}
                   data-testid="button-view-list"
                 >
                   <List className="h-4 w-4 mr-1" />
                   List
                 </Button>
                 <Button
-                  variant={smartCasesViewMode === "heatmap" ? "default" : "ghost"}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("heatmap")}
-                  className="px-3 py-1"
+                  className={`px-3 py-1 ${
+                    smartCasesViewMode === "heatmap" 
+                      ? "bg-blue-500 text-white hover:bg-blue-600" 
+                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                  }`}
                   data-testid="button-view-heatmap"
                 >
                   <MapIcon className="h-4 w-4 mr-1" />
                   Heat Map
                 </Button>
                 <Button
-                  variant={smartCasesViewMode === "kanban" ? "default" : "ghost"}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("kanban")}
-                  className="px-3 py-1"
+                  className={`px-3 py-1 ${
+                    smartCasesViewMode === "kanban" 
+                      ? "bg-blue-500 text-white hover:bg-blue-600" 
+                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                  }`}
                   data-testid="button-view-kanban"
                 >
                   <Columns3 className="h-4 w-4 mr-1" />
