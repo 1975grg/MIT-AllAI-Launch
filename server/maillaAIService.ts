@@ -404,7 +404,17 @@ export class MaillaAIService {
           console.log(`✅ FORCING COMPLETION: All criteria met - overriding AI decision`);
           maillaResponse.nextAction = 'complete_triage';
           maillaResponse.isComplete = true;
-          maillaResponse.message = `Got it! Help will be on the way soon. Since it's ${maillaResponse.urgencyLevel === 'urgent' ? 'urgent' : 'important'}, I'm creating your maintenance ticket right away! 🔧`;
+          
+          // Generate caring, natural completion message based on issue type
+          if (studentMessage.includes('heating') || studentMessage.includes('heat') || studentMessage.includes('cold') || studentMessage.includes('freezing')) {
+            maillaResponse.message = `Oh no, that sounds miserable! I'm getting help on the way right now. Try to stay warm with some blankets, or hang out with friends if you want - you don't need to be there. I'll keep you updated! 🔧`;
+          } else if (studentMessage.includes('water') || studentMessage.includes('leak') || studentMessage.includes('plumbing')) {
+            maillaResponse.message = `That sounds really stressful! I'm getting a plumber out there right away. If it gets worse, there should be a water shutoff valve near your unit - but help is coming soon! 💧`;
+          } else if (studentMessage.includes('electrical') || studentMessage.includes('outlet') || studentMessage.includes('power')) {
+            maillaResponse.message = `Got it! Maintenance is being dispatched right away. Please stay away from that area for safety, and I'll keep you posted on timing! ⚡`;
+          } else {
+            maillaResponse.message = `Perfect! I have everything I need. Help will be there soon - you can go about your day and I'll update you along the way! 🛠️`;
+          }
         }
         
         await storage.updateTriageConversation(conversationId, {
