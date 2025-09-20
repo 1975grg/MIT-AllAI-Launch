@@ -14,19 +14,19 @@
   --card-foreground: hsl(220 25% 8%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(220 25% 8%);
-  --primary: hsl(355 70% 40%); /* Softer MIT Cardinal Red for better contrast */
+  --primary: hsl(221 83% 53%); /* Professional blue primary */
   --primary-foreground: hsl(0 0% 100%);
   --secondary: hsl(220 15% 97%); /* Neutral secondary */
   --secondary-foreground: hsl(220 25% 8%);
   --muted: hsl(220 15% 97%); /* Neutral muted background */
   --muted-foreground: hsl(220 20% 50%); /* Readable muted text */
-  --accent: hsl(355 70% 96%); /* Light red accent */
-  --accent-foreground: hsl(355 70% 25%);
+  --accent: hsl(221 100% 97%); /* Light blue accent */
+  --accent-foreground: hsl(222 47% 11%);
   --destructive: hsl(0 70% 50%); /* Readable destructive red */
   --destructive-foreground: hsl(0 0% 100%);
   --border: hsl(220 15% 90%); /* Neutral borders */
   --input: hsl(220 15% 98%); /* Neutral input backgrounds */
-  --ring: hsl(355 70% 40%); /* MIT Cardinal focus rings */
+  --ring: hsl(221 83% 53%); /* Blue focus rings */
   
   /* Additional neutral surface tokens */
   --surface: hsl(0 0% 100%); /* Pure white surface */
@@ -34,27 +34,27 @@
   --border-muted: hsl(220 15% 90%); /* Subtle borders */
   
   /* Subtle gradients - only for buttons and accents */
-  --gradient-primary: hsl(355 70% 40%);
+  --gradient-primary: hsl(221 83% 53%);
   --gradient-secondary: hsl(220 15% 97%);
-  --gradient-ai: hsl(355 70% 40%);
-  --gradient-hover: hsl(355 70% 35%);
-  --gradient-glow: hsl(355 70% 40%);
-  --gradient-button: hsl(355 70% 40%);
-  --gradient-button-hover: hsl(355 70% 35%);
+  --gradient-ai: hsl(221 83% 53%);
+  --gradient-hover: hsl(221 83% 48%);
+  --gradient-glow: hsl(221 83% 53%);
+  --gradient-button: hsl(221 83% 53%);
+  --gradient-button-hover: hsl(221 83% 48%);
   --gradient-page-bg: hsl(0 0% 100%);
-  --chart-1: hsl(355 85% 45%); /* MIT Cardinal Red */
-  --chart-2: hsl(340 85% 55%); /* Cardinal Red Variant */
-  --chart-3: hsl(45 93% 47%); /* MIT Gold */
-  --chart-4: hsl(325 85% 58%); /* Cardinal Pink */
-  --chart-5: hsl(355 75% 65%); /* Light Cardinal */
-  --sidebar: hsl(220 15% 20%); /* Dark sidebar */
+  --chart-1: hsl(221 83% 53%); /* Professional Blue */
+  --chart-2: hsl(212 83% 55%); /* Blue Variant */
+  --chart-3: hsl(45 93% 47%); /* Gold */
+  --chart-4: hsl(193 83% 58%); /* Teal */
+  --chart-5: hsl(271 75% 65%); /* Purple */
+  --sidebar: hsl(220 15% 12%); /* Dark sidebar */
   --sidebar-foreground: hsl(0 0% 95%);
-  --sidebar-primary: hsl(355 85% 45%); /* MIT Cardinal */
+  --sidebar-primary: hsl(221 83% 53%); /* Blue Primary */
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(355 25% 96%);
-  --sidebar-accent-foreground: hsl(355 85% 45%);
-  --sidebar-border: hsl(355 15% 90%);
-  --sidebar-ring: hsl(355 85% 45%);
+  --sidebar-accent: hsl(221 100% 97%);
+  --sidebar-accent-foreground: hsl(221 83% 53%);
+  --sidebar-border: hsl(220 15% 90%);
+  --sidebar-ring: hsl(221 83% 53%);
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -79,19 +79,19 @@
   --card-foreground: hsl(0 0% 90%);
   --popover: hsl(220 25% 6%);
   --popover-foreground: hsl(0 0% 95%);
-  --primary: hsl(355 70% 60%); /* Softer Cardinal for dark mode */
+  --primary: hsl(221 83% 63%); /* Blue for dark mode */
   --primary-foreground: hsl(220 25% 6%);
   --secondary: hsl(220 25% 15%); /* Neutral secondary for dark */
   --secondary-foreground: hsl(220 25% 90%);
   --muted: hsl(220 25% 18%);
   --muted-foreground: hsl(220 25% 65%);
-  --accent: hsl(355 70% 15%);
-  --accent-foreground: hsl(355 70% 75%);
+  --accent: hsl(221 100% 15%);
+  --accent-foreground: hsl(221 83% 75%);
   --destructive: hsl(0 70% 60%);
   --destructive-foreground: hsl(220 25% 6%);
   --border: hsl(220 25% 20%);
   --input: hsl(220 25% 15%);
-  --ring: hsl(355 70% 60%);
+  --ring: hsl(221 83% 63%);
   
   /* Dark mode neutral surfaces */
   --surface: hsl(220 25% 10%);
@@ -99,28 +99,28 @@
   --border-muted: hsl(220 25% 25%);
   
   /* Subtle dark mode colors */
-  --gradient-primary: hsl(355 70% 60%);
+  --gradient-primary: hsl(221 83% 63%);
   --gradient-secondary: hsl(220 25% 15%);
-  --gradient-ai: hsl(355 70% 60%);
-  --gradient-hover: hsl(355 70% 65%);
-  --gradient-glow: hsl(355 70% 60%);
-  --gradient-button: hsl(355 70% 60%);
-  --gradient-button-hover: hsl(355 70% 65%);
+  --gradient-ai: hsl(221 83% 63%);
+  --gradient-hover: hsl(221 83% 68%);
+  --gradient-glow: hsl(221 83% 63%);
+  --gradient-button: hsl(221 83% 63%);
+  --gradient-button-hover: hsl(221 83% 68%);
   --gradient-page-bg: hsl(220 25% 6%);
   
-  --chart-1: hsl(355 85% 65%); /* Bright Cardinal */
-  --chart-2: hsl(340 85% 70%); /* Bright Cardinal Variant */
-  --chart-3: hsl(45 93% 67%); /* Bright MIT Gold */
-  --chart-4: hsl(325 85% 75%); /* Bright Cardinal Pink */
-  --chart-5: hsl(355 75% 80%); /* Light Bright Cardinal */
+  --chart-1: hsl(221 83% 65%); /* Bright Blue */
+  --chart-2: hsl(212 83% 70%); /* Bright Blue Variant */
+  --chart-3: hsl(45 93% 67%); /* Bright Gold */
+  --chart-4: hsl(193 83% 75%); /* Bright Teal */
+  --chart-5: hsl(271 75% 80%); /* Light Purple */
   --sidebar: hsl(220 25% 8%);
   --sidebar-foreground: hsl(0 0% 90%);
-  --sidebar-primary: hsl(355 85% 65%);
+  --sidebar-primary: hsl(221 83% 65%);
   --sidebar-primary-foreground: hsl(220 25% 6%);
   --sidebar-accent: hsl(220 25% 15%);
-  --sidebar-accent-foreground: hsl(355 85% 65%);
+  --sidebar-accent-foreground: hsl(221 83% 65%);
   --sidebar-border: hsl(220 25% 25%);
-  --sidebar-ring: hsl(355 85% 65%);
+  --sidebar-ring: hsl(221 83% 65%);
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
