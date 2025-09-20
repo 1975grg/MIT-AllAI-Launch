@@ -589,7 +589,7 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("cards")}
-                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-pink-50 hover:text-pink-700 ${
+                  className={`px-3 py-2 text-sm font-medium transition-all !bg-transparent hover:!bg-pink-50 hover:!text-pink-700 ${
                     smartCasesViewMode === "cards" 
                       ? "text-foreground font-semibold underline underline-offset-4" 
                       : "text-muted-foreground"
@@ -603,7 +603,7 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("list")}
-                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-pink-50 hover:text-pink-700 ${
+                  className={`px-3 py-2 text-sm font-medium transition-all !bg-transparent hover:!bg-pink-50 hover:!text-pink-700 ${
                     smartCasesViewMode === "list" 
                       ? "text-foreground font-semibold underline underline-offset-4" 
                       : "text-muted-foreground"
@@ -617,7 +617,7 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("heatmap")}
-                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-pink-50 hover:text-pink-700 ${
+                  className={`px-3 py-2 text-sm font-medium transition-all !bg-transparent hover:!bg-pink-50 hover:!text-pink-700 ${
                     smartCasesViewMode === "heatmap" 
                       ? "text-foreground font-semibold underline underline-offset-4" 
                       : "text-muted-foreground"
@@ -631,7 +631,7 @@ export default function MaintenancePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSmartCasesViewMode("kanban")}
-                  className={`px-3 py-2 text-sm font-medium transition-all hover:bg-pink-50 hover:text-pink-700 ${
+                  className={`px-3 py-2 text-sm font-medium transition-all !bg-transparent hover:!bg-pink-50 hover:!text-pink-700 ${
                     smartCasesViewMode === "kanban" 
                       ? "text-foreground font-semibold underline underline-offset-4" 
                       : "text-muted-foreground"
