@@ -391,7 +391,7 @@ export class MaillaAIService {
         // 🛡️ CRITICAL: Server-side completion enforcement
         // Force completion when we have all required information, regardless of AI model decision
         const hasLocation = !!(updatedLocation.buildingName && updatedLocation.roomNumber);
-        const hasIssueType = !!(updatedSlots.issueSummary || contextAnalysis?.inferredInfo?.issue || studentMessage?.includes('heating') || studentMessage?.includes('plumbing') || studentMessage?.includes('electrical') || studentMessage?.includes('water') || studentMessage?.includes('leak') || studentMessage?.includes('broken'));
+        const hasIssueType = !!(updatedSlots.issueSummary || studentMessage?.includes('heating') || studentMessage?.includes('plumbing') || studentMessage?.includes('electrical') || studentMessage?.includes('water') || studentMessage?.includes('leak') || studentMessage?.includes('broken'));
         const hasUrgency = !!(maillaResponse.urgencyLevel && maillaResponse.urgencyLevel !== 'normal');
         
         console.log(`🛡️ Completion check: location=${hasLocation}, issue=${hasIssueType}, urgency=${hasUrgency}`);
@@ -529,10 +529,11 @@ export class MaillaAIService {
 - **Issue details**: What's broken/not working (required)
 - **Urgency**: Severe language like "freezing/terrible" = urgent (required)
 
-**HELPFUL SUGGESTIONS:**
-- For heating: "A pic of your thermostat might help! Also try your breaker if you feel comfortable."
-- For plumbing: "Know where your water shutoff is? A photo of the leak helps too."  
-- For electrical: "Stay away from the area for safety. Distant photo if safe."
+**SMART TROUBLESHOOTING (offer naturally in conversation):**
+- **Heating issues**: "Quick check - is your thermostat set to heat mode? Also, your breaker panel might have a heating switch that got tripped. A pic of your thermostat would help me see what's up!"
+- **No hot water**: "First, check if other people in your building have hot water. Then look for a water heater breaker in your electrical panel - sometimes they trip."
+- **Electrical problems**: "For safety, don't touch anything! But if you feel comfortable, check your breaker panel for any switches that are in the middle position - flip them all the way off then back on."
+- **Plumbing leaks**: "Find your water shutoff valve (usually under your sink or behind toilet). If it gets worse, you can turn off water to that fixture. A photo helps me see how urgent this is."
 
 **COMFORT & ALTERNATIVES:**
 - Cold rooms: "Try to stay warm with blankets, or hang out with friends if you want"
@@ -1028,7 +1029,7 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         title: `${detectedCategory.toUpperCase()}: ${conversation.initialRequest.substring(0, 40)}...`,
         description: this.buildEnhancedTicketDescription(conversation, locationData, studentInfo, mediaInsights),
         category: detectedCategory, // 🎯 AI-detected category
-        priority: conversation.urgencyLevel as any,
+        priority: this.mapUrgencyToPriority(conversation.urgencyLevel),
         status: "New" as any,
         reportedBy: conversation.studentId,
         propertyId: propertyId,
@@ -1180,6 +1181,19 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
       'normal': 'Medium',
       'urgent': 'High', 
       'emergency': 'Critical'
+    };
+    return mapping[urgencyLevel] || 'Medium';
+  }
+
+  /**
+   * Maps Mailla urgency levels to database priority enum values
+   */
+  private mapUrgencyToPriority(urgencyLevel: string): 'Low' | 'Medium' | 'High' | 'Urgent' {
+    const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Urgent'> = {
+      'low': 'Low',
+      'normal': 'Medium', 
+      'urgent': 'High',
+      'emergency': 'Urgent'
     };
     return mapping[urgencyLevel] || 'Medium';
   }
