@@ -84,7 +84,7 @@ function Router() {
           <Route path="/" component={() => (
             <div className="flex items-center justify-center min-h-screen">
               <div className="text-center">
-                <h1 className="text-2xl font-bold text-orange-600 mb-4">Access Denied</h1>
+                <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
                 <p className="text-muted-foreground mb-4">
                   Your account is not properly configured. Please contact your administrator.
                 </p>
@@ -97,7 +97,7 @@ function Router() {
           <Route component={() => (
             <div className="flex items-center justify-center min-h-screen">
               <div className="text-center">
-                <h1 className="text-2xl font-bold text-orange-600 mb-4">Access Denied</h1>
+                <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
                 <p className="text-muted-foreground mb-4">
                   Your account is not properly configured. Please contact your administrator.
                 </p>

@@ -342,7 +342,7 @@ export default function Revenue() {
       "Laundry Income": "bg-indigo-100 text-indigo-800",
       "Pet Rent": "bg-orange-100 text-orange-800",
       "Storage Fees": "bg-cyan-100 text-cyan-800",
-      "Lease Cancellation Fees": "bg-orange-100 text-orange-800",
+      "Lease Cancellation Fees": "bg-red-100 text-red-800",
       "Other Income": "bg-gray-100 text-gray-800",
     };
     return colors[category as keyof typeof colors] || "bg-gray-100 text-gray-800";

@@ -45,8 +45,8 @@ export default function Sidebar() {
                   className="h-8 w-auto"
                 />
                 <div className="flex flex-col">
-                  <span className="text-lg font-bold text-gray-800 dark:text-gray-200">MIT Student Housing</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">AI-Powered Campus Management</span>
+                  <span className="text-lg font-bold text-primary mit-heading">MIT Student Housing</span>
+                  <span className="text-xs text-muted-foreground mit-subtitle">AI-Powered Campus Management</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground ml-1" />
               </div>
