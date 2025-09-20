@@ -7,10 +7,10 @@
   /* Cardinal Red Heritage with AI Gradients */
   /* Rich interactive colors that shift on hover */
   
-  --background: hsl(220 15% 15%); /* MIT Dark Grey */
-  --foreground: hsl(0 0% 95%); /* Light text for contrast */
-  --card: hsl(220 15% 18%); /* Slightly lighter grey for cards */
-  --card-foreground: hsl(0 0% 95%);
+  --background: hsl(220 15% 85%); /* MIT Light Grey */
+  --foreground: hsl(220 25% 8%); /* Dark text for contrast */
+  --card: hsl(0 0% 100%); /* White cards for contrast */
+  --card-foreground: hsl(220 25% 8%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(220 25% 8%);
   --primary: hsl(355 85% 45%); /* MIT Cardinal Red with AI saturation */
@@ -18,7 +18,7 @@
   --secondary: hsl(355 75% 55%); /* Secondary Cardinal Red gradient */
   --secondary-foreground: hsl(0 0% 100%);
   --muted: hsl(355 25% 96%); /* Light Cardinal tint */
-  --muted-foreground: hsl(0 0% 80%); /* Light grey for muted text */
+  --muted-foreground: hsl(220 20% 35%); /* Dark muted text */
   --accent: hsl(355 85% 96%); /* Cardinal accent */
   --accent-foreground: hsl(355 85% 25%);
   --destructive: hsl(0 84% 60%); /* Cardinal Red destructive */
@@ -130,7 +130,9 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased text-foreground;
+    background: linear-gradient(135deg, hsl(220 15% 88%) 0%, hsl(220 15% 82%) 50%, hsl(220 15% 85%) 100%);
+    min-height: 100vh;
   }
   
   /* Enhanced MIT heading styling */
