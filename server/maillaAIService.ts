@@ -970,6 +970,9 @@ NEVER ask for information you already have!\n`;
         completedAt: new Date()
       });
 
+      // ✅ Start Post-Escalation Workflow
+      await this.initiatePostEscalationWorkflow(caseId, conversationId, conversation);
+
       return {
         success: true,
         conversationId,
@@ -983,6 +986,213 @@ NEVER ask for information you already have!\n`;
       console.error('Error completing Mailla triage:', error);
       throw error;
     }
+  }
+
+  // ========================================
+  // POST-ESCALATION WORKFLOW SYSTEM
+  // ========================================
+
+  private async initiatePostEscalationWorkflow(caseId: string, conversationId: string, conversation: any) {
+    try {
+      console.log(`🚀 Starting post-escalation workflow for case ${caseId}`);
+
+      // Create escalation event
+      await this.createTicketEvent(caseId, conversationId, "escalated", 
+        "I've created your maintenance ticket and will guide you through the next steps.", 
+        {
+          urgencyLevel: conversation.urgencyLevel,
+          safetyFlags: conversation.safetyFlags,
+          escalatedAt: new Date()
+        }
+      );
+
+      // Analyze if we need media based on the issue type
+      const needsMedia = this.shouldRequestMedia(conversation);
+      if (needsMedia.request) {
+        await this.requestMedia(caseId, conversationId, needsMedia);
+      }
+
+      // Provide immediate remediation guidance if applicable
+      const remediationGuidance = this.getRemediationGuidance(conversation);
+      if (remediationGuidance) {
+        await this.provideRemediationGuidance(caseId, conversationId, remediationGuidance);
+      }
+
+      // Schedule intelligent follow-up based on emotional context and urgency
+      await this.scheduleIntelligentFollowUp(caseId, conversationId, conversation);
+
+      console.log(`✅ Post-escalation workflow initiated for case ${caseId}`);
+    } catch (error) {
+      console.error('Error initiating post-escalation workflow:', error);
+      // Don't throw - this shouldn't block the main escalation
+    }
+  }
+
+  private async createTicketEvent(
+    caseId: string, 
+    conversationId: string, 
+    eventType: string, 
+    message: string, 
+    metadata: any = {}
+  ) {
+    try {
+      const event = {
+        caseId,
+        conversationId,
+        eventType: eventType as any,
+        message,
+        metadata,
+        createdBy: 'mailla'
+      };
+      
+      // Try to create the event, but don't fail if the table doesn't exist yet
+      await storage.createTicketEvent(event);
+      console.log(`📝 Ticket event created: ${eventType} for case ${caseId}`);
+    } catch (error) {
+      console.log(`⚠️ Could not create ticket event (table may not exist yet): ${error.message}`);
+      // Continue without failing - this is for enhanced tracking
+    }
+  }
+
+  private shouldRequestMedia(conversation: any): { request: boolean; types: string[]; reason: string } {
+    const description = conversation.initialRequest?.toLowerCase() || '';
+    
+    // Skip media requests for safety hazards - prioritize evacuation
+    if (conversation.safetyFlags && conversation.safetyFlags.length > 0) {
+      return { request: false, types: [], reason: 'Safety priority - no media needed' };
+    }
+
+    // Visual issues that benefit from photos
+    if (description.match(/\b(leak|water|drip|stain|crack|hole|break|broken|damage|mold|rust)\b/)) {
+      return { 
+        request: true, 
+        types: ['photo'], 
+        reason: 'Photos help contractors bring the right tools and parts' 
+      };
+    }
+
+    // Strange noises that benefit from audio
+    if (description.match(/\b(noise|sound|loud|buzz|hum|rattle|clank|bang)\b/)) {
+      return { 
+        request: true, 
+        types: ['audio'], 
+        reason: 'Audio recording helps identify the specific problem' 
+      };
+    }
+
+    // Appliance issues that benefit from error code photos
+    if (description.match(/\b(appliance|fridge|microwave|oven|dishwasher|washer|dryer|error|code|display)\b/)) {
+      return { 
+        request: true, 
+        types: ['photo'], 
+        reason: 'Photos of error codes or displays help with faster diagnosis' 
+      };
+    }
+
+    return { request: false, types: [], reason: 'No media needed for this issue type' };
+  }
+
+  private async requestMedia(caseId: string, conversationId: string, mediaRequest: any) {
+    const message = `One quick thing that would help - ${mediaRequest.reason}. ${
+      mediaRequest.types.includes('photo') ? 'Can you take a photo showing the problem?' : 
+      'Can you record a short audio clip of the sound?'
+    } This helps contractors come prepared with the right tools.`;
+
+    await this.createTicketEvent(caseId, conversationId, "media_requested", message, {
+      mediaTypes: mediaRequest.types,
+      reason: mediaRequest.reason
+    });
+  }
+
+  private getRemediationGuidance(conversation: any): any {
+    const description = conversation.initialRequest?.toLowerCase() || '';
+    const urgencyLevel = conversation.urgencyLevel;
+    
+    // Water-related issues
+    if (description.match(/\b(leak|water|drip|overflow|flood)\b/)) {
+      return {
+        category: 'water',
+        steps: [
+          'Use towels or buckets to contain the water',
+          'Move any items away from the leak',
+          'If safe to do so, look for a water shutoff valve',
+          'Keep the area well ventilated'
+        ],
+        warnings: ['Don\'t touch electrical outlets or switches near water', 'If you see sparks or smell gas, evacuate immediately'],
+        urgency: urgencyLevel
+      };
+    }
+
+    // Electrical issues
+    if (description.match(/\b(electrical|electric|shock|spark|outlet|breaker|power)\b/)) {
+      return {
+        category: 'electrical',
+        steps: [
+          'Turn off the circuit breaker for that area if you know which one',
+          'Don\'t touch the outlet or switch',
+          'Keep the area clear'
+        ],
+        warnings: ['Never touch electrical components with wet hands', 'If you smell burning or see sparks, call emergency services'],
+        urgency: 'urgent'
+      };
+    }
+
+    // HVAC issues
+    if (description.match(/\b(hvac|heat|cool|air|conditioner|furnace|thermostat)\b/)) {
+      return {
+        category: 'hvac',
+        steps: [
+          'Try turning the system off for 10 minutes, then back on',
+          'Check that the thermostat is set correctly',
+          'Make sure vents aren\'t blocked'
+        ],
+        warnings: ['Don\'t keep resetting breakers repeatedly', 'If you smell gas, evacuate and call emergency services'],
+        urgency: urgencyLevel
+      };
+    }
+
+    return null;
+  }
+
+  private async provideRemediationGuidance(caseId: string, conversationId: string, guidance: any) {
+    const stepsText = guidance.steps.map((step: string, i: number) => `${i + 1}. ${step}`).join('\n');
+    const warningsText = guidance.warnings.map((warning: string) => `⚠️ ${warning}`).join('\n');
+    
+    const message = `While we get someone there to help, here's what you can do right now:\n\n${stepsText}\n\n${warningsText}\n\nOnly do what feels safe - your safety comes first!`;
+
+    await this.createTicketEvent(caseId, conversationId, "remediation_provided", message, {
+      category: guidance.category,
+      steps: guidance.steps,
+      warnings: guidance.warnings
+    });
+  }
+
+  private async scheduleIntelligentFollowUp(caseId: string, conversationId: string, conversation: any) {
+    // Determine follow-up frequency based on emotional context and urgency
+    const contextAnalysis = this.analyzeMessageContext(conversation.initialRequest);
+    let followUpMinutes = 60; // Default: 1 hour
+
+    // More frequent for frustrated or worried students
+    if (contextAnalysis.emotionalContext === 'frustrated' || contextAnalysis.emotionalContext === 'worried') {
+      followUpMinutes = 30; // Every 30 minutes
+    }
+
+    // More frequent for urgent issues
+    if (conversation.urgencyLevel === 'urgent' || conversation.urgencyLevel === 'emergency') {
+      followUpMinutes = 15; // Every 15 minutes
+    }
+
+    // Less frequent for calm situations
+    if (contextAnalysis.emotionalContext === 'calm' && conversation.urgencyLevel === 'normal') {
+      followUpMinutes = 120; // Every 2 hours
+    }
+
+    await this.createTicketEvent(caseId, conversationId, "communication_sent", 
+      `I'll check back with you in ${followUpMinutes} minutes with an update on your maintenance request.`, {
+      followUpScheduled: new Date(Date.now() + followUpMinutes * 60 * 1000),
+      frequency: followUpMinutes,
+      reason: `Based on ${contextAnalysis.emotionalContext} emotional state and ${conversation.urgencyLevel} urgency`
+    });
   }
 }
 

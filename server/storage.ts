@@ -61,6 +61,10 @@ import {
   type Notification,
   type CaseMediaInsert,
   type CaseMediaSelect,
+  // ✅ Post-Escalation Workflow tables
+  ticketEvents,
+  type InsertTicketEvent,
+  type TicketEventSelect,
   // ✅ Mailla AI Triage Agent tables
   triageConversations,
   triageSafetyProtocols,
@@ -143,6 +147,11 @@ export interface IStorage {
   // Case Media operations
   createCaseMedia(media: CaseMediaInsert): Promise<CaseMediaSelect>;
   getCaseMedia(caseId: string): Promise<CaseMediaSelect[]>;
+
+  // ✅ Post-Escalation Workflow Events
+  createTicketEvent(event: InsertTicketEvent): Promise<TicketEventSelect>;
+  getTicketEvents(caseId: string): Promise<TicketEventSelect[]>;
+  getTicketEventsByConversation(conversationId: string): Promise<TicketEventSelect[]>;
   
   // Asset operations
   getAssets(propertyId?: string, unitId?: string): Promise<Asset[]>;
@@ -1472,6 +1481,28 @@ export class DatabaseStorage implements IStorage {
       .from(caseMedia)
       .where(eq(caseMedia.caseId, caseId))
       .orderBy(asc(caseMedia.createdAt));
+  }
+
+  // ✅ Post-Escalation Workflow Events Implementation
+  async createTicketEvent(event: InsertTicketEvent): Promise<TicketEventSelect> {
+    const [newEvent] = await db.insert(ticketEvents).values(event).returning();
+    return newEvent;
+  }
+
+  async getTicketEvents(caseId: string): Promise<TicketEventSelect[]> {
+    return await db
+      .select()
+      .from(ticketEvents)
+      .where(eq(ticketEvents.caseId, caseId))
+      .orderBy(asc(ticketEvents.createdAt));
+  }
+
+  async getTicketEventsByConversation(conversationId: string): Promise<TicketEventSelect[]> {
+    return await db
+      .select()
+      .from(ticketEvents)
+      .where(eq(ticketEvents.conversationId, conversationId))
+      .orderBy(asc(ticketEvents.createdAt));
   }
 
   async updateSmartCase(id: string, smartCase: Partial<InsertSmartCase>): Promise<SmartCase> {

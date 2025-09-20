@@ -436,6 +436,25 @@ export const caseEvents = pgTable("case_events", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ✅ Post-Escalation Workflow Events for Mailla
+export const ticketEventTypeEnum = pgEnum("ticket_event_type", [
+  "escalated", "media_requested", "media_uploaded", "remediation_provided", 
+  "communication_sent", "appointment_scheduled", "appointment_authorized", 
+  "appointment_declined", "contractor_assigned", "work_started", "work_completed"
+]);
+
+export const ticketEvents = pgTable("ticket_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  caseId: varchar("case_id").notNull().references(() => smartCases.id),
+  conversationId: varchar("conversation_id").references(() => triageConversations.id),
+  eventType: ticketEventTypeEnum("event_type").notNull(),
+  message: text("message"), // Mailla's message to student
+  metadata: jsonb("metadata"), // Event-specific data (media types, remediation steps, etc.)
+  createdBy: varchar("created_by"), // 'mailla' or user ID
+  studentResponse: text("student_response"), // Student's response if applicable
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Contractor availability patterns
 // Note: availabilityPatternEnum removed - was unused and causing migration conflicts
 export const prioritySchedulingEnum = pgEnum("priority_scheduling", ["standard", "priority", "emergency"]);
@@ -1064,6 +1083,11 @@ export const insertCaseAiRecommendationSchema = createInsertSchema(caseAiRecomme
   createdAt: true,
   implementedAt: true 
 });
+
+// ✅ Post-Escalation Workflow Insert Schemas
+export const insertTicketEventSchema = createInsertSchema(ticketEvents).omit({ id: true, createdAt: true });
+export type InsertTicketEvent = z.infer<typeof insertTicketEventSchema>;
+export type TicketEventSelect = typeof ticketEvents.$inferSelect;
 export const insertReminderSchema = createInsertSchema(reminders).omit({ id: true, createdAt: true, parentRecurringId: true }).extend({
   dueAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
   isRecurring: z.boolean().optional().default(false),
