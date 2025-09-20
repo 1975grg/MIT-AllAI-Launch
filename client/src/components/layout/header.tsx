@@ -130,7 +130,7 @@ export default function Header({ title }: HeaderProps) {
           >
             <Bell className="h-5 w-5" />
             {unreadNotifications > 0 && (
-              <Badge className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center p-0" data-testid="badge-notification-count">
+              <Badge className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center p-0" data-testid="badge-notification-count">
                 {unreadNotifications}
               </Badge>
             )}
@@ -138,7 +138,7 @@ export default function Header({ title }: HeaderProps) {
           
           {/* Dev Role Preview Toggle */}
           {isDevMode && (
-            <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-100 dark:bg-yellow-900 border border-yellow-300 dark:border-yellow-700 rounded-md">
+            <div className="flex items-center space-x-2 px-2 py-1 bg-yellow-50/80 dark:bg-yellow-900/60 border border-yellow-200 dark:border-yellow-700 rounded-md backdrop-blur-sm">
               <Settings className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />
               <Select 
                 value={previewRole ?? "original"} 
@@ -161,7 +161,7 @@ export default function Header({ title }: HeaderProps) {
                 </SelectContent>
               </Select>
               {isPreviewing && (
-                <Badge variant="outline" className="text-xs bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200">
+                <Badge variant="outline" className="text-xs bg-yellow-100/70 dark:bg-yellow-800/70 text-yellow-700 dark:text-yellow-200 backdrop-blur-sm">
                   Preview
                 </Badge>
               )}

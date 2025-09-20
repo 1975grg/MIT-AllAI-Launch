@@ -77,8 +77,8 @@ export default function Sidebar() {
           return (
             <Button
               key={item.name}
-              variant={active ? "default" : "ghost"}
-              className={`w-full justify-start ${active ? "sidebar-active" : ""}`}
+              variant="ghost"
+              className={`w-full justify-start ${active ? "!bg-blue-50 !text-blue-700 dark:!bg-blue-950 dark:!text-blue-300" : ""}`}
               asChild
               data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
             >
