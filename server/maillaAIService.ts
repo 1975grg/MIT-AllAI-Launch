@@ -399,21 +399,53 @@ export class MaillaAIService {
         console.log(`   Issue: ${updatedSlots.issueSummary || 'inferred from message'}`);
         console.log(`   Urgency: ${maillaResponse.urgencyLevel}`);
         
-        // Force completion if we have all three criteria
+        // 🔄 PROGRESSIVE TRIAGE: Create natural conversation flow instead of rushed completion
         if (hasLocation && hasIssueType && hasUrgency) {
-          console.log(`✅ FORCING COMPLETION: All criteria met - overriding AI decision`);
-          maillaResponse.nextAction = 'complete_triage';
-          maillaResponse.isComplete = true;
+          console.log(`🔄 PROGRESSIVE TRIAGE: All criteria met - starting natural triage flow`);
           
-          // Generate caring, natural completion message based on issue type
-          if (studentMessage.includes('heating') || studentMessage.includes('heat') || studentMessage.includes('cold') || studentMessage.includes('freezing')) {
-            maillaResponse.message = `Oh no, that sounds miserable! I'm getting help on the way right now. Try to stay warm with some blankets, or hang out with friends if you want - you don't need to be there. I'll keep you updated! 🔧`;
-          } else if (studentMessage.includes('water') || studentMessage.includes('leak') || studentMessage.includes('plumbing')) {
-            maillaResponse.message = `That sounds really stressful! I'm getting a plumber out there right away. If it gets worse, there should be a water shutoff valve near your unit - but help is coming soon! 💧`;
-          } else if (studentMessage.includes('electrical') || studentMessage.includes('outlet') || studentMessage.includes('power')) {
-            maillaResponse.message = `Got it! Maintenance is being dispatched right away. Please stay away from that area for safety, and I'll keep you posted on timing! ⚡`;
+          if (maillaResponse.urgencyLevel === 'urgent' || maillaResponse.urgencyLevel === 'emergency') {
+            // URGENT: Acknowledge + reassure + dispatch help + light triage
+            if (studentMessage.includes('heating') || studentMessage.includes('heat') || studentMessage.includes('cold') || studentMessage.includes('freezing')) {
+              maillaResponse.nextAction = 'request_media';
+              maillaResponse.message = `Oh no, that sounds miserable! I'm getting emergency help on the way right now. While we wait, can you snap a quick pic of your thermostat? Also try flipping your heating breaker off and back on - it's in your electrical panel.`;
+              maillaResponse.mediaRequest = {
+                type: 'photo',
+                reason: 'thermostat photo helps me see what might be wrong'
+              };
+            } else if (studentMessage.includes('water') || studentMessage.includes('leak') || studentMessage.includes('plumbing')) {
+              maillaResponse.nextAction = 'request_media';
+              maillaResponse.message = `That sounds really stressful! I'm getting a plumber out there right away. While we wait, can you snap a photo of the leak area? If it gets worse, look for a water shutoff valve near your unit.`;
+              maillaResponse.mediaRequest = {
+                type: 'photo', 
+                reason: 'photo of the leak helps me assess urgency and helps plumber know what tools to bring'
+              };
+            } else if (studentMessage.includes('electrical') || studentMessage.includes('outlet') || studentMessage.includes('power')) {
+              maillaResponse.nextAction = 'request_media';
+              maillaResponse.message = `Got it! Maintenance is being dispatched right away. Please stay away from that area for safety. If it's safe, a photo from a distance would help me assess the situation.`;
+              maillaResponse.mediaRequest = {
+                type: 'photo',
+                reason: 'distant photo of electrical issue helps assess safety'
+              };
+            } else {
+              maillaResponse.nextAction = 'ask_followup';
+              maillaResponse.message = `Got it! Help is on the way right now. Can you describe what you're seeing or hearing? Any photos would help too!`;
+              maillaResponse.nextQuestion = `What exactly are you seeing or hearing with this issue?`;
+            }
           } else {
-            maillaResponse.message = `Perfect! I have everything I need. Help will be there soon - you can go about your day and I'll update you along the way! 🛠️`;
+            // NON-URGENT: Try DIY first, then call help if needed
+            if (studentMessage.includes('heating') || studentMessage.includes('heat') || studentMessage.includes('cold')) {
+              maillaResponse.nextAction = 'recommend_diy';
+              maillaResponse.message = `Let me help you troubleshoot this first! Can you try flipping your heating breaker off and back on? It's in your electrical panel. Also, a pic of your thermostat would help me see what's going on.`;
+              maillaResponse.diyAction = {
+                action: 'Check heating breaker',
+                instructions: ['Find your electrical panel', 'Look for the heating/HVAC breaker', 'Flip it off for 30 seconds', 'Flip it back on'],
+                warnings: ['Only touch the breaker switch, not any wires', 'If you smell anything strange, stop immediately']
+              };
+            } else {
+              maillaResponse.nextAction = 'ask_followup';
+              maillaResponse.message = `I'm here to help! Let me get a bit more info first - what exactly are you seeing or experiencing?`;
+              maillaResponse.nextQuestion = `Can you describe what you're seeing or hearing with this issue?`;
+            }
           }
         }
         
@@ -684,13 +716,25 @@ CRITICAL: If they sound frustrated or said "it's bad/terrible", DO NOT ask about
 Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they shared.
 NEVER ask for information you already have!
 
-💝 **CARING FOLLOW-UP GUIDANCE:**
-- Be empathetic: acknowledge their situation with phrases like "That sounds frustrating!" or "Oh no!"
-- If it's a heating issue and you have location, consider offering: "Want to snap a pic of your thermostat? I can help see what's up"
-- If non-urgent heating, suggest DIY: "You could try flipping your breaker - it's in your electrical panel" 
-- If urgent heating, prioritize help: "Let me get emergency help coming first, then we can try troubleshooting"
-- For plumbing: "Know where your water shutoff is? A quick pic of the leak helps too"
-- Always offer practical comfort like "Try to stay warm" or "Grab some towels if you can"
+💝 **PROGRESSIVE TRIAGE COMPLETION:**
+If student has engaged with your previous triage request (uploaded photo, tried DIY steps, or provided follow-up info), it's time to complete with caring final advice:
+
+🔄 **COMPLETE WITH COMFORT & UPDATES:**
+**For HEATING issues:** "Perfect! Thanks for trying that. Try to stay warm with some blankets, or hang out with friends if you want - you don't need to be there while we fix this. I'll keep you updated on timing! 🔧"
+
+**For PLUMBING issues:** "Got it! Grab some towels if you can. Help should be there within the hour. If it gets much worse, that water shutoff valve I mentioned will help - but we've got this handled! 💧"
+
+**For ELECTRICAL issues:** "Thanks for staying safe! Keep away from that area. Maintenance will text you when they're on their way - usually within 30-45 minutes. I'll keep you posted! ⚡"
+
+**For GENERAL issues:** "Perfect! You're all set. Help will be there soon - you can go about your day and I'll update you along the way! 🛠️"
+
+💝 **WHEN TO COMPLETE:**
+- Student uploaded photo or said they can't
+- Student tried DIY steps you suggested
+- Student provided any follow-up information after your triage request
+- They seem ready to move on
+
+Set nextAction: 'complete_triage' and give caring final message with comfort advice + stay-connected promise.
 \n`;
     }
 
