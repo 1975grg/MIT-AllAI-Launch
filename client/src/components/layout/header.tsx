@@ -86,16 +86,16 @@ export default function Header({ title }: HeaderProps) {
   return (
     <>
       <header className="h-16 !bg-white dark:!bg-gray-900 border-b border-border flex items-center justify-between px-6" data-testid="header">
-        <div className="flex items-center space-x-4 min-w-0 flex-1">
-          <div className="flex items-center space-x-3 min-w-0">
-            <div className="flex items-center space-x-2 min-w-0">
+        <div className="flex items-center space-x-4 min-w-0 flex-1 !bg-transparent">
+          <div className="flex items-center space-x-3 min-w-0 !bg-transparent">
+            <div className="flex items-center space-x-2 min-w-0 !bg-transparent">
               <img 
                 src={mitLogoUrl} 
                 alt="MIT" 
                 className="h-6 w-auto flex-shrink-0 opacity-90"
                 data-testid="img-mit-logo"
               />
-              <div className="flex flex-col min-w-0 max-w-44">
+              <div className="flex flex-col min-w-0 max-w-40 !bg-transparent">
                 <h1 className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate" data-testid="text-header-title">MIT Housing</h1>
                 <span className="text-xs text-gray-500 dark:text-gray-400 truncate" data-testid="text-subtitle">{title}</span>
               </div>
@@ -138,8 +138,8 @@ export default function Header({ title }: HeaderProps) {
           
           {/* Dev Role Preview Toggle */}
           {isDevMode && (
-            <div className="flex items-center space-x-2 px-2 py-1 bg-yellow-50/80 dark:bg-yellow-900/60 border border-yellow-200 dark:border-yellow-700 rounded-md backdrop-blur-sm">
-              <Settings className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />
+            <div className="flex items-center space-x-2 px-2 py-1 !bg-transparent border-0 rounded-md">
+              <Settings className="h-4 w-4 text-gray-600 dark:text-gray-400" />
               <Select 
                 value={previewRole ?? "original"} 
                 onValueChange={(value) => setPreviewRole(value === "original" ? null : value as UserRole)}
@@ -161,7 +161,7 @@ export default function Header({ title }: HeaderProps) {
                 </SelectContent>
               </Select>
               {isPreviewing && (
-                <Badge variant="outline" className="text-xs bg-yellow-100/70 dark:bg-yellow-800/70 text-yellow-700 dark:text-yellow-200 backdrop-blur-sm">
+                <Badge variant="outline" className="text-xs !bg-transparent border-gray-300 text-gray-700 dark:text-gray-300">
                   Preview
                 </Badge>
               )}
