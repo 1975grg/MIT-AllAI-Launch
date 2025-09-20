@@ -66,7 +66,7 @@ export default function Dashboard() {
   });
 
   const { data: smartCases, isLoading: casesLoading } = useQuery<SmartCase[]>({
-    queryKey: ["/api/cases"],
+    queryKey: ["/api/smart-cases"],
     retry: false,
   });
 
