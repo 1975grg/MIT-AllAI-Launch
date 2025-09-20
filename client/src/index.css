@@ -148,7 +148,7 @@
   
   /* Enhanced MIT heading styling - More readable */
   .mit-heading {
-    color: hsl(355 85% 45%);
+    color: hsl(221 83% 53%);
     font-weight: 700;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
@@ -168,11 +168,11 @@
   }
 
   /* MIT AI-Enhanced Styling */
-  .mit-red {
-    color: hsl(355 85% 45%);
+  .mit-blue {
+    color: hsl(221 83% 53%);
   }
   
-  .mit-red-bg {
+  .mit-blue-bg {
     background: var(--gradient-primary);
   }
   
