@@ -110,7 +110,7 @@ export default function MaintenancePage() {
 
   // Data fetching
   const { data: smartCases, isLoading: casesLoading } = useQuery({
-    queryKey: ["/api/smart-cases"],
+    queryKey: ["/api/cases"],
   });
 
   const { data: properties } = useQuery({
