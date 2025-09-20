@@ -32,9 +32,9 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-64 bg-card border-r border-border flex flex-col" data-testid="sidebar">
+    <div className="w-64 !bg-white dark:!bg-gray-900 border-r border-border flex flex-col" data-testid="sidebar">
       {/* Logo/Header */}
-      <div className="p-6 border-b border-border">
+      <div className="p-4 border-b border-border">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full p-0 h-auto justify-start hover:bg-muted/50" data-testid="button-brand-menu">
