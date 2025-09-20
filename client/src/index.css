@@ -3,43 +3,49 @@
 @tailwind utilities;
 
 :root {
-  /* Vibrant University Color Scheme */
-  /* Bright Blue Primary - Energetic and trustworthy */
-  /* Vibrant Red Accent - MIT heritage with energy */
-  /* Clean whites and bright contrasts */
+  /* MIT AI-Inspired Gradient Color Scheme */
+  /* Cardinal Red Heritage with AI Gradients */
+  /* Rich interactive colors that shift on hover */
   
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(210 40% 8%);
+  --background: hsl(0 0% 99%);
+  --foreground: hsl(220 25% 8%);
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(210 40% 8%);
+  --card-foreground: hsl(220 25% 8%);
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(210 40% 8%);
-  --primary: hsl(217 89% 61%); /* Vibrant Blue */
+  --popover-foreground: hsl(220 25% 8%);
+  --primary: hsl(355 85% 45%); /* MIT Cardinal Red with AI saturation */
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(217 89% 51%); /* Darker Vibrant Blue */
+  --secondary: hsl(260 85% 58%); /* AI Purple gradient companion */
   --secondary-foreground: hsl(0 0% 100%);
-  --muted: hsl(217 33% 94%); /* Light Blue Tint */
-  --muted-foreground: hsl(215 25% 27%);
-  --accent: hsl(217 89% 96%); /* Very Light Blue */
-  --accent-foreground: hsl(217 89% 51%); /* Vibrant Blue for accent text */
-  --destructive: hsl(0 84% 60%); /* Vibrant Red */
+  --muted: hsl(355 25% 96%); /* Light Cardinal tint */
+  --muted-foreground: hsl(220 20% 35%);
+  --accent: hsl(190 85% 96%); /* AI Cyan accent */
+  --accent-foreground: hsl(190 85% 25%);
+  --destructive: hsl(0 84% 60%); /* Cardinal Red destructive */
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(217 33% 90%);
-  --input: hsl(217 33% 97%);
-  --ring: hsl(217 89% 61%); /* Vibrant Blue for focus rings */
-  --chart-1: hsl(217 89% 61%); /* Vibrant Blue */
-  --chart-2: hsl(142 72% 29%); /* Vibrant Green */
-  --chart-3: hsl(45 93% 47%); /* Vibrant Yellow */
-  --chart-4: hsl(271 81% 56%); /* Vibrant Purple */
-  --chart-5: hsl(0 84% 60%); /* Vibrant Red */
-  --sidebar: hsl(217 33% 98%);
-  --sidebar-foreground: hsl(210 40% 8%);
-  --sidebar-primary: hsl(217 89% 61%); /* Vibrant Blue */
+  --border: hsl(355 15% 90%);
+  --input: hsl(355 15% 97%);
+  --ring: hsl(355 85% 45%); /* MIT Cardinal focus rings */
+  
+  /* AI Gradient Variables */
+  --gradient-primary: linear-gradient(135deg, hsl(355 85% 45%) 0%, hsl(320 85% 55%) 100%);
+  --gradient-secondary: linear-gradient(135deg, hsl(260 85% 58%) 0%, hsl(190 85% 55%) 100%);
+  --gradient-ai: linear-gradient(135deg, hsl(260 85% 58%) 0%, hsl(190 85% 55%) 50%, hsl(155 85% 55%) 100%);
+  --gradient-hover: linear-gradient(135deg, hsl(355 90% 50%) 0%, hsl(320 90% 60%) 100%);
+  --gradient-glow: linear-gradient(135deg, hsl(355 85% 45%) 0%, hsl(260 85% 58%) 50%, hsl(190 85% 55%) 100%);
+  --chart-1: hsl(355 85% 45%); /* MIT Cardinal Red */
+  --chart-2: hsl(155 85% 35%); /* AI Emerald */
+  --chart-3: hsl(45 93% 47%); /* MIT Gold */
+  --chart-4: hsl(260 85% 58%); /* AI Purple */
+  --chart-5: hsl(190 85% 45%); /* AI Cyan */
+  --sidebar: hsl(355 25% 98%);
+  --sidebar-foreground: hsl(220 25% 8%);
+  --sidebar-primary: hsl(355 85% 45%); /* MIT Cardinal */
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(217 89% 96%);
-  --sidebar-accent-foreground: hsl(217 89% 51%); /* Vibrant Blue */
-  --sidebar-border: hsl(217 33% 90%);
-  --sidebar-ring: hsl(217 89% 61%); /* Vibrant Blue */
+  --sidebar-accent: hsl(355 25% 96%);
+  --sidebar-accent-foreground: hsl(355 85% 45%);
+  --sidebar-border: hsl(355 15% 90%);
+  --sidebar-ring: hsl(355 85% 45%);
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -57,39 +63,47 @@
 }
 
 .dark {
-  /* Vibrant Dark Mode Color Scheme */
-  --background: hsl(217 33% 6%);
+  /* MIT AI Dark Mode - Rich Gradients */
+  --background: hsl(220 25% 6%);
   --foreground: hsl(0 0% 95%);
-  --card: hsl(217 33% 10%);
+  --card: hsl(220 25% 10%);
   --card-foreground: hsl(0 0% 90%);
-  --popover: hsl(217 33% 6%);
+  --popover: hsl(220 25% 6%);
   --popover-foreground: hsl(0 0% 95%);
-  --primary: hsl(217 89% 70%); /* Bright Blue for dark mode */
-  --primary-foreground: hsl(217 33% 6%);
-  --secondary: hsl(217 89% 80%); /* Lighter Bright Blue */
-  --secondary-foreground: hsl(217 33% 6%);
-  --muted: hsl(217 33% 18%);
-  --muted-foreground: hsl(217 33% 65%);
-  --accent: hsl(217 33% 15%);
-  --accent-foreground: hsl(217 89% 70%); /* Bright Blue for accent text */
-  --destructive: hsl(0 84% 70%); /* Bright Red */
-  --destructive-foreground: hsl(217 33% 6%);
-  --border: hsl(217 33% 20%);
-  --input: hsl(217 33% 15%);
-  --ring: hsl(217 89% 70%); /* Bright Blue for focus rings */
-  --chart-1: hsl(217 89% 70%); /* Bright Blue */
-  --chart-2: hsl(142 72% 39%); /* Bright Green */
-  --chart-3: hsl(45 93% 57%); /* Bright Yellow */
-  --chart-4: hsl(271 81% 66%); /* Bright Purple */
-  --chart-5: hsl(0 84% 70%); /* Bright Red */
-  --sidebar: hsl(217 33% 8%);
+  --primary: hsl(355 85% 65%); /* Bright Cardinal for dark mode */
+  --primary-foreground: hsl(220 25% 6%);
+  --secondary: hsl(260 85% 75%); /* Bright AI Purple */
+  --secondary-foreground: hsl(220 25% 6%);
+  --muted: hsl(220 25% 18%);
+  --muted-foreground: hsl(220 25% 65%);
+  --accent: hsl(190 85% 15%);
+  --accent-foreground: hsl(190 85% 75%);
+  --destructive: hsl(0 84% 70%);
+  --destructive-foreground: hsl(220 25% 6%);
+  --border: hsl(220 25% 20%);
+  --input: hsl(220 25% 15%);
+  --ring: hsl(355 85% 65%);
+  
+  /* Dark Mode AI Gradients */
+  --gradient-primary: linear-gradient(135deg, hsl(355 85% 65%) 0%, hsl(320 85% 70%) 100%);
+  --gradient-secondary: linear-gradient(135deg, hsl(260 85% 75%) 0%, hsl(190 85% 70%) 100%);
+  --gradient-ai: linear-gradient(135deg, hsl(260 85% 75%) 0%, hsl(190 85% 70%) 50%, hsl(155 85% 70%) 100%);
+  --gradient-hover: linear-gradient(135deg, hsl(355 90% 70%) 0%, hsl(320 90% 75%) 100%);
+  --gradient-glow: linear-gradient(135deg, hsl(355 85% 65%) 0%, hsl(260 85% 75%) 50%, hsl(190 85% 70%) 100%);
+  
+  --chart-1: hsl(355 85% 65%); /* Bright Cardinal */
+  --chart-2: hsl(155 85% 55%); /* Bright AI Emerald */
+  --chart-3: hsl(45 93% 67%); /* Bright MIT Gold */
+  --chart-4: hsl(260 85% 75%); /* Bright AI Purple */
+  --chart-5: hsl(190 85% 65%); /* Bright AI Cyan */
+  --sidebar: hsl(220 25% 8%);
   --sidebar-foreground: hsl(0 0% 90%);
-  --sidebar-primary: hsl(217 89% 70%); /* Bright Blue */
-  --sidebar-primary-foreground: hsl(217 33% 6%);
-  --sidebar-accent: hsl(217 33% 15%);
-  --sidebar-accent-foreground: hsl(217 89% 70%); /* Bright Blue */
-  --sidebar-border: hsl(217 33% 25%);
-  --sidebar-ring: hsl(217 89% 70%); /* Bright Blue */
+  --sidebar-primary: hsl(355 85% 65%);
+  --sidebar-primary-foreground: hsl(220 25% 6%);
+  --sidebar-accent: hsl(220 25% 15%);
+  --sidebar-accent-foreground: hsl(355 85% 65%);
+  --sidebar-border: hsl(220 25% 25%);
+  --sidebar-ring: hsl(355 85% 65%);
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -127,29 +141,118 @@
     color: hsl(var(--muted-foreground));
   }
 
-  /* MIT-specific styling */
+  /* MIT AI-Enhanced Styling */
   .mit-red {
-    color: #A31F34;
+    color: hsl(355 85% 45%);
   }
   
   .mit-red-bg {
-    background-color: #A31F34;
+    background: var(--gradient-primary);
   }
   
   .mit-gray {
-    color: #8A8B8C;
+    color: hsl(220 20% 55%);
   }
   
   .mit-gray-bg {
-    background-color: #8A8B8C;
+    background: hsl(220 20% 90%);
   }
   
   .mit-light-gray {
-    color: #C2C0BF;
+    color: hsl(220 15% 70%);
   }
   
   .mit-light-gray-bg {
-    background-color: #C2C0BF;
+    background: hsl(220 15% 95%);
+  }
+  
+  /* AI Gradient Classes */
+  .ai-gradient-primary {
+    background: var(--gradient-primary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .ai-gradient-primary:hover {
+    background: var(--gradient-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(163, 31, 52, 0.3);
+  }
+  
+  .ai-gradient-secondary {
+    background: var(--gradient-secondary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .ai-gradient-secondary:hover {
+    background: var(--gradient-ai);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+  }
+  
+  .ai-gradient-glow {
+    background: var(--gradient-glow);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .ai-gradient-glow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .ai-gradient-glow:hover::before {
+    left: 100%;
+  }
+  
+  .ai-gradient-glow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px rgba(163, 31, 52, 0.4);
+  }
+  
+  /* Interactive Button Enhancements */
+  .btn-ai-primary {
+    background: var(--gradient-primary);
+    border: none;
+    color: white;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .btn-ai-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-hover);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .btn-ai-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(163, 31, 52, 0.4);
+  }
+  
+  .btn-ai-primary:hover::before {
+    opacity: 1;
+  }
+  
+  .btn-ai-primary span {
+    position: relative;
+    z-index: 1;
   }
   
   /* MIT branding typography */
@@ -157,11 +260,55 @@
     font-family: var(--font-sans);
     font-weight: 600;
     letter-spacing: -0.02em;
+    background: var(--gradient-glow);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
   
   .mit-subtitle {
     font-family: var(--font-sans);
     font-weight: 400;
     letter-spacing: -0.01em;
+    color: hsl(220 20% 35%);
+  }
+  
+  /* Card and Interactive Element Enhancements */
+  .ai-card {
+    background: hsl(0 0% 100%);
+    border: 1px solid hsl(355 15% 90%);
+    border-radius: 16px;
+    padding: 24px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .ai-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-glow);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 16px;
+  }
+  
+  .ai-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(163, 31, 52, 0.15);
+    border-color: hsl(355 85% 45%);
+  }
+  
+  .ai-card:hover::before {
+    opacity: 0.05;
+  }
+  
+  .ai-card > * {
+    position: relative;
+    z-index: 1;
   }
 }
