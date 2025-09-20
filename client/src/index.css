@@ -352,19 +352,50 @@
     background: var(--gradient-button-hover);
   }
   
-  /* Clean button overrides */
-  .bg-blue-500, .bg-blue-600, .from-blue-500, .to-blue-600,
-  .hover\\:from-blue-600, .hover\\:to-blue-700 {
-    background: var(--primary) !important;
+  /* Pink color overrides for clean UI */
+  .bg-pink-50 {
+    background: hsl(330 100% 98%) !important;
+  }
+  
+  .bg-pink-100 {
+    background: hsl(329 100% 94%) !important;
+  }
+  
+  .bg-pink-500 {
+    background: hsl(330 81% 60%) !important;
     color: white !important;
   }
   
-  .bg-gradient-to-r {
-    background: var(--primary) !important;
+  .bg-pink-600 {
+    background: hsl(330 81% 54%) !important;
     color: white !important;
   }
   
-  /* Primary buttons with better contrast */
+  .hover\\:bg-pink-50:hover {
+    background: hsl(330 100% 98%) !important;
+  }
+  
+  .hover\\:bg-pink-600:hover {
+    background: hsl(330 81% 54%) !important;
+  }
+  
+  .text-pink-600 {
+    color: hsl(330 81% 60%) !important;
+  }
+  
+  .text-pink-700 {
+    color: hsl(330 81% 50%) !important;
+  }
+  
+  .hover\\:text-pink-600:hover {
+    color: hsl(330 81% 60%) !important;
+  }
+  
+  .border-pink-200 {
+    border-color: hsl(329 100% 88%) !important;
+  }
+  
+  /* Primary buttons keep red for brand consistency */
   .bg-primary {
     background: var(--primary) !important;
     color: white !important;

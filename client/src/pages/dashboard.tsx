@@ -83,7 +83,7 @@ export default function Dashboard() {
     switch (status) {
       case "paid": return <Check className="h-4 w-4 text-green-600" />;
       case "due": return <Clock className="h-4 w-4 text-yellow-600" />;
-      case "overdue": return <X className="h-4 w-4 text-red-600" />;
+      case "overdue": return <X className="h-4 w-4 text-orange-600" />;
       default: return <Clock className="h-4 w-4 text-gray-400" />;
     }
   };
@@ -99,7 +99,7 @@ export default function Dashboard() {
 
   const getPriorityColor = (type: string) => {
     switch (type) {
-      case "rent": return "bg-red-500";
+      case "rent": return "bg-gray-400";
       case "housing": return "bg-yellow-500";
       case "maintenance": return "bg-blue-500";
       default: return "bg-green-500";
@@ -125,8 +125,8 @@ export default function Dashboard() {
                       {statsLoading ? "..." : stats?.totalProperties || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Building className="text-primary" />
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Building className="text-gray-600" />
                   </div>
                 </div>
               </CardContent>
@@ -173,8 +173,8 @@ export default function Dashboard() {
                       {statsLoading ? "..." : stats?.dueReminders || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                    <Bell className="text-red-600" />
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Bell className="text-gray-600" />
                   </div>
                 </div>
               </CardContent>
@@ -244,7 +244,7 @@ export default function Dashboard() {
                               <p className="font-medium text-foreground" data-testid={`text-amount-${index}`}>${item.amount?.toLocaleString()}</p>
                               <p className={`text-sm ${
                                 item.status === 'paid' ? 'text-green-600' : 
-                                item.status === 'overdue' ? 'text-red-600' : 'text-yellow-600'
+                                item.status === 'overdue' ? 'text-orange-600' : 'text-yellow-600'
                               }`} data-testid={`text-status-${index}`}>
                                 {item.status === 'paid' ? `Paid ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : ''}` :
                                  item.status === 'overdue' ? 'Overdue' : `Due ${item.dueDate ? new Date(item.dueDate).toLocaleDateString() : ''}`}
@@ -375,74 +375,74 @@ export default function Dashboard() {
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/properties')}
                       data-testid="button-add-residence"
                     >
-                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Building className="h-5 w-5 text-primary" />
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <Building className="h-5 w-5 text-gray-600" />
                       </div>
-                      <span className="text-sm font-medium">Residence</span>
+                      <span className="text-sm font-medium text-foreground">Residence</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/tenants')}
                       data-testid="button-add-student"
                     >
                       <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                         <Users className="h-5 w-5 text-green-600" />
                       </div>
-                      <span className="text-sm font-medium">Student</span>
+                      <span className="text-sm font-medium text-foreground">Student</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/maintenance')}
                       data-testid="button-create-maintenance"
                     >
                       <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
                         <Wrench className="h-5 w-5 text-orange-600" />
                       </div>
-                      <span className="text-sm font-medium">Maintenance</span>
+                      <span className="text-sm font-medium text-foreground">Maintenance</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/expenses')}
                       data-testid="button-log-expense"
                     >
                       <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
                         <Receipt className="h-5 w-5 text-yellow-600" />
                       </div>
-                      <span className="text-sm font-medium">Expense</span>
+                      <span className="text-sm font-medium text-foreground">Expense</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/revenue')}
                       data-testid="button-log-revenue"
                     >
                       <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                         <DollarSign className="h-5 w-5 text-green-600" />
                       </div>
-                      <span className="text-sm font-medium">Revenue</span>
+                      <span className="text-sm font-medium text-foreground">Revenue</span>
                     </Button>
 
                     <Button
                       variant="ghost"
-                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-muted/50"
+                      className="h-20 flex flex-col items-center justify-center space-y-2 border border-border hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-card transition-colors"
                       onClick={() => setLocation('/reminders')}
                       data-testid="button-set-reminder"
                     >
                       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                         <Bell className="h-5 w-5 text-blue-600" />
                       </div>
-                      <span className="text-sm font-medium">Reminder</span>
+                      <span className="text-sm font-medium text-foreground">Reminder</span>
                     </Button>
 
                   </div>

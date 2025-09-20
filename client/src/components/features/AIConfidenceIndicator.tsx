@@ -125,7 +125,7 @@ export function AIConfidenceIndicator({
   const getConfidenceColor = (score: number) => {
     if (score >= 0.9) return "text-green-600 dark:text-green-400";
     if (score >= 0.7) return "text-yellow-600 dark:text-yellow-400";
-    return "text-red-600 dark:text-red-400";
+    return "text-orange-600 dark:text-orange-400";
   };
 
   const getConfidenceIcon = (score: number) => {

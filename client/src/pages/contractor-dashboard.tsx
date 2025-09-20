@@ -45,7 +45,7 @@ const PRIORITY_COLORS = {
   Low: "bg-green-100 text-green-800 border-green-200",
   Medium: "bg-yellow-100 text-yellow-800 border-yellow-200", 
   High: "bg-orange-100 text-orange-800 border-orange-200",
-  Urgent: "bg-red-100 text-red-800 border-red-200"
+  Urgent: "bg-orange-100 text-orange-800 border-orange-200"
 };
 
 const STATUS_COLORS = {
@@ -264,11 +264,11 @@ export default function ContractorDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Urgent Cases</p>
-                  <p className="text-2xl font-bold text-red-600">
+                  <p className="text-2xl font-bold text-orange-600">
                     {assignedCases.filter((c: ContractorCase) => c.priority === "Urgent").length}
                   </p>
                 </div>
-                <AlertTriangle className="h-8 w-8 text-red-500" />
+                <AlertTriangle className="h-8 w-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
@@ -458,7 +458,7 @@ export default function ContractorDashboard() {
                             <Calendar className="h-5 w-5" />
                             {appointment.title}
                             {appointment.isEmergency && (
-                              <Badge className="bg-red-100 text-red-800 border-red-200">Emergency</Badge>
+                              <Badge className="bg-orange-100 text-orange-800 border-orange-200">Emergency</Badge>
                             )}
                           </CardTitle>
                           <CardDescription className="mt-1">
