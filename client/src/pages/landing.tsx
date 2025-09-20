@@ -23,7 +23,7 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
+          <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
             AI-Powered Maintenance Automation
             <span className="block mit-heading">For University Student Housing</span>
           </h1>
