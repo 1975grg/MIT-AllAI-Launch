@@ -298,11 +298,25 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
 
       const data = await response.json();
 
-      // Add completion message
+      // Add caring, contextual completion message
+      const getCaringCompletionMessage = (caseId: string, category?: string): string => {
+        const baseMessage = `✅ Perfect! I've created maintenance case #${caseId} for you. `;
+        
+        if (category?.toLowerCase().includes('heating') || category?.toLowerCase().includes('temperature')) {
+          return baseMessage + `Help will be on the way soon. Since it's cold, try to stay warm with some blankets, or hang out with friends if you want - you don't need to be there! I'll keep you updated. 🔧`;
+        } else if (category?.toLowerCase().includes('plumbing') || category?.toLowerCase().includes('water') || category?.toLowerCase().includes('leak')) {
+          return baseMessage + `I'm getting a plumber out there. If the leak gets worse, there should be a water shutoff valve near your unit - but help is coming soon! 💧`;
+        } else if (category?.toLowerCase().includes('electrical')) {
+          return baseMessage + `Maintenance is being dispatched right away. Please stay away from that area for safety, and I'll keep you posted on timing! ⚡`;
+        } else {
+          return baseMessage + `Help will be there soon - you can go about your day and I'll update you along the way! 🛠️`;
+        }
+      };
+
       const completionMessage: MaillaMessage = {
         id: `completion-${Date.now()}`,
-        type: "system",
-        content: `✅ Triage completed! I've created maintenance case #${data.caseId} with all the information we gathered. The maintenance team will review this and get back to you soon.`,
+        type: "system", 
+        content: getCaringCompletionMessage(data.caseId, data.category),
         timestamp: new Date(),
       };
 
@@ -452,9 +466,9 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
             className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 p-4 rounded-lg"
             data-testid="section-media-upload"
           >
-            <h3 className="font-medium text-red-700 dark:text-red-300 mb-2">📸 Upload Photos/Videos</h3>
+            <h3 className="font-medium text-red-700 dark:text-red-300 mb-2">📸 Quick Photos Help!</h3>
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-              Please upload photos or videos to help us understand the issue better.
+              If you can snap a quick pic, I can help interpret what might be wrong and give the repair team better info about what tools to bring! 📷
             </p>
             
             <div className="space-y-3">
