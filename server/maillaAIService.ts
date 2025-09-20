@@ -388,38 +388,45 @@ export class MaillaAIService {
           ? [...pendingQuestions, ...maillaResponse.queuedQuestions]
           : pendingQuestions;
 
-        // 🛡️ CRITICAL: Server-side completion enforcement
-        // Force completion when we have all required information, regardless of AI model decision
+        // 🧠 SMART TRIAGE: Only create tickets when AI explicitly decides to complete OR emergency
         const hasLocation = !!(updatedLocation.buildingName && updatedLocation.roomNumber);
         const hasIssueType = !!(updatedSlots.issueSummary || studentMessage?.includes('heating') || studentMessage?.includes('plumbing') || studentMessage?.includes('electrical') || studentMessage?.includes('water') || studentMessage?.includes('leak') || studentMessage?.includes('broken'));
-        const hasUrgency = !!(maillaResponse.urgencyLevel && maillaResponse.urgencyLevel !== 'normal');
+        const hasBasicInfo = hasLocation && hasIssueType;
         
-        console.log(`🛡️ Completion check: location=${hasLocation}, issue=${hasIssueType}, urgency=${hasUrgency}`);
-        console.log(`   Location: ${updatedLocation.buildingName} ${updatedLocation.roomNumber}`);
-        console.log(`   Issue: ${updatedSlots.issueSummary || 'inferred from message'}`);
-        console.log(`   Urgency: ${maillaResponse.urgencyLevel}`);
+        console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, AI action=${maillaResponse.nextAction}`);
         
-        // 🤖 SMART ORCHESTRATOR: Let AI be intelligent, just ensure case creation when ready
-        if (hasLocation && hasIssueType && hasUrgency) {
-          console.log(`✅ SMART COMPLETION: All slots filled - creating case and completing triage`);
-          
-          // Create case immediately when criteria met
+        // 🚨 Emergency escalation - bypass diagnostic steps
+        if (maillaResponse.nextAction === 'escalate_immediate') {
+          console.log(`🚨 EMERGENCY: Creating case immediately for safety`);
           try {
             const caseResult = await this.completeTriageConversation(conversationId);
             if (caseResult.success && caseResult.caseId) {
-              // Let AI keep its intelligent response, just append case confirmation with friendly number
+              const friendlyNumber = this.generateFriendlyCaseNumber(caseResult.caseId);
+              maillaResponse.message += `\n\n🚨 Emergency case #${friendlyNumber} created - help is being dispatched immediately!`;
+              maillaResponse.isComplete = true;
+            }
+          } catch (error) {
+            console.error('❌ Emergency case creation failed:', error);
+          }
+        }
+        // 🎯 AI-driven completion - only when AI says "complete_triage"
+        else if (hasBasicInfo && maillaResponse.nextAction === 'complete_triage') {
+          console.log(`✅ AI COMPLETION: AI decided triage is complete - creating case`);
+          try {
+            const caseResult = await this.completeTriageConversation(conversationId);
+            if (caseResult.success && caseResult.caseId) {
               const friendlyNumber = this.generateFriendlyCaseNumber(caseResult.caseId);
               maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${friendlyNumber} - help is on the way!`;
-              maillaResponse.nextAction = 'complete_triage';
               maillaResponse.isComplete = true;
-              
-              console.log(`🎉 Case ${caseResult.caseId} created successfully!`);
             }
           } catch (error) {
             console.error('❌ Case creation failed:', error);
-            // Don't block the conversation if case creation fails
             maillaResponse.message += `\n\n⚡ I'm getting help dispatched right away - you'll get updates soon!`;
           }
+        }
+        // 🤖 Let AI decide - don't force completion, trust the intelligence
+        else {
+          console.log(`🤖 AI CONTROL: Letting AI continue diagnostic conversation (${maillaResponse.nextAction})`);
         }
         
         await storage.updateTriageConversation(conversationId, {
@@ -530,11 +537,16 @@ export class MaillaAIService {
 - **Issue details**: What's broken/not working (required)
 - **Urgency**: Severe language like "freezing/terrible" = urgent (required)
 
-**SMART TROUBLESHOOTING (offer naturally in conversation):**
-- **Heating issues**: "Quick check - is your thermostat set to heat mode? Also, your breaker panel might have a heating switch that got tripped. A pic of your thermostat would help me see what's up!"
-- **No hot water**: "First, check if other people in your building have hot water. Then look for a water heater breaker in your electrical panel - sometimes they trip."
-- **Electrical problems**: "For safety, don't touch anything! But if you feel comfortable, check your breaker panel for any switches that are in the middle position - flip them all the way off then back on."
-- **Plumbing leaks**: "Find your water shutoff valve (usually under your sink or behind toilet). If it gets worse, you can turn off water to that fixture. A photo helps me see how urgent this is."
+**DIAGNOSTIC STEPS FIRST (always do these before creating tickets):**
+- **Electrical problems**: "Before I send someone out, let's check something quick - can you look at your breaker panel? Any switches that look like they're in the middle position or not fully 'on'? Try flipping them all the way off then back on. This fixes most electrical issues instantly!"
+- **Heating issues**: "Quick check first - is your thermostat set to heat mode and showing the right temperature? Also, check if there's a heating breaker in your electrical panel that might have tripped."
+- **No hot water**: "Let's troubleshoot - first, check if other people in your building have hot water. Then look for a water heater breaker in your electrical panel that might have tripped."
+- **Plumbing leaks**: "Find your water shutoff valve (usually under your sink or behind toilet) in case it gets worse. A photo would help me see how urgent this really is."
+
+**ONLY CREATE TICKETS WHEN:**
+- Student confirms diagnostic steps didn't work
+- Emergency/safety issue requiring immediate help  
+- Issue is clearly beyond student troubleshooting (major repairs)
 
 **COMFORT & ALTERNATIVES:**
 - Cold rooms: "Try to stay warm with blankets, or hang out with friends if you want"

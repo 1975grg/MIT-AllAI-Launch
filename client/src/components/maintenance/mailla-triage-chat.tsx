@@ -328,10 +328,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
         onTriageComplete(data.caseId);
       }
 
-      toast({
-        title: "Triage Complete",
-        description: `Maintenance case #${data.caseId} has been created.`,
-      });
+      // ❌ REMOVED: Disruptive toast notification - let the AI's message handle completion naturally
 
     } catch (error) {
       console.error('Error completing triage:', error);

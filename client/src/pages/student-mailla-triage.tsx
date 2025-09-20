@@ -21,70 +21,8 @@ export default function StudentMaillaTriagePage() {
     setCaseId(completedCaseId);
   };
 
-  if (triageCompleted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 p-6">
-        <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <GraduationCap className="h-8 w-8 text-blue-600" />
-              <h1 className="text-3xl font-bold text-gray-900">MIT Housing Maintenance</h1>
-            </div>
-            <p className="text-gray-600">Powered by Mailla AI</p>
-          </div>
-
-          {/* Completion Card */}
-          <Card className="border-green-200 bg-green-50">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Bot className="h-8 w-8 text-green-600" />
-              </div>
-              <CardTitle className="text-green-800">Triage Complete!</CardTitle>
-              <CardDescription className="text-green-700">
-                Your maintenance request has been processed and submitted.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-                Case #{caseId}
-              </Badge>
-              
-              <div className="space-y-2 text-sm text-green-700">
-                <p>✅ Safety assessment completed</p>
-                <p>✅ Issue details collected</p>
-                <p>✅ Maintenance case created</p>
-                <p>✅ Maintenance team notified</p>
-              </div>
-
-              <div className="pt-4 space-y-3">
-                <p className="text-sm text-gray-600">
-                  The maintenance team will review your request and contact you about next steps.
-                  You can track the progress of your case using the ID above.
-                </p>
-                
-                <div className="flex gap-2 justify-center">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setLocation("/student-mailla-triage")}
-                    data-testid="button-new-request"
-                  >
-                    Submit Another Request
-                  </Button>
-                  <Button
-                    onClick={() => setLocation("/student-tracking")}
-                    data-testid="button-track-requests"
-                  >
-                    Track My Requests
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+  // ❌ REMOVED: Disruptive "Triage Complete!" popup that kicks users out of chat
+  // Now users stay in the conversational flow with Mailla
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50 p-6">
