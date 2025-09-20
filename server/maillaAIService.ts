@@ -1035,6 +1035,9 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         reportedBy: conversation.studentId,
         propertyId: propertyId,
         unitId: unitId,
+        // ✅ FIX: Store location in dedicated database columns for display
+        buildingName: locationData?.buildingName,
+        roomNumber: locationData?.roomNumber,
         metadata: {
           triageConversationId: conversationId,
           safetyFlags: conversation.safetyFlags,
