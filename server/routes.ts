@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const requireAdmin = requireRole(['admin', 'manager', 'staff']);
   
   // 🔧 Contractor/vendor middleware for maintenance operations
-  const requireVendor = requireRole(['vendor', 'contractor']);
+  const requireVendor = requireRole(['vendor', 'contractor', 'admin']);
 
   // 🔧 Temporary role assignment endpoint for testing contractor functionality
   app.post('/api/auth/assign-contractor-role', isAuthenticated, async (req: any, res) => {
