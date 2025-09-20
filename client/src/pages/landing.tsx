@@ -35,8 +35,8 @@ export default function Landing() {
           {/* Student Section */}
           <div className="mb-8">
             <div className="flex items-center justify-center mb-4">
-              <GraduationCap className="h-6 w-6 text-blue-600 mr-2" />
-              <h2 className="text-2xl font-bold text-blue-600">For Students</h2>
+              <GraduationCap className="h-6 w-6 text-primary mr-2" />
+              <h2 className="text-2xl font-bold text-primary">For Students</h2>
             </div>
             <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
               Submit maintenance requests quickly and track their progress. No account required.
@@ -44,7 +44,7 @@ export default function Landing() {
             
             {/* Primary AI Chat Option */}
             <div className="space-y-4">
-              <Button size="lg" asChild className="text-lg px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg transform hover:scale-105 transition-all" data-testid="button-ai-chat">
+              <Button size="lg" asChild className="text-lg px-8 py-3 ai-gradient-primary shadow-lg transform hover:scale-105 transition-all" data-testid="button-ai-chat">
                 <a href="/student-mailla-triage">
                   <Bot className="h-5 w-5 mr-2" />
                   Chat with AI Assistant
@@ -66,7 +66,7 @@ export default function Landing() {
                 
                 <div className="text-sm text-muted-foreground">
                   Already submitted a request?{" "}
-                  <a href="/student-tracking" className="text-blue-600 hover:underline" data-testid="link-track-request">
+                  <a href="/student-tracking" className="text-primary hover:underline hover:text-primary/80" data-testid="link-track-request">
                     Track your request here
                   </a>
                 </div>
@@ -90,7 +90,7 @@ export default function Landing() {
             <p className="text-muted-foreground mb-4 max-w-lg mx-auto">
               Access the management dashboard to view requests, coordinate contractors, and track maintenance operations.
             </p>
-            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 shadow-md transition-all" data-testid="button-admin-login">
+            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3 border-primary text-primary hover:bg-primary/5 hover:border-primary shadow-md transition-all" data-testid="button-admin-login">
               <a href="/api/login">🔧 Staff & Contractor Login</a>
             </Button>
           </div>
@@ -119,8 +119,8 @@ export default function Landing() {
 
             <Card>
               <CardHeader>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <Brain className="h-6 w-6 text-blue-600" />
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                  <Brain className="h-6 w-6 text-primary" />
                 </div>
                 <CardTitle>AI Smart Triage</CardTitle>
                 <CardDescription>
