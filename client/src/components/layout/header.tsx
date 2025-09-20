@@ -94,9 +94,9 @@ export default function Header({ title }: HeaderProps) {
               className="h-8 w-auto flex-shrink-0"
               data-testid="img-mit-logo"
             />
-            <div className="flex flex-col min-w-0 max-w-xs">
-              <h1 className="text-base font-bold text-primary truncate" data-testid="text-header-title">MIT Student Housing</h1>
-              <span className="text-xs text-muted-foreground truncate" data-testid="text-subtitle">Campus Management - {title}</span>
+            <div className="flex flex-col min-w-0 max-w-48">
+              <h1 className="text-sm font-semibold text-gray-700 truncate" data-testid="text-header-title">MIT Housing</h1>
+              <span className="text-xs text-gray-500 truncate" data-testid="text-subtitle">{title}</span>
             </div>
           </div>
           <span className="text-sm text-muted-foreground hidden md:block" data-testid="text-welcome">
