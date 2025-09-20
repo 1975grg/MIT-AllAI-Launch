@@ -4,28 +4,31 @@ import { GraduationCap, Brain, Clock, CheckCircle, Users, Wrench, Bot, FileText 
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Enhanced gradient overlay for AI aesthetic */}
+      <div className="landing-gradient-overlay"></div>
+      
       {/* Header */}
-      <header className="border-b border-border">
+      <header className="border-b border-border relative">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <GraduationCap className="h-5 w-5 text-primary-foreground" />
+            <div className="w-8 h-8 ai-gradient-primary rounded-lg flex items-center justify-center">
+              <GraduationCap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-foreground">MIT Housing Maintenance AI</span>
+            <span className="text-xl font-bold text-foreground mit-heading">MIT Housing Maintenance AI</span>
           </div>
-          <Button asChild data-testid="button-login">
+          <Button asChild className="ai-gradient-secondary" data-testid="button-login">
             <a href="/api/login">Sign In</a>
           </Button>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 relative z-10">
         <div className="container mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             AI-Powered Maintenance Automation
-            <span className="block text-primary">For University Student Housing</span>
+            <span className="block mit-heading bg-gradient-to-r from-red-800 via-red-600 to-red-400 bg-clip-text text-transparent">For University Student Housing</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto">
             Revolutionize student housing maintenance with intelligent triage, automated contractor coordination, 
