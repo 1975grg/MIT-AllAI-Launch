@@ -40,7 +40,7 @@ export default function Sidebar() {
             <Button variant="ghost" className="w-full p-0 h-auto justify-center hover:bg-muted/50" data-testid="button-brand-menu">
               <div className="flex items-center justify-center space-x-3">
                 <div className="flex flex-col items-center text-center">
-                  <span className="text-sm font-bold text-white">Student Housing</span>
+                  <span className="text-sm font-bold text-white">MIT Student Housing</span>
                   <span className="text-xs text-white">Campus Management</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-white ml-1" />
