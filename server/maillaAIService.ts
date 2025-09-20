@@ -188,12 +188,17 @@ export class MaillaAIService {
         };
       }
 
-      // 2. Build conversation context
+      // 2. Smart location extraction from student message
+      const extractedLocation = this.extractLocationFromMessage(studentMessage);
+      console.log(`🏢 Location extraction result:`, extractedLocation);
+
+      // 3. Build conversation context with location intelligence
       const contextPrompt = this.buildTriageContextPrompt(
         studentMessage, 
         isInitial, 
         conversation,
-        safetyResults
+        safetyResults,
+        extractedLocation
       );
 
       // 3. Get Mailla's intelligent response
@@ -299,24 +304,58 @@ export class MaillaAIService {
       const allFlags = [...safetyResults.flags, ...maillaResponse.safetyFlags];
       maillaResponse.safetyFlags = Array.from(new Set(allFlags));
 
-      // 5. Update conversation slots and queue pending questions
+      // 5. Merge extracted location with AI-provided location
+      if (extractedLocation && extractedLocation.buildingName) {
+        if (!maillaResponse.location) {
+          maillaResponse.location = {};
+        }
+        // Use extracted location if AI didn't provide it
+        if (!maillaResponse.location.buildingName) {
+          maillaResponse.location.buildingName = extractedLocation.buildingName;
+        }
+        if (!maillaResponse.location.roomNumber && extractedLocation.roomNumber) {
+          maillaResponse.location.roomNumber = extractedLocation.roomNumber;
+        }
+        // Mark as confirmed if we have both building and room
+        if (maillaResponse.location.buildingName && maillaResponse.location.roomNumber) {
+          maillaResponse.location.isLocationConfirmed = true;
+        }
+      }
+
+      // 6. Update conversation slots and queue pending questions
       if (maillaResponse.conversationSlots || maillaResponse.queuedQuestions || maillaResponse.location) {
         const currentTriageData = conversation?.triageData || { initialRequest: studentMessage, category: null, context: {} };
         const existingSlots = (currentTriageData as any)?.conversationSlots || {};
         const existingLocation = (currentTriageData as any)?.location || {};
         const pendingQuestions = (currentTriageData as any)?.pendingQuestions || [];
         
-        // Merge conversation slots
+        // Merge conversation slots with building name normalization
         const updatedSlots = {
           ...existingSlots,
           ...maillaResponse.conversationSlots
         };
+        
+        // Normalize building name in slots if present
+        if (updatedSlots.buildingName) {
+          const normalizedBuilding = this.resolveBuildingName(updatedSlots.buildingName);
+          if (normalizedBuilding) {
+            updatedSlots.buildingName = normalizedBuilding;
+          }
+        }
         
         // Handle location updates
         const updatedLocation = {
           ...existingLocation,
           ...maillaResponse.location
         };
+        
+        // Normalize building name in location if present
+        if (updatedLocation.buildingName) {
+          const normalizedBuilding = this.resolveBuildingName(updatedLocation.buildingName);
+          if (normalizedBuilding) {
+            updatedLocation.buildingName = normalizedBuilding;
+          }
+        }
         
         // Add new queued questions to pending list
         const updatedPendingQuestions = maillaResponse.queuedQuestions 
@@ -447,7 +486,8 @@ Always sound like you're texting a helpful friend who works in maintenance - war
     studentMessage: string,
     isInitial: boolean,
     conversation?: TriageConversationSelect,
-    safetyResults?: { flags: string[] }
+    safetyResults?: { flags: string[] },
+    extractedLocation?: { buildingName?: string; roomNumber?: string; confidence: 'high' | 'medium' | 'low' }
   ): string {
     let prompt = `Student message: "${studentMessage}"\n\n`;
 
@@ -456,7 +496,21 @@ Always sound like you're texting a helpful friend who works in maintenance - war
     const pendingQuestions = (conversation?.triageData as any)?.pendingQuestions || [];
 
     if (isInitial) {
-      prompt += `This is the FIRST message from an MIT student about a maintenance issue.
+      // Check if location was already extracted from initial message
+      if (extractedLocation && extractedLocation.buildingName) {
+        prompt += `This is the FIRST message from an MIT student about a maintenance issue.
+Location detected: ${extractedLocation.buildingName}${extractedLocation.roomNumber ? `, Room ${extractedLocation.roomNumber}` : ''} (confidence: ${extractedLocation.confidence})
+
+Your response should:
+1. Be warm and compassionate - acknowledge their issue
+2. CONFIRM the detected location - "Just to confirm, you're in ${extractedLocation.buildingName}${extractedLocation.roomNumber ? `, room ${extractedLocation.roomNumber}` : ''}, right?"
+3. If room number missing, ask for it next
+4. Keep your message short and conversational
+
+Example: "I'm here to help with that faucet leak! Just to confirm, you're in Tang Hall, room 201, right?"
+`;
+      } else {
+        prompt += `This is the FIRST message from an MIT student about a maintenance issue.
 
 Your response should:
 1. Be warm and compassionate - acknowledge their issue
@@ -467,6 +521,7 @@ MIT Buildings: Next House, Simmons Hall, MacGregor House, Burton Conner, New Hou
 
 Example: "I'm here to help with that! Which MIT building are you in?"
 `;
+      }
     } else {
       prompt += `This is a follow-up message. Conversation progress:\n`;
       
@@ -515,13 +570,23 @@ NEVER ask for information you already have!\n`;
     return result.caseId;
   }
 
-  // MIT building mapping with basic implementation
-  private getMITPropertyMapping(buildingName?: string, roomNumber?: string): { propertyId: string | null; unitId: string | null } {
+  // ========================================
+  // SMART BUILDING INTELLIGENCE
+  // ========================================
+
+  // Enhanced MIT building mapping with aliases and fuzzy matching
+  private getMITPropertyMapping(buildingName?: string, roomNumber?: string): { propertyId: string | null; unitId: string | null; normalizedBuildingName?: string } {
     if (!buildingName) {
       return { propertyId: null, unitId: null };
     }
 
-    // Basic MIT building mapping - in production this would be a database lookup
+    // Smart building resolution with aliases
+    const resolvedBuilding = this.resolveBuildingName(buildingName);
+    if (!resolvedBuilding) {
+      return { propertyId: null, unitId: null };
+    }
+
+    // Main building mapping - canonical names to property IDs
     const mitBuildingMap: Record<string, string> = {
       'Next House': 'mit-next-house',
       'Simmons Hall': 'mit-simmons-hall', 
@@ -538,13 +603,152 @@ NEVER ask for information you already have!\n`;
       'Sidney-Pacific': 'mit-sidney-pacific'
     };
 
-    const propertyId = mitBuildingMap[buildingName] || null;
+    const propertyId = mitBuildingMap[resolvedBuilding] || null;
     
     // Unit ID would require room number and building-specific mapping
     // For now, we'll include room in metadata but not map to specific unitId
     const unitId = null; // In production: map roomNumber to actual unit ID
     
-    return { propertyId, unitId };
+    return { propertyId, unitId, normalizedBuildingName: resolvedBuilding };
+  }
+
+  // Smart building name resolution with aliases and fuzzy matching
+  private resolveBuildingName(input: string): string | null {
+    const normalizedInput = input.trim().toLowerCase();
+
+    // Building aliases map - handles how students actually talk
+    const buildingAliases: Record<string, string> = {
+      // Tang Hall variations
+      'tang': 'Tang Hall',
+      'tang hall': 'Tang Hall',
+      
+      // Next House variations  
+      'next': 'Next House',
+      'next house': 'Next House',
+      
+      // Simmons Hall variations
+      'simmons': 'Simmons Hall',
+      'simmons hall': 'Simmons Hall',
+      
+      // MacGregor House variations
+      'macgregor': 'MacGregor House',
+      'macgregor house': 'MacGregor House',
+      'mac': 'MacGregor House',
+      
+      // Burton Conner variations
+      'burton': 'Burton Conner',
+      'burton conner': 'Burton Conner',
+      'bc': 'Burton Conner',
+      
+      // New House variations
+      'new': 'New House',
+      'new house': 'New House',
+      
+      // Baker House variations
+      'baker': 'Baker House',
+      'baker house': 'Baker House',
+      
+      // McCormick Hall variations
+      'mccormick': 'McCormick Hall',
+      'mccormick hall': 'McCormick Hall',
+      
+      // Random Hall variations
+      'random': 'Random Hall',
+      'random hall': 'Random Hall',
+      
+      // Senior House variations
+      'senior': 'Senior House',
+      'senior house': 'Senior House',
+      
+      // Westgate variations
+      'westgate': 'Westgate',
+      
+      // Ashdown House variations
+      'ashdown': 'Ashdown House',
+      'ashdown house': 'Ashdown House',
+      
+      // Sidney-Pacific variations
+      'sidney': 'Sidney-Pacific',
+      'sidney pacific': 'Sidney-Pacific',
+      'sidney-pacific': 'Sidney-Pacific',
+      'sp': 'Sidney-Pacific'
+    };
+
+    // Direct alias match
+    const aliasMatch = buildingAliases[normalizedInput];
+    if (aliasMatch) {
+      return aliasMatch;
+    }
+
+    // Fuzzy matching for partial inputs
+    for (const [alias, canonical] of Object.entries(buildingAliases)) {
+      if (alias.includes(normalizedInput) || normalizedInput.includes(alias)) {
+        // Additional check to avoid false positives with very short inputs
+        if (normalizedInput.length >= 3) {
+          return canonical;
+        }
+      }
+    }
+
+    // Return null if no match found - will trigger validation
+    return null;
+  }
+
+  // Pre-process student message to extract and standardize location info
+  private extractLocationFromMessage(message: string): { buildingName?: string; roomNumber?: string; confidence: 'high' | 'medium' | 'low' } {
+    const normalizedMessage = message.toLowerCase();
+    
+    // Common patterns students use
+    const patterns = [
+      // "Tang 201", "Next 123", "Simmons 456"
+      /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\s+(\d+[a-z]?)\b/gi,
+      
+      // "Tang Hall 201", "Next House 123"  
+      /\b(tang hall|next house|simmons hall|macgregor house|burton conner|new house|baker house|mccormick hall|random hall|senior house|ashdown house|sidney pacific|sidney-pacific)\s+(\d+[a-z]?)\b/gi,
+      
+      // "I'm in Tang", "from Next"
+      /\b(?:in|from|at)\s+(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\b/gi,
+      
+      // "Tang Hall", "Next House" mentioned alone
+      /\b(tang hall|next house|simmons hall|macgregor house|burton conner|new house|baker house|mccormick hall|random hall|senior house|westgate|ashdown house|sidney pacific|sidney-pacific)\b/gi
+    ];
+
+    let extractedBuilding: string | undefined;
+    let extractedRoom: string | undefined;
+    let confidence: 'high' | 'medium' | 'low' = 'low';
+
+    for (const pattern of patterns) {
+      const matches = Array.from(message.matchAll(pattern));
+      if (matches.length > 0) {
+        const match = matches[0];
+        
+        if (match[2]) {
+          // Pattern with room number
+          extractedBuilding = match[1];
+          extractedRoom = match[2];
+          confidence = 'high';
+          break;
+        } else if (match[1]) {
+          // Pattern with building only
+          extractedBuilding = match[1];
+          confidence = confidence === 'low' ? 'medium' : confidence;
+        }
+      }
+    }
+
+    // Normalize the building name if found
+    if (extractedBuilding) {
+      const normalizedBuilding = this.resolveBuildingName(extractedBuilding);
+      if (normalizedBuilding) {
+        return {
+          buildingName: normalizedBuilding,
+          roomNumber: extractedRoom,
+          confidence
+        };
+      }
+    }
+
+    return { confidence: 'low' };
   }
 
   // ✅ Implementation for complete triage conversation (required by API)
@@ -559,7 +763,13 @@ NEVER ask for information you already have!\n`;
 
       // Extract location data from triage
       const locationData = (conversation.triageData as any)?.location;
-      const { propertyId, unitId } = this.getMITPropertyMapping(locationData?.buildingName, locationData?.roomNumber);
+      const { propertyId, unitId, normalizedBuildingName } = this.getMITPropertyMapping(locationData?.buildingName, locationData?.roomNumber);
+
+      // Critical validation: Ensure we have valid property mapping
+      if (!propertyId && locationData?.buildingName) {
+        console.error(`⚠️ Failed to map building "${locationData.buildingName}" to property ID - ticket will be unroutable!`);
+        throw new Error(`Unable to route maintenance request: Building "${locationData.buildingName}" not recognized. Please contact support.`);
+      }
 
       // Create smart case with rich triage context and location
       const caseData = {
