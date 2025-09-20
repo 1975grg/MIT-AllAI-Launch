@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Brain, Clock, CheckCircle, Users, Wrench, Bot, FileText } from "lucide-react";
-import mitDomeImage from "@assets/7257555408_0bfab3e133_b_1758332660782.jpg";
 
 export default function Landing() {
   return (
@@ -21,59 +20,53 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* Hero Section with MIT Dome Background */}
-      <section 
-        className="relative py-32 px-4 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `linear-gradient(rgba(0, 45, 114, 0.75), rgba(0, 45, 114, 0.65)), url(${mitDomeImage})`,
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/10 to-blue-900/20"></div>
-        <div className="relative container mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
+      {/* Hero Section */}
+      <section className="py-20 px-4">
+        <div className="container mx-auto text-center">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             AI-Powered Maintenance Automation
-            <span className="block text-white/90 mt-2">For MIT Student Housing</span>
+            <span className="block text-primary">For University Student Housing</span>
           </h1>
-          <p className="text-xl text-white/90 mb-12 max-w-3xl mx-auto drop-shadow-md">
+          <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto">
             Revolutionize student housing maintenance with intelligent triage, automated contractor coordination, 
             and seamless request management. Reduce response times and improve student satisfaction.
           </p>
           
           {/* Student Section */}
-          <div className="mb-8 bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/20">
+          <div className="mb-8">
             <div className="flex items-center justify-center mb-4">
-              <GraduationCap className="h-6 w-6 text-primary mr-2" />
-              <h2 className="text-2xl font-bold text-primary">For Students</h2>
+              <GraduationCap className="h-6 w-6 text-blue-600 mr-2" />
+              <h2 className="text-2xl font-bold text-blue-600">For Students</h2>
             </div>
-            <p className="text-gray-700 mb-6 max-w-lg mx-auto">
+            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
               Submit maintenance requests quickly and track their progress. No account required.
             </p>
             
             {/* Primary AI Chat Option */}
             <div className="space-y-4">
-              <Button size="lg" asChild className="text-lg px-8 py-3 bg-gradient-to-r from-primary to-blue-700 hover:from-blue-700 hover:to-primary shadow-lg transform hover:scale-105 transition-all" data-testid="button-ai-chat">
+              <Button size="lg" asChild className="text-lg px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg transform hover:scale-105 transition-all" data-testid="button-ai-chat">
                 <a href="/student-mailla-triage">
                   <Bot className="h-5 w-5 mr-2" />
                   Chat with AI Assistant
                 </a>
               </Button>
               
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Get instant help with our AI-powered triage system
               </p>
               
               {/* Alternative Options */}
               <div className="pt-2 space-y-2">
-                <Button size="sm" variant="outline" asChild className="text-sm px-4 py-2 border-primary/30 text-primary hover:bg-primary/5" data-testid="button-traditional-form">
+                <Button size="sm" variant="outline" asChild className="text-sm px-4 py-2" data-testid="button-traditional-form">
                   <a href="/student-request">
                     <FileText className="h-4 w-4 mr-2" />
                     Use Traditional Form Instead
                   </a>
                 </Button>
                 
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   Already submitted a request?{" "}
-                  <a href="/student-tracking" className="text-primary hover:underline font-medium" data-testid="link-track-request">
+                  <a href="/student-tracking" className="text-blue-600 hover:underline" data-testid="link-track-request">
                     Track your request here
                   </a>
                 </div>
@@ -83,21 +76,21 @@ export default function Landing() {
 
           {/* Separator */}
           <div className="flex items-center justify-center my-8 max-w-md mx-auto">
-            <div className="flex-1 border-t border-white/30"></div>
-            <span className="px-4 text-sm text-white/70">OR</span>
-            <div className="flex-1 border-t border-white/30"></div>
+            <div className="flex-1 border-t border-muted"></div>
+            <span className="px-4 text-sm text-muted-foreground">OR</span>
+            <div className="flex-1 border-t border-muted"></div>
           </div>
 
           {/* Admin/Contractor Section */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+          <div>
             <div className="flex items-center justify-center mb-4">
-              <Wrench className="h-6 w-6 text-secondary mr-2" />
-              <h2 className="text-2xl font-bold text-secondary">For Staff & Contractors</h2>
+              <Wrench className="h-6 w-6 text-orange-600 mr-2" />
+              <h2 className="text-2xl font-bold text-orange-600">For Staff & Contractors</h2>
             </div>
-            <p className="text-gray-700 mb-4 max-w-lg mx-auto">
+            <p className="text-muted-foreground mb-4 max-w-lg mx-auto">
               Access the management dashboard to view requests, coordinate contractors, and track maintenance operations.
             </p>
-            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3 border-secondary text-secondary hover:bg-secondary/5 hover:border-secondary/70 shadow-md transition-all" data-testid="button-admin-login">
+            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 shadow-md transition-all" data-testid="button-admin-login">
               <a href="/api/login">🔧 Staff & Contractor Login</a>
             </Button>
           </div>

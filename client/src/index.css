@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 :root {
-  /* MIT Professional Color Scheme */
-  /* Navy Blue Primary - Distinguished and trustworthy */
-  /* Clean Gray Secondary - Modern elegance */
-  /* Balanced palette with subtle MIT touches */
+  /* Vibrant University Color Scheme */
+  /* Bright Blue Primary - Energetic and trustworthy */
+  /* Vibrant Red Accent - MIT heritage with energy */
+  /* Clean whites and bright contrasts */
   
   --background: hsl(0 0% 100%);
   --foreground: hsl(210 40% 8%);
@@ -14,32 +14,32 @@
   --card-foreground: hsl(210 40% 8%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(210 40% 8%);
-  --primary: hsl(210 100% 25%); /* MIT Navy Blue */
+  --primary: hsl(217 89% 61%); /* Vibrant Blue */
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(210 8% 55%); /* Professional Gray */
+  --secondary: hsl(217 89% 51%); /* Darker Vibrant Blue */
   --secondary-foreground: hsl(0 0% 100%);
-  --muted: hsl(210 20% 96%); /* Light Blue-Gray Tint */
-  --muted-foreground: hsl(210 15% 35%);
-  --accent: hsl(210 40% 98%); /* Very Light Blue */
-  --accent-foreground: hsl(210 100% 25%); /* Navy Blue for accent text */
-  --destructive: hsl(0 84% 60%); /* Red for alerts only */
+  --muted: hsl(217 33% 94%); /* Light Blue Tint */
+  --muted-foreground: hsl(215 25% 27%);
+  --accent: hsl(217 89% 96%); /* Very Light Blue */
+  --accent-foreground: hsl(217 89% 51%); /* Vibrant Blue for accent text */
+  --destructive: hsl(0 84% 60%); /* Vibrant Red */
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(210 20% 88%);
-  --input: hsl(210 20% 96%);
-  --ring: hsl(210 100% 25%); /* Navy Blue for focus rings */
-  --chart-1: hsl(210 100% 25%); /* MIT Navy Blue */
-  --chart-2: hsl(142 65% 35%); /* Professional Green */
-  --chart-3: hsl(45 85% 50%); /* Warm Gold */
-  --chart-4: hsl(210 8% 55%); /* Professional Gray */
-  --chart-5: hsl(350 66% 45%); /* Subtle Cardinal Accent */
-  --sidebar: hsl(210 20% 98%);
+  --border: hsl(217 33% 90%);
+  --input: hsl(217 33% 97%);
+  --ring: hsl(217 89% 61%); /* Vibrant Blue for focus rings */
+  --chart-1: hsl(217 89% 61%); /* Vibrant Blue */
+  --chart-2: hsl(142 72% 29%); /* Vibrant Green */
+  --chart-3: hsl(45 93% 47%); /* Vibrant Yellow */
+  --chart-4: hsl(271 81% 56%); /* Vibrant Purple */
+  --chart-5: hsl(0 84% 60%); /* Vibrant Red */
+  --sidebar: hsl(217 33% 98%);
   --sidebar-foreground: hsl(210 40% 8%);
-  --sidebar-primary: hsl(210 100% 25%); /* MIT Navy Blue */
+  --sidebar-primary: hsl(217 89% 61%); /* Vibrant Blue */
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(210 40% 98%);
-  --sidebar-accent-foreground: hsl(210 100% 25%); /* MIT Navy Blue */
-  --sidebar-border: hsl(210 20% 88%);
-  --sidebar-ring: hsl(210 100% 25%); /* MIT Navy Blue */
+  --sidebar-accent: hsl(217 89% 96%);
+  --sidebar-accent-foreground: hsl(217 89% 51%); /* Vibrant Blue */
+  --sidebar-border: hsl(217 33% 90%);
+  --sidebar-ring: hsl(217 89% 61%); /* Vibrant Blue */
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
