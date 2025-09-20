@@ -95,9 +95,9 @@ export default function Header({ title }: HeaderProps) {
                 className="h-6 w-auto flex-shrink-0 opacity-90"
                 data-testid="img-mit-logo"
               />
-              <div className="flex flex-col min-w-0 max-w-36 !bg-transparent">
+              <div className="flex flex-col min-w-0 max-w-28 !bg-transparent">
                 <h1 className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate" data-testid="text-header-title">Housing</h1>
-                <span className="text-xs text-gray-500 dark:text-gray-400 truncate" data-testid="text-subtitle">{title}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 truncate" data-testid="text-subtitle">Management</span>
               </div>
             </div>
           </div>
@@ -146,7 +146,7 @@ export default function Header({ title }: HeaderProps) {
           {/* Quick Add */}
           <Button onClick={() => setShowQuickAdd(true)} data-testid="button-quick-add">
             <Plus className="h-4 w-4 mr-2" />
-            Adding a maintenance
+            Quick Add
           </Button>
         </div>
       </header>

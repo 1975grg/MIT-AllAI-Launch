@@ -39,14 +39,9 @@ export default function Sidebar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full p-0 h-auto justify-start hover:bg-muted/50" data-testid="button-brand-menu">
               <div className="flex items-center space-x-3">
-                <img 
-                  src={mitLogoUrl} 
-                  alt="MIT" 
-                  className="h-8 w-auto"
-                />
                 <div className="flex flex-col">
-                  <span className="text-lg font-bold text-gray-800 dark:text-gray-200">MIT Student Housing</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">AI-Powered Campus Management</span>
+                  <span className="text-sm font-bold text-gray-800 dark:text-gray-200">Student Housing</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Campus Management</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground ml-1" />
               </div>

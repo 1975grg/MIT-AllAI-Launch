@@ -559,7 +559,7 @@ export default function MaintenancePage() {
               </div>
               <Button onClick={() => setShowCaseForm(true)} variant="ghost" className="hover:bg-pink-50 hover:text-pink-700" data-testid="button-create-case">
                 <Plus className="h-4 w-4 mr-2" />
-                Quick Add
+                Add a maintenance
               </Button>
             </div>
 
