@@ -5256,7 +5256,7 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
           smartCase.locationText || 'Location TBD',
         isEmergency: smartCase.priority === 'Urgent',
         requiresTenantAccess: true,
-        status: 'Scheduled'
+        status: 'Confirmed'
       });
 
       // Create case event for appointment scheduling
