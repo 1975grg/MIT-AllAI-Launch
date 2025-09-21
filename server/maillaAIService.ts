@@ -1069,6 +1069,23 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         throw new Error("Conversation not found");
       }
 
+      // 🎯 FIX: Check if case already exists for this conversation (prevent duplicates)
+      if (conversation.smartCaseId) {
+        console.log(`✅ Case already exists for conversation ${conversationId}: ${conversation.smartCaseId}`);
+        const existingCase = await storage.getSmartCase(conversation.smartCaseId);
+        if (existingCase) {
+          return {
+            success: true,
+            conversationId,
+            caseId: existingCase.id,
+            caseNumber: existingCase.caseNumber,
+            message: "Triage already completed. Existing maintenance case found.",
+            triageData: conversation.triageData,
+            safetyFlags: conversation.safetyFlags
+          };
+        }
+      }
+
       // Extract location data from triage
       const locationData = (conversation.triageData as any)?.location;
       const { propertyId, unitId, normalizedBuildingName } = this.getMITPropertyMapping(locationData?.buildingName, locationData?.roomNumber);
@@ -1358,30 +1375,34 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
 
       const recommendations = await aiCoordinatorService.findOptimalContractor(contractorRequest);
       
+      // 🎯 RESTORED APPROVAL WORKFLOW: Don't auto-assign contractors
+      // Cases should be created as "New" status so contractors can choose to accept them
+      // This preserves the contractor approval workflow: New → Scheduled → In Progress → Resolved
+      
       if (recommendations && recommendations.length > 0) {
         const bestContractor = recommendations[0];
         
-        // Assign contractor to the case
-        await storage.updateSmartCase(caseId, { 
-          contractorId: bestContractor.contractorId,
-          status: 'In Progress' as any
-        });
+        // ❌ REMOVED AUTO-ASSIGNMENT - Cases stay "New" for contractor approval
+        // await storage.updateSmartCase(caseId, { 
+        //   contractorId: bestContractor.contractorId,
+        //   status: 'In Progress' as any
+        // });
 
-        // Create assignment event
-        await this.createTicketEvent(caseId, conversationId, "contractor_assigned", 
-          `Contractor assigned: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match)`, {
-          contractorId: bestContractor.contractorId,
+        // 📝 Log recommended contractor but don't assign automatically
+        await this.createTicketEvent(caseId, conversationId, "contractor_recommended", 
+          `Contractor recommended: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match) - Available for acceptance`, {
+          recommendedContractorId: bestContractor.contractorId,
           contractorName: bestContractor.contractorName,
           matchScore: bestContractor.matchScore,
           estimatedResponseTime: bestContractor.estimatedResponseTime,
           reasoning: bestContractor.reasoning
         });
 
-        console.log(`✅ Contractor ${bestContractor.contractorName} assigned to case ${caseId}`);
+        console.log(`💡 Contractor ${bestContractor.contractorName} recommended for case ${caseId} - awaiting acceptance`);
       } else {
         console.log(`⚠️ No suitable contractor recommendations for case ${caseId}`);
         await this.createTicketEvent(caseId, conversationId, "assignment_deferred", 
-          "No suitable contractors found. Case requires manual review.");
+          "No suitable contractors found. Case available for any qualified contractor to accept.");
       }
 
     } catch (error) {
