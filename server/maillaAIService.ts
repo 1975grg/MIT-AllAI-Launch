@@ -1124,6 +1124,9 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
       // ✅ Start Post-Escalation Workflow
       await this.initiatePostEscalationWorkflow(caseId, conversationId, conversation);
 
+      // ✅ Send comprehensive notifications to admins and contractors
+      await this.sendCaseCreationNotifications(newCase, conversation);
+
       return {
         success: true,
         conversationId,
@@ -1973,6 +1976,71 @@ Questions? Just ask! I'm here to help coordinate your maintenance needs.`;
     description += `**Ticket created:** ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`;
     
     return description;
+  }
+
+  // ========================================
+  // NOTIFICATION INTEGRATION
+  // ========================================
+
+  /**
+   * Send comprehensive notifications when a case is created via Mailla AI triage
+   */
+  private async sendCaseCreationNotifications(newCase: any, conversation: any) {
+    try {
+      console.log(`📬 Sending notifications for AI-created case ${newCase.caseNumber}`);
+      
+      // Import notification service
+      const { notificationService } = await import('./notificationService.js');
+      
+      // Create notification data
+      const notificationData = {
+        to: '', // Will be filled per recipient
+        subject: `🚨 New Maintenance Case: ${newCase.caseNumber}`,
+        message: `A ${conversation.urgencyLevel} priority maintenance case has been created via AI triage:\n\n${newCase.description}`,
+        type: 'case_created' as const,
+        caseId: newCase.id,
+        caseNumber: newCase.caseNumber,
+        urgencyLevel: conversation.urgencyLevel,
+        metadata: {
+          buildingName: newCase.buildingName,
+          roomNumber: newCase.roomNumber,
+          category: newCase.category,
+          studentId: conversation.studentId,
+          safetyFlags: conversation.safetyFlags
+        }
+      };
+
+      // Send notifications to admins
+      await notificationService.notifyAdmins(notificationData, conversation.orgId);
+
+      // If urgent/emergency, immediately notify available contractors
+      if (['emergency', 'urgent'].includes(conversation.urgencyLevel?.toLowerCase())) {
+        console.log(`🚨 Emergency/Urgent case - notifying contractors immediately`);
+        
+        const storage = (await import('./storage.js')).storage;
+        const availableContractors = await storage.getVendors(conversation.orgId);
+        const activeContractors = availableContractors.filter(c => c.isActiveContractor);
+        
+        // Notify up to 3 available contractors for urgent cases
+        for (const contractor of activeContractors.slice(0, 3)) {
+          if (contractor.userId) {
+            const contractorNotification = {
+              ...notificationData,
+              subject: `🚨 URGENT: New Case Available - ${newCase.caseNumber}`,
+              message: `URGENT maintenance needed at ${newCase.buildingName || 'MIT Housing'}. Case: ${newCase.description.substring(0, 100)}...`,
+              type: 'contractor_assigned' as const
+            };
+            
+            await notificationService.notifyContractor(contractorNotification, contractor.userId);
+          }
+        }
+      }
+
+      console.log(`✅ Notifications sent for case ${newCase.caseNumber}`);
+    } catch (error) {
+      console.error('❌ Failed to send case creation notifications:', error);
+      // Don't throw - notification failures shouldn't block case creation
+    }
   }
 }
 

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { WebSocketServer, WebSocket } from 'ws';
 import { ObjectStorageService } from "./objectStorage";
 import { 
   insertOrganizationSchema,
@@ -5726,5 +5727,47 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
   });
 
   const httpServer = createServer(app);
+
+  // ✅ WebSocket Server for Real-time Notifications
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  wss.on('connection', (ws: WebSocket, req) => {
+    console.log('🔗 WebSocket connection established');
+    
+    // Handle WebSocket authentication and user identification
+    ws.on('message', (message) => {
+      try {
+        // Safely parse WebSocket message (can be Buffer or string)
+        const messageStr = message.toString();
+        const data = JSON.parse(messageStr);
+        
+        if (data.type === 'auth' && data.userId && data.role) {
+          // TODO: SECURITY: Implement proper auth validation here
+          // For now, we trust the client but this should validate against session
+          import('./notificationService.js')
+            .then(({ notificationService }) => {
+              notificationService.addWebSocketConnection(ws, data.userId, data.role);
+            })
+            .catch(error => {
+              console.error('❌ Failed to register WebSocket connection:', error);
+            });
+        }
+      } catch (error) {
+        console.error('❌ WebSocket message parsing error:', error);
+      }
+    });
+    
+    ws.on('close', () => {
+      // Import notification service and remove connection
+      import('./notificationService.js').then(({ notificationService }) => {
+        notificationService.removeWebSocketConnection(ws);
+      });
+    });
+    
+    ws.on('error', (error) => {
+      console.error('❌ WebSocket error:', error);
+    });
+  });
+
   return httpServer;
 }
