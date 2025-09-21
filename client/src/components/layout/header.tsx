@@ -132,16 +132,16 @@ export default function Header({ title }: HeaderProps) {
           </span>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
           {/* Search */}
-          <div className="relative">
+          <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               type="text"
               placeholder="Search housing facilities, students, maintenance..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-64"
+              className="pl-10 pr-4 py-2 w-48 lg:w-64"
               data-testid="input-search"
             />
           </div>
@@ -164,11 +164,14 @@ export default function Header({ title }: HeaderProps) {
           
           {/* Development Role Switcher */}
           {isDevMode && (
-            <div className="flex items-center space-x-2 shrink-0">
-              <div className="flex flex-col items-end space-y-1">
+            <div className="flex items-center space-x-2 shrink-0 min-w-0">
+              <div className="flex flex-col items-end space-y-1 min-w-0">
                 <Select value={previewRole || originalRole || 'admin'} onValueChange={handleRoleChange}>
-                  <SelectTrigger className="w-44 h-9 text-xs border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100">
-                    <div className="flex items-center space-x-2 w-full">
+                  <SelectTrigger 
+                    className="w-36 sm:w-40 md:w-44 h-9 text-xs border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100 max-w-[40vw]"
+                    title={`Current role: ${roleOptions.find(r => r.value === (previewRole || originalRole))?.label}`}
+                  >
+                    <div className="flex items-center space-x-2 w-full min-w-0">
                       <UserCheck className="h-3 w-3 shrink-0" />
                       <span className="truncate text-xs font-medium">
                         <SelectValue />
@@ -188,7 +191,7 @@ export default function Header({ title }: HeaderProps) {
                 </Select>
                 {isPreviewing && (
                   <div className="flex items-center space-x-1 bg-orange-100 px-2 py-1 rounded-md">
-                    <span className="text-xs text-orange-700 font-medium">Preview Mode</span>
+                    <span className="text-xs text-orange-700 font-medium whitespace-nowrap">Preview Mode</span>
                     <Button
                       variant="ghost"
                       size="sm"
