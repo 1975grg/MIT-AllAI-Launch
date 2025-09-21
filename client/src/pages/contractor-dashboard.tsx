@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, Filter, Heart, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import ContractorAvailability from "@/pages/contractor-availability";
@@ -27,6 +28,7 @@ interface ContractorCase {
   locationText?: string;
   estimatedCost?: number;
   actualCost?: number;
+  contractorId?: string; // 🎯 Added for appointment creation
   createdAt: string;
   updatedAt: string;
 }
@@ -55,6 +57,7 @@ const PRIORITY_COLORS = {
 
 const STATUS_COLORS = {
   New: "text-blue-700 border-blue-300",
+  Assigned: "text-cyan-700 border-cyan-300", // 🎯 Added missing 'Assigned' status
   "In Review": "text-amber-700 border-amber-300",
   Scheduled: "text-purple-700 border-purple-300",
   "In Progress": "text-orange-600 border-orange-300",
@@ -64,6 +67,139 @@ const STATUS_COLORS = {
   Pending: "text-blue-700 border-blue-300",
   Confirmed: "text-green-700 border-green-300",
   Completed: "text-green-700 border-green-300"
+};
+
+// 🎯 CaseCard Component with Favorite Functionality
+const CaseCard = ({ 
+  case_, 
+  isFavorite, 
+  onToggleFavorite, 
+  onAcceptCase, 
+  updateCaseStatus, 
+  acceptCaseMutation 
+}: { 
+  case_: ContractorCase, 
+  isFavorite: boolean, 
+  onToggleFavorite: (caseId: string) => void,
+  onAcceptCase: (case_: ContractorCase) => void,
+  updateCaseStatus: any,
+  acceptCaseMutation: any
+}) => {
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case "Urgent":
+        return <AlertTriangle className="h-4 w-4 text-orange-600" />;
+      case "High":
+        return <AlertTriangle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg flex items-center gap-2">
+              {getPriorityIcon(case_.priority)}
+              {case_.title}
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {case_.buildingName && case_.roomNumber ? 
+                `${case_.buildingName} - Room ${case_.roomNumber}` : 
+                case_.locationText || 'Location TBD'
+              }
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* 🌟 Favorite Heart Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => onToggleFavorite(case_.id)}
+              data-testid={`button-favorite-${case_.id}`}
+            >
+              <Heart 
+                className={`h-4 w-4 ${isFavorite 
+                  ? 'text-red-500 fill-red-500' 
+                  : 'text-gray-400 hover:text-red-400'
+                }`} 
+              />
+            </Button>
+            <div className="flex flex-col gap-2">
+              <Badge variant="outline" className={PRIORITY_COLORS[case_.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
+                {case_.priority}
+              </Badge>
+              <Badge variant="outline" className={STATUS_COLORS[case_.status as keyof typeof STATUS_COLORS] || "bg-gray-100"}>
+                {case_.status}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">{case_.description}</p>
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <MapPin className="h-4 w-4" />
+              <span>{case_.category}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              <span>{formatDateTime(case_.createdAt)}</span>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            {case_.status === "New" && (
+              <Button
+                size="sm"
+                onClick={() => onAcceptCase(case_)}
+                disabled={acceptCaseMutation.isPending}
+                data-testid={`button-accept-case-${case_.id}`}
+              >
+                🎯 Accept Case
+              </Button>
+            )}
+            {case_.status === "Scheduled" && (
+              <Button
+                size="sm"
+                onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Progress" })}
+                disabled={updateCaseStatus.isPending}
+                data-testid={`button-start-case-${case_.id}`}
+              >
+                🚀 Start Work
+              </Button>
+            )}
+            {case_.status === "In Progress" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "Resolved" })}
+                disabled={updateCaseStatus.isPending}
+                data-testid={`button-complete-case-${case_.id}`}
+              >
+                Mark Complete
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default function ContractorDashboard() {
@@ -78,6 +214,11 @@ export default function ContractorDashboard() {
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [acceptNotes, setAcceptNotes] = useState("");
+
+  // 🔍 Filter State
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [typeFilter, setTypeFilter] = useState<string>("All");
+  const [favoriteCases, setFavoriteCases] = useState<Set<string>>(new Set());
 
   // Get current user for live notifications
   const { data: user } = useQuery({
@@ -282,6 +423,44 @@ export default function ContractorDashboard() {
     });
   };
 
+  // 🔍 Filtering Logic
+  const toggleFavorite = (caseId: string) => {
+    setFavoriteCases(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(caseId)) {
+        newFavorites.delete(caseId);
+      } else {
+        newFavorites.add(caseId);
+      }
+      return newFavorites;
+    });
+  };
+
+  // Extract case type from title or category
+  const getCaseType = (case_: ContractorCase) => {
+    const title = case_.title.toUpperCase();
+    if (title.includes('HVAC')) return 'HVAC';
+    if (title.includes('ELECTRICAL')) return 'Electrical';
+    if (title.includes('PLUMBING')) return 'Plumbing';
+    if (title.includes('HEATING')) return 'Heating';
+    if (title.includes('COOLING')) return 'Cooling';
+    return case_.category || 'General';
+  };
+
+  // Get unique case types for filter dropdown
+  const uniqueCaseTypes = Array.from(new Set(assignedCases.map(getCaseType)));
+
+  // Filter cases based on status, type, and favorites
+  const filteredCases = assignedCases.filter((case_: ContractorCase) => {
+    const matchesStatus = statusFilter === "All" || case_.status === statusFilter;
+    const matchesType = typeFilter === "All" || getCaseType(case_) === typeFilter;
+    return matchesStatus && matchesType;
+  });
+
+  // Separate favorite cases for display
+  const favoriteCasesFiltered = filteredCases.filter(c => favoriteCases.has(c.id));
+  const regularCasesFiltered = filteredCases.filter(c => !favoriteCases.has(c.id));
+
   return (
     <div className="min-h-screen bg-muted/30">
       <Header title="Contractor Dashboard" />
@@ -348,6 +527,58 @@ export default function ContractorDashboard() {
           </Card>
         </div>
 
+        {/* 🔍 Filter Controls */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                <span className="text-sm font-medium">Filters:</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Label htmlFor="status-filter" className="text-sm">Status:</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="status-filter" className="w-[140px]" data-testid="select-status-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Status</SelectItem>
+                    <SelectItem value="New">New</SelectItem>
+                    <SelectItem value="Assigned">Assigned</SelectItem>
+                    <SelectItem value="Scheduled">Scheduled</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Resolved">Resolved</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="type-filter" className="text-sm">Type:</Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger id="type-filter" className="w-[140px]" data-testid="select-type-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Types</SelectItem>
+                    {uniqueCaseTypes.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <Star className="h-4 w-4 text-yellow-500" />
+                <span className="text-sm">
+                  {favoriteCases.size} Favorite{favoriteCases.size !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList className="grid w-full grid-cols-3">
@@ -363,95 +594,62 @@ export default function ContractorDashboard() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Loading cases...</p>
                 </div>
-              ) : assignedCases.length === 0 ? (
+              ) : filteredCases.length === 0 ? (
                 <Card>
                   <CardContent className="text-center py-8">
                     <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Cases Assigned</h3>
-                    <p className="text-muted-foreground">You don't have any maintenance cases assigned at the moment.</p>
+                    <h3 className="text-lg font-medium mb-2">No Cases Found</h3>
+                    <p className="text-muted-foreground">No cases match your current filters.</p>
                   </CardContent>
                 </Card>
               ) : (
-                assignedCases.map((case_: ContractorCase) => (
-                  <Card key={case_.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            {getPriorityIcon(case_.priority)}
-                            {case_.title}
-                          </CardTitle>
-                          <CardDescription className="mt-1">
-                            {case_.buildingName && case_.roomNumber ? 
-                              `${case_.buildingName} - Room ${case_.roomNumber}` : 
-                              case_.locationText || 'Location TBD'
-                            }
-                          </CardDescription>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge variant="outline" className={PRIORITY_COLORS[case_.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
-                            {case_.priority}
-                          </Badge>
-                          <Badge variant="outline" className={STATUS_COLORS[case_.status as keyof typeof STATUS_COLORS] || "bg-gray-100"}>
-                            {case_.status}
-                          </Badge>
-                        </div>
+                <>
+                  {/* 🌟 Favorite Cases First */}
+                  {favoriteCasesFiltered.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                        Favorite Cases ({favoriteCasesFiltered.length})
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">{case_.description}</p>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            <span>{case_.category}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{formatDateTime(case_.createdAt)}</span>
-                          </div>
+                      {favoriteCasesFiltered.map((case_: ContractorCase) => (
+                        <CaseCard 
+                          key={`favorite-${case_.id}`} 
+                          case_={case_} 
+                          isFavorite={true} 
+                          onToggleFavorite={toggleFavorite}
+                          onAcceptCase={handleAcceptCase}
+                          updateCaseStatus={updateCaseStatus}
+                          acceptCaseMutation={acceptCaseMutation}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Regular Cases */}
+                  {regularCasesFiltered.length > 0 && (
+                    <div className="space-y-4">
+                      {favoriteCasesFiltered.length > 0 && (
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground pt-4">
+                          <span>Other Cases ({regularCasesFiltered.length})</span>
                         </div>
-                        
-                        <div className="flex gap-2">
-                          {case_.status === "New" && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptCase(case_)}
-                              disabled={acceptCaseMutation.isPending}
-                              data-testid={`button-accept-case-${case_.id}`}
-                            >
-                              🎯 Accept Case
-                            </Button>
-                          )}
-                          {case_.status === "Scheduled" && (
-                            <Button
-                              size="sm"
-                              onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Progress" })}
-                              disabled={updateCaseStatus.isPending}
-                              data-testid={`button-start-case-${case_.id}`}
-                            >
-                              🚀 Start Work
-                            </Button>
-                          )}
-                          {case_.status === "In Progress" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "Resolved" })}
-                              disabled={updateCaseStatus.isPending}
-                              data-testid={`button-complete-case-${case_.id}`}
-                            >
-                              Mark Complete
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      )}
+                      {regularCasesFiltered.map((case_: ContractorCase) => (
+                        <CaseCard 
+                          key={case_.id} 
+                          case_={case_} 
+                          isFavorite={false} 
+                          onToggleFavorite={toggleFavorite}
+                          onAcceptCase={handleAcceptCase}
+                          updateCaseStatus={updateCaseStatus}
+                          acceptCaseMutation={acceptCaseMutation}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
+
           </TabsContent>
 
           <TabsContent value="appointments" className="mt-6">
