@@ -5246,6 +5246,7 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
       const appointment = await storage.createAppointment({
         caseId,
         contractorId: contractor.id,
+        orgId: org.id, // 🎯 FIXED: Add missing orgId
         title: `Maintenance Visit - ${smartCase.title}`,
         description: `Scheduled maintenance visit for: ${smartCase.description}`,
         scheduledStartAt: scheduledDate,
