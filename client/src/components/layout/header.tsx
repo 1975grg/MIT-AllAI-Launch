@@ -12,7 +12,7 @@ import QuickAddModal from "@/components/modals/quick-add-modal";
 import ReminderForm from "@/components/forms/reminder-form";
 import { useAuth, UserRole } from "@/hooks/useAuth";
 import { useRolePreview } from "@/hooks/useRolePreview";
-import { Search, Bell, Plus, Settings } from "lucide-react";
+import { Search, Bell, Plus, Settings, UserCheck, RefreshCw } from "lucide-react";
 import type { Notification, Property, OwnershipEntity, Unit } from "@shared/schema";
 import mitLogoUrl from "@assets/generated_images/MIT_logo_black_transparent_d4456daa.png";
 
@@ -23,10 +23,36 @@ interface HeaderProps {
 export default function Header({ title }: HeaderProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { previewRole, setPreviewRole, isPreviewing, originalRole, isDevMode } = useRolePreview();
+  const { previewRole, setPreviewRole, isPreviewing, originalRole, isDevMode, effectiveRole } = useRolePreview();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Role options for the switcher
+  const roleOptions: { value: UserRole; label: string; description: string }[] = [
+    { value: 'admin', label: 'Admin', description: 'Full system access and case management' },
+    { value: 'vendor', label: 'Contractor', description: 'Maintenance cases and availability' },
+    { value: 'manager', label: 'Manager', description: 'Property management access' },
+    { value: 'staff', label: 'Staff', description: 'Staff level access' }
+  ];
+
+  const handleRoleChange = (newRole: UserRole) => {
+    setPreviewRole(newRole);
+    toast({
+      title: "Role Preview Active",
+      description: `Now viewing as ${roleOptions.find(r => r.value === newRole)?.label}`,
+      duration: 2000
+    });
+  };
+
+  const resetRole = () => {
+    setPreviewRole(null);
+    toast({
+      title: "Role Preview Cleared",
+      description: `Back to your ${originalRole} role`,
+      duration: 2000
+    });
+  };
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -136,11 +162,44 @@ export default function Header({ title }: HeaderProps) {
             )}
           </Button>
           
-          {/* Dev Role Preview Toggle - Removed white box */}
-          {isDevMode && isPreviewing && (
-            <span className="text-xs text-gray-600 dark:text-gray-400">
-              Preview Mode
-            </span>
+          {/* Development Role Switcher */}
+          {isDevMode && (
+            <div className="flex items-center space-x-2">
+              <div className="flex flex-col items-end">
+                <Select value={previewRole || originalRole || 'admin'} onValueChange={handleRoleChange}>
+                  <SelectTrigger className="w-32 h-8 text-xs border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100">
+                    <div className="flex items-center space-x-1">
+                      <UserCheck className="h-3 w-3" />
+                      <SelectValue />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{role.label}</span>
+                          <span className="text-xs text-muted-foreground">{role.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isPreviewing && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <span className="text-xs text-orange-600 font-medium">Preview Mode</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={resetRole}
+                      className="h-4 w-4 p-0 text-orange-600 hover:text-orange-800"
+                      data-testid="button-reset-role"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
           
           {/* Quick Add */}
