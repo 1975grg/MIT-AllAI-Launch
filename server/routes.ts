@@ -5312,6 +5312,23 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     } catch (error) {
       console.error("Error accepting case:", error);
       
+      // 🚨 CRITICAL: Rollback case status if appointment creation fails
+      // Only rollback if the case status was changed to "Scheduled" but appointment creation failed
+      try {
+        const rollbackCase = await storage.getSmartCase(caseId);
+        if (rollbackCase && rollbackCase.status === "Scheduled") {
+          await storage.updateSmartCase(caseId, {
+            status: "New", // Reset to original status for contractor choice
+            contractorId: null, // Clear contractor assignment
+            reviewedBy: null,
+            reviewedAt: null
+          });
+          console.log(`🔄 Rolled back case ${caseId} status from "Scheduled" to "New" due to appointment creation failure`);
+        }
+      } catch (rollbackError) {
+        console.error("Error during case status rollback:", rollbackError);
+      }
+      
       // 🎯 Handle scheduling conflicts with helpful message
       if ((error as any).constraint === 'exclude_contractor_time_overlap') {
         return res.status(409).json({ 
@@ -5322,7 +5339,7 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
       // 🎯 Handle other known constraints
       if ((error as any).code === '23P01' || (error as any).message?.includes('exclude_contractor_time_overlap')) {
         return res.status(409).json({ 
-          message: "Time slot unavailable: You already have an appointment scheduled during this time. Please select a different date or time." 
+          message: "Scheduling conflict: You already have an appointment at this time. Please choose a different time slot." 
         });
       }
       

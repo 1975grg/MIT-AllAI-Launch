@@ -320,11 +320,42 @@ export default function ContractorDashboard() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Accept Failed",
-        description: error?.message || "Failed to accept case. Please try again.",
-        variant: "destructive"
-      });
+      // 🚨 CRITICAL: Handle scheduling conflicts and state sync issues
+      
+      // Always refresh data to get current backend state
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/cases'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/appointments'] });
+      
+      // Parse error message to provide specific feedback
+      const errorMessage = error?.message || "Unknown error occurred";
+      
+      if (errorMessage.includes("Scheduling conflict") || errorMessage.includes("conflicts with existing")) {
+        toast({
+          title: "Scheduling Conflict ⚠️",
+          description: "This time slot conflicts with another appointment. Please choose a different time.",
+          variant: "destructive"
+        });
+        // Keep dialog open so user can pick different time
+      } else if (errorMessage.includes("Cannot accept case")) {
+        toast({
+          title: "Case No Longer Available 🚫",
+          description: "This case has already been accepted by another contractor or its status has changed.",
+          variant: "destructive"
+        });
+        // Close dialog since case is no longer available
+        setAcceptDialogOpen(false);
+        setAcceptingCase(null);
+        setScheduledDate("");
+        setScheduledTime("");
+        setAcceptNotes("");
+      } else {
+        toast({
+          title: "Accept Failed ❌",
+          description: `Failed to accept case: ${errorMessage}`,
+          variant: "destructive"
+        });
+        // Keep dialog open for retry on generic errors
+      }
     }
   });
 
