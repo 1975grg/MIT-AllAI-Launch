@@ -5156,6 +5156,9 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         // Check both contractorId field and AI routing assignment
         if (c.contractorId === contractor.id) return true;
         
+        // 🎯 Include "New" unassigned cases that contractors can accept
+        if (c.status === 'New' && !c.contractorId) return true;
+        
         // Fallback to AI triage routing data
         const aiData = c.aiTriageJson as any;
         return aiData?.routing?.assignedContractor === contractor.id;
