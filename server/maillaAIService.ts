@@ -390,7 +390,16 @@ export class MaillaAIService {
 
         // 🧠 SMART TRIAGE: Restore AI intelligence with expanded auto-create conditions
         const hasLocation = !!(updatedLocation.buildingName && updatedLocation.roomNumber);
-        const hasIssueType = !!(updatedSlots.issueSummary || studentMessage?.includes('heating') || studentMessage?.includes('plumbing') || studentMessage?.includes('electrical') || studentMessage?.includes('water') || studentMessage?.includes('leak') || studentMessage?.includes('broken'));
+        // 🎯 EXPANDED: Better issue detection with more maintenance keywords
+        const hasIssueType = !!(updatedSlots.issueSummary || 
+          // HVAC issues
+          studentMessage?.includes('heating') || studentMessage?.includes('cooling') || studentMessage?.includes('hvac') || studentMessage?.includes('temperature') || studentMessage?.includes('thermostat') ||
+          // Plumbing issues  
+          studentMessage?.includes('plumbing') || studentMessage?.includes('water') || studentMessage?.includes('leak') || studentMessage?.includes('dripping') || studentMessage?.includes('faucet') || studentMessage?.includes('sink') || studentMessage?.includes('toilet') || studentMessage?.includes('shower') || studentMessage?.includes('drain') ||
+          // Electrical issues
+          studentMessage?.includes('electrical') || studentMessage?.includes('outlet') || studentMessage?.includes('power') || studentMessage?.includes('light') || studentMessage?.includes('switch') ||
+          // General maintenance  
+          studentMessage?.includes('broken') || studentMessage?.includes('not working') || studentMessage?.includes('stuck') || studentMessage?.includes('damaged') || studentMessage?.includes('repair'));
         const hasBasicInfo = hasLocation && hasIssueType;
         
         // 🎯 FIXED: More conservative auto-create conditions - require explicit AI completion decision
