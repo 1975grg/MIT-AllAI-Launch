@@ -542,7 +542,7 @@ export default function ContractorDashboard() {
                   <SelectTrigger id="status-filter" className="w-[140px]" data-testid="select-status-filter">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background text-foreground">
                     <SelectItem value="All">All Status</SelectItem>
                     <SelectItem value="New">New</SelectItem>
                     <SelectItem value="Assigned">Assigned</SelectItem>
@@ -560,7 +560,7 @@ export default function ContractorDashboard() {
                   <SelectTrigger id="type-filter" className="w-[140px]" data-testid="select-type-filter">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background text-foreground">
                     <SelectItem value="All">All Types</SelectItem>
                     {uniqueCaseTypes.map(type => (
                       <SelectItem key={type} value={type}>{type}</SelectItem>
