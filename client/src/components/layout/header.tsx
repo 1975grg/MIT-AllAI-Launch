@@ -164,13 +164,15 @@ export default function Header({ title }: HeaderProps) {
           
           {/* Development Role Switcher */}
           {isDevMode && (
-            <div className="flex items-center space-x-2 min-w-0">
-              <div className="flex flex-col items-end min-w-0">
+            <div className="flex items-center space-x-2 shrink-0">
+              <div className="flex flex-col items-end space-y-1">
                 <Select value={previewRole || originalRole || 'admin'} onValueChange={handleRoleChange}>
-                  <SelectTrigger className="w-36 h-8 text-xs border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100">
-                    <div className="flex items-center space-x-1 truncate">
-                      <UserCheck className="h-3 w-3 flex-shrink-0" />
-                      <SelectValue />
+                  <SelectTrigger className="w-44 h-9 text-xs border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100">
+                    <div className="flex items-center space-x-2 w-full">
+                      <UserCheck className="h-3 w-3 shrink-0" />
+                      <span className="truncate text-xs font-medium">
+                        <SelectValue />
+                      </span>
                     </div>
                   </SelectTrigger>
                   <SelectContent>
@@ -185,14 +187,15 @@ export default function Header({ title }: HeaderProps) {
                   </SelectContent>
                 </Select>
                 {isPreviewing && (
-                  <div className="flex items-center space-x-1 mt-1">
-                    <span className="text-xs text-orange-600 font-medium whitespace-nowrap">Preview Mode</span>
+                  <div className="flex items-center space-x-1 bg-orange-100 px-2 py-1 rounded-md">
+                    <span className="text-xs text-orange-700 font-medium">Preview Mode</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={resetRole}
-                      className="h-4 w-4 p-0 text-orange-600 hover:text-orange-800 flex-shrink-0"
+                      className="h-5 w-5 p-0 text-orange-600 hover:text-orange-800 shrink-0"
                       data-testid="button-reset-role"
+                      title="Reset to original role"
                     >
                       <RefreshCw className="h-3 w-3" />
                     </Button>
