@@ -4,6 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -67,6 +71,13 @@ export default function ContractorDashboard() {
   const [selectedTab, setSelectedTab] = useState("cases");
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  
+  // 🎯 Accept Case Dialog State
+  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
+  const [acceptingCase, setAcceptingCase] = useState<ContractorCase | null>(null);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [acceptNotes, setAcceptNotes] = useState("");
 
   // Get current user for live notifications
   const { data: user } = useQuery({
@@ -134,6 +145,45 @@ export default function ContractorDashboard() {
     }
   });
 
+  // 🎯 NEW! Accept Case with Scheduling Mutation
+  const acceptCaseMutation = useMutation({
+    mutationFn: async ({ caseId, scheduledDateTime, notes }: { 
+      caseId: string; 
+      scheduledDateTime: string; 
+      notes?: string 
+    }) => {
+      return await apiRequest("POST", `/api/contractor/accept-case`, { 
+        caseId,
+        scheduledDateTime,
+        notes
+      });
+    },
+    onSuccess: (data) => {
+      // Refresh case data
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/cases'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/appointments'] });
+      
+      // Close dialog and reset state
+      setAcceptDialogOpen(false);
+      setAcceptingCase(null);
+      setScheduledDate("");
+      setScheduledTime("");
+      setAcceptNotes("");
+      
+      toast({
+        title: "Case Accepted! 🎉",
+        description: data.message || "Case has been accepted and scheduled successfully."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Accept Failed",
+        description: error?.message || "Failed to accept case. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
@@ -196,17 +246,39 @@ export default function ContractorDashboard() {
     }
   });
 
-  // Handle scheduling appointment
-  const handleScheduleAppointment = (caseId: string) => {
-    setSelectedCaseId(caseId);
-    // Quick schedule for tomorrow at 10 AM (in production, would show date/time picker)
+  // 🎯 Handle opening Accept Case dialog
+  const handleAcceptCase = (case_: ContractorCase) => {
+    setAcceptingCase(case_);
+    
+    // Set default date to tomorrow, default time to 10:00 AM
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(10, 0, 0, 0);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
     
-    createAppointmentMutation.mutate({ 
-      caseId, 
-      scheduledStartAt: tomorrow.toISOString() 
+    setScheduledDate(tomorrowStr);
+    setScheduledTime("10:00");
+    setAcceptNotes("");
+    setAcceptDialogOpen(true);
+  };
+
+  // 🎯 Handle Accept Case form submission
+  const handleAcceptSubmit = () => {
+    if (!acceptingCase || !scheduledDate || !scheduledTime) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a date and time for your visit.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Combine date and time into ISO string
+    const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
+
+    acceptCaseMutation.mutate({
+      caseId: acceptingCase.id,
+      scheduledDateTime,
+      notes: acceptNotes.trim() || undefined
     });
   };
 
@@ -343,46 +415,24 @@ export default function ContractorDashboard() {
                         
                         <div className="flex gap-2">
                           {case_.status === "New" && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Review" })}
-                                disabled={updateCaseStatus.isPending}
-                                data-testid={`button-accept-case-${case_.id}`}
-                              >
-                                Accept Job
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleScheduleAppointment(case_.id)}
-                                disabled={updateCaseStatus.isPending}
-                                data-testid={`button-schedule-case-${case_.id}`}
-                              >
-                                Schedule Appointment
-                              </Button>
-                            </>
+                            <Button
+                              size="sm"
+                              onClick={() => handleAcceptCase(case_)}
+                              disabled={acceptCaseMutation.isPending}
+                              data-testid={`button-accept-case-${case_.id}`}
+                            >
+                              🎯 Accept Case
+                            </Button>
                           )}
-                          {case_.status === "In Review" && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Progress" })}
-                                disabled={updateCaseStatus.isPending}
-                                data-testid={`button-start-case-${case_.id}`}
-                              >
-                                Start Work
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleScheduleAppointment(case_.id)}
-                                disabled={updateCaseStatus.isPending}
-                                data-testid={`button-schedule-case-${case_.id}`}
-                              >
-                                Schedule Visit
-                              </Button>
-                            </>
+                          {case_.status === "Scheduled" && (
+                            <Button
+                              size="sm"
+                              onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "In Progress" })}
+                              disabled={updateCaseStatus.isPending}
+                              data-testid={`button-start-case-${case_.id}`}
+                            >
+                              🚀 Start Work
+                            </Button>
                           )}
                           {case_.status === "In Progress" && (
                             <Button
@@ -533,6 +583,80 @@ export default function ContractorDashboard() {
           userId={user.id} 
         />
       )}
+
+      {/* 🎯 Accept Case Dialog */}
+      <Dialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Accept Case & Schedule Visit</DialogTitle>
+            <DialogDescription>
+              {acceptingCase && (
+                <>
+                  Schedule your visit for <strong>{acceptingCase.title}</strong> at{" "}
+                  {acceptingCase.buildingName && acceptingCase.roomNumber 
+                    ? `${acceptingCase.buildingName} - Room ${acceptingCase.roomNumber}`
+                    : acceptingCase.locationText || "the specified location"
+                  }
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="scheduled-date">Visit Date</Label>
+                <Input
+                  id="scheduled-date"
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  data-testid="input-scheduled-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="scheduled-time">Visit Time</Label>
+                <Input
+                  id="scheduled-time"
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  data-testid="input-scheduled-time"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="accept-notes">Notes (Optional)</Label>
+              <Textarea
+                id="accept-notes"
+                placeholder="Any special instructions or requirements..."
+                value={acceptNotes}
+                onChange={(e) => setAcceptNotes(e.target.value)}
+                data-testid="textarea-accept-notes"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setAcceptDialogOpen(false)}
+              data-testid="button-cancel-accept"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAcceptSubmit}
+              disabled={acceptCaseMutation.isPending || !scheduledDate || !scheduledTime}
+              data-testid="button-confirm-accept"
+            >
+              {acceptCaseMutation.isPending ? "Accepting..." : "🎯 Accept & Schedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

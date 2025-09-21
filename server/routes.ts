@@ -5168,6 +5168,145 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     }
   });
 
+  // 🎯 Accept Case with Scheduling Endpoint
+  app.post('/api/contractor/accept-case', isAuthenticated, requireVendor, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // 🎯 ZOD VALIDATION as per project guidelines
+      const acceptCaseSchema = z.object({
+        caseId: z.string().min(1, "Case ID is required"),
+        scheduledDateTime: z.string().datetime("Invalid date/time format"),
+        notes: z.string().optional()
+      });
+
+      const parseResult = acceptCaseSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      const { caseId, scheduledDateTime, notes } = parseResult.data;
+
+      const org = await storage.getUserOrganization(userId);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+
+      // Find contractor
+      const allVendors = await storage.getVendors(org.id);
+      const contractor = allVendors.find(v => 
+        v.userId === userId || (!v.userId && v.email === req.user.claims.email)
+      );
+
+      if (!contractor) {
+        return res.status(403).json({ message: "Contractor profile not found" });
+      }
+
+      // Get the case to validate it's assigned to this contractor
+      const allCases = await storage.getSmartCases(org.id);
+      const smartCase = allCases.find(c => c.id === caseId);
+      if (!smartCase) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // Verify case is assigned to this contractor
+      const isAssignedToContractor = smartCase.contractorId === contractor.id || 
+        (smartCase.aiTriageJson as any)?.routing?.assignedContractor === contractor.id;
+
+      if (!isAssignedToContractor) {
+        return res.status(403).json({ message: "Case not assigned to this contractor" });
+      }
+
+      // Verify case is in acceptable status for accepting
+      if (!["New", "Assigned"].includes(smartCase.status || "")) {
+        return res.status(409).json({ 
+          message: `Cannot accept case with status "${smartCase.status}". Only New or Assigned cases can be accepted.` 
+        });
+      }
+
+      // Validate scheduled date/time is in future
+      const scheduledDate = new Date(scheduledDateTime);
+      if (scheduledDate <= new Date()) {
+        return res.status(400).json({ 
+          message: "Scheduled date/time must be in the future." 
+        });
+      }
+
+      // Update case status to "Scheduled"
+      const updatedCase = await storage.updateSmartCase(caseId, {
+        status: "Scheduled",
+        reviewedBy: userId,
+        reviewedAt: new Date(),
+        contractorId: contractor.id // Ensure contractor ID is set
+      });
+
+      // 🎯 CREATE THE ACTUAL APPOINTMENT RECORD
+      const appointmentEndTime = new Date(scheduledDate.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+      const appointment = await storage.createAppointment({
+        caseId,
+        contractorId: contractor.id,
+        title: `Maintenance Visit - ${smartCase.title}`,
+        description: `Scheduled maintenance visit for: ${smartCase.description}`,
+        scheduledStartAt: scheduledDate,
+        scheduledEndAt: appointmentEndTime,
+        priority: smartCase.priority || 'Medium',
+        locationDetails: smartCase.buildingName && smartCase.roomNumber ? 
+          `${smartCase.buildingName} - Room ${smartCase.roomNumber}` : 
+          smartCase.locationText || 'Location TBD',
+        isEmergency: smartCase.priority === 'Urgent',
+        requiresTenantAccess: true,
+        status: 'Scheduled'
+      });
+
+      // Create case event for appointment scheduling
+      await storage.createTicketEvent({
+        caseId,
+        type: "appointment_scheduled",
+        description: `Appointment scheduled for ${new Date(scheduledDateTime).toLocaleString()} by ${contractor.name}${notes ? ` - Notes: ${notes}` : ''}`,
+        metadata: {
+          scheduledBy: contractor.id,
+          scheduledDateTime,
+          contractorName: contractor.name,
+          notes
+        }
+      });
+
+      // 🔔 Send WebSocket notification (SCOPED BY ORG for security)
+      if (global.wss) {
+        const notificationData = {
+          type: 'case_accepted',
+          orgId: org.id, // 🚨 CRITICAL: Include orgId for filtering
+          caseId,
+          caseNumber: smartCase.caseNumber,
+          title: smartCase.title,
+          contractor: contractor.name,
+          scheduledDateTime,
+          status: 'Scheduled'
+        };
+        
+        // 🚨 SECURITY FIX: Only send to clients in the same organization
+        global.wss.clients.forEach((client: any) => {
+          if (client.readyState === 1 && client.orgId === org.id) { // WebSocket.OPEN + same org
+            client.send(JSON.stringify(notificationData));
+          }
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        case: updatedCase,
+        appointment: appointment, // 🎯 Include created appointment data
+        orgId: org.id, // Include orgId for client filtering
+        message: `Case accepted and scheduled for ${new Date(scheduledDateTime).toLocaleString()}`
+      });
+
+    } catch (error) {
+      console.error("Error accepting case:", error);
+      res.status(500).json({ message: "Failed to accept case" });
+    }
+  });
+
   app.get('/api/contractor/appointments', isAuthenticated, requireVendor, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
