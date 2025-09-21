@@ -5213,11 +5213,15 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         return res.status(404).json({ message: "Case not found" });
       }
 
-      // Verify case is assigned to this contractor
+      // 🎯 Allow self-assignment for unassigned New cases OR verify existing assignment
+      const isUnassignedNewCase = !smartCase.contractorId && 
+        !(smartCase.aiTriageJson as any)?.routing?.assignedContractor && 
+        smartCase.status === "New";
+      
       const isAssignedToContractor = smartCase.contractorId === contractor.id || 
         (smartCase.aiTriageJson as any)?.routing?.assignedContractor === contractor.id;
 
-      if (!isAssignedToContractor) {
+      if (!isUnassignedNewCase && !isAssignedToContractor) {
         return res.status(403).json({ message: "Case not assigned to this contractor" });
       }
 
