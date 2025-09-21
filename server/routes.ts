@@ -5134,29 +5134,21 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
   app.get('/api/contractor/cases', isAuthenticated, requireVendor, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      console.log(`🔍 Contractor cases lookup for userId: ${userId}`);
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
       
       // Find contractor by user ID (preferred) with fallback to email
       const allVendors = await storage.getVendors(org.id);
-      console.log(`🔍 Found ${allVendors.length} vendors in org ${org.id}`);
-      console.log(`🔍 Looking for contractor with userId: ${userId} (type: ${typeof userId})`);
-      
-      const contractor = allVendors.find(v => {
-        console.log(`🔍 Checking vendor: ${v.name}, userId: ${v.userId} (type: ${typeof v.userId}), email: ${v.email}`);
-        const userIdMatch = v.userId === userId;
-        const emailMatch = !v.userId && v.email === req.user.claims.email;
-        console.log(`🔍 User ID match: ${userIdMatch}, Email match: ${emailMatch}`);
-        return userIdMatch || emailMatch;
-      });
+      const contractor = allVendors.find(v => 
+        // Primary: match by user ID if available
+        v.userId === userId ||
+        // Fallback: match by email only if userId is not set
+        (!v.userId && v.email === req.user.claims.email)
+      );
       
       if (!contractor) {
-        console.log(`❌ No contractor found for user ${userId}`);
         return res.json([]); // Return empty array if not a contractor
       }
-      
-      console.log(`✅ Found contractor: ${contractor.name} (ID: ${contractor.id})`);
       
       // Get all smart cases assigned to this contractor
       const allCases = await storage.getSmartCases(org.id);
