@@ -126,14 +126,14 @@ const CaseCard = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 hover:bg-transparent" 
               onClick={() => onToggleFavorite(case_.id)}
               data-testid={`button-favorite-${case_.id}`}
             >
               <Heart 
-                className={`h-4 w-4 ${isFavorite 
-                  ? 'text-red-500 fill-red-500' 
-                  : 'text-gray-400 hover:text-red-400'
+                className={`h-4 w-4 transition-colors ${isFavorite 
+                  ? 'text-pink-500 fill-pink-500' 
+                  : 'text-gray-400 hover:text-pink-400'
                 }`} 
               />
             </Button>
@@ -540,7 +540,7 @@ export default function ContractorDashboard() {
                 <Label htmlFor="status-filter" className="text-sm">Status:</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger id="status-filter" className="w-[140px]" data-testid="select-status-filter">
-                    <SelectValue />
+                    <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-background text-foreground">
                     <SelectItem value="All">All Status</SelectItem>
@@ -558,7 +558,7 @@ export default function ContractorDashboard() {
                 <Label htmlFor="type-filter" className="text-sm">Type:</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger id="type-filter" className="w-[140px]" data-testid="select-type-filter">
-                    <SelectValue />
+                    <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent className="bg-background text-foreground">
                     <SelectItem value="All">All Types</SelectItem>
