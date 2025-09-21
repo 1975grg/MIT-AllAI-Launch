@@ -49,10 +49,10 @@ class NotificationService {
     }
   }
 
-  // WebSocket connection management
-  addWebSocketConnection(ws: WebSocket, userId: string, role: string) {
-    this.wsConnections.push({ ws, userId, role });
-    console.log(`🔗 WebSocket connected: ${userId} (${role})`);
+  // WebSocket connection management with organization context
+  addWebSocketConnection(ws: WebSocket, userContext: {userId: string, role: string, orgId: string}) {
+    this.wsConnections.push({ ws, ...userContext });
+    console.log(`🔗 WebSocket connected: ${userContext.userId} (${userContext.role}) in org ${userContext.orgId}`);
   }
 
   removeWebSocketConnection(ws: WebSocket) {
@@ -60,15 +60,18 @@ class NotificationService {
     if (index !== -1) {
       const conn = this.wsConnections[index];
       this.wsConnections.splice(index, 1);
-      console.log(`🔌 WebSocket disconnected: ${conn.userId} (${conn.role})`);
+      console.log(`🔌 WebSocket disconnected: ${conn.userId} (${conn.role}) from org ${conn.orgId || 'unknown'}`);
     }
   }
 
   // Send real-time push notification via WebSocket
-  private sendWebSocketNotification(targetUserId: string, notification: NotificationData) {
-    const connections = this.wsConnections.filter(conn => 
-      conn.userId === targetUserId && conn.ws.readyState === WebSocket.OPEN
-    );
+  private sendWebSocketNotification(targetUserId: string, notification: NotificationData, targetOrgId?: string) {
+    const connections = this.wsConnections.filter(conn => {
+      if (conn.userId !== targetUserId || conn.ws.readyState !== WebSocket.OPEN) return false;
+      // Organization scoping for security - only send to connections in the same org
+      if (targetOrgId && conn.orgId && conn.orgId !== targetOrgId) return false;
+      return true;
+    });
 
     connections.forEach(conn => {
       try {
@@ -76,7 +79,7 @@ class NotificationService {
           type: 'notification',
           data: notification
         }));
-        console.log(`📱 Real-time notification sent to ${targetUserId}`);
+        console.log(`📱 Real-time notification sent to ${targetUserId} (${conn.role})`);
       } catch (error) {
         console.error(`❌ Failed to send WebSocket notification to ${targetUserId}:`, error);
       }

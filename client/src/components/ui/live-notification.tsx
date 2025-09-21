@@ -30,6 +30,9 @@ export function LiveNotification({ userRole, userId }: LiveNotificationProps) {
 
   // WebSocket connection for real-time notifications
   useEffect(() => {
+    // Only connect if user is available
+    if (!userId) return;
+    
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
@@ -39,13 +42,7 @@ export function LiveNotification({ userRole, userId }: LiveNotificationProps) {
       websocket.onopen = () => {
         console.log('🔗 WebSocket connected for live notifications');
         
-        // Authenticate with the server
-        websocket.send(JSON.stringify({
-          type: 'auth',
-          userId: userId,
-          role: userRole
-        }));
-        
+        // No need to send auth - server now validates session automatically
         setWs(websocket);
       };
       

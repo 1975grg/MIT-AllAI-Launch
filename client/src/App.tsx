@@ -77,6 +77,7 @@ function Router() {
           <Route path="/tax" component={Tax} />
           <Route path="/reminders" component={Reminders} />
           <Route path="/contractor" component={ContractorDashboard} />
+          <Route path="/admin-dashboard" component={AdminDashboard} />
           <Route component={NotFound} />
         </>
       ) : (
