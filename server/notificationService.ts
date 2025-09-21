@@ -214,6 +214,29 @@ class NotificationService {
     }
   }
 
+  // 🎯 Notify student via email about case status updates
+  async notifyStudent(studentEmail: string, subject: string, message: string, orgId: string): Promise<void> {
+    try {
+      console.log(`📧 Sending student notification to ${studentEmail}: ${subject}`);
+
+      const notification: NotificationData = {
+        type: 'case_status_update',
+        subject,
+        message,
+        urgencyLevel: 'normal',
+        timestamp: new Date().toISOString()
+      };
+
+      // Send email notification
+      await this.sendEmailNotification(notification, studentEmail);
+      
+      console.log(`✅ Student notification sent to ${studentEmail}`);
+    } catch (error) {
+      console.error('❌ Failed to notify student:', error);
+      throw error; // Re-throw so calling code knows it failed
+    }
+  }
+
   // Generate email content based on notification type
   private generateEmailContent(notification: NotificationData): { html: string; text: string } {
     const { type, subject, message, caseNumber, urgencyLevel } = notification;

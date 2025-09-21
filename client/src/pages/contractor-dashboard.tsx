@@ -189,12 +189,13 @@ const CaseCard = ({
             {case_.status === "In Progress" && (
               <Button
                 size="sm"
-                variant="outline"
+                variant="default"
+                className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => updateCaseStatus.mutate({ caseId: case_.id, status: "Resolved" })}
                 disabled={updateCaseStatus.isPending}
                 data-testid={`button-complete-case-${case_.id}`}
               >
-                Mark Complete
+                ✅ Mark Complete
               </Button>
             )}
           </div>

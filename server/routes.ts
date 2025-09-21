@@ -5496,6 +5496,36 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         .reduce((obj, key) => ({ ...obj, [key]: req.body[key] }), {});
       
       const updatedCase = await storage.updateSmartCase(req.params.id, updateData);
+      
+      // 🎯 Send notification to student when status changes
+      if (updateData.status && caseData.studentEmail) {
+        try {
+          const statusMessage = updateData.status === "Resolved" 
+            ? "✅ Your maintenance issue has been completed! The contractor has finished the work and everything should be working properly now."
+            : updateData.status === "In Progress"
+            ? "🔧 Your maintenance case is now in progress. The contractor has started working on your issue."
+            : updateData.status === "Scheduled"
+            ? "📅 Your maintenance case has been scheduled. You'll receive details about the appointment soon."
+            : `📋 Your maintenance case status has been updated to: ${updateData.status}`;
+          
+          // Send notification via WebSocket and email if available
+          const notificationService = (global as any).notificationService;
+          if (notificationService) {
+            await notificationService.notifyStudent(
+              caseData.studentEmail,
+              `Case Update: ${caseData.title}`,
+              statusMessage,
+              org.id
+            );
+          }
+          
+          console.log(`📧 Student notification sent for case ${req.params.id}: ${updateData.status}`);
+        } catch (notificationError) {
+          console.error("Failed to send student notification:", notificationError);
+          // Don't fail the case update if notification fails
+        }
+      }
+      
       res.json(updatedCase);
     } catch (error) {
       console.error("Error updating case:", error);
