@@ -123,10 +123,8 @@ const CaseCard = ({
           </div>
           <div className="flex items-center gap-2">
             {/* 🌟 Favorite Heart Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 hover:bg-transparent" 
+            <button
+              className="h-8 w-8 p-0 bg-transparent hover:bg-transparent focus:bg-transparent border-none outline-none" 
               onClick={() => onToggleFavorite(case_.id)}
               data-testid={`button-favorite-${case_.id}`}
             >
@@ -136,7 +134,7 @@ const CaseCard = ({
                   : 'text-gray-400 hover:text-pink-400'
                 }`} 
               />
-            </Button>
+            </button>
             <div className="flex flex-col gap-2">
               <Badge variant="outline" className={PRIORITY_COLORS[case_.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
                 {case_.priority}
@@ -539,7 +537,7 @@ export default function ContractorDashboard() {
               <div className="flex items-center gap-2">
                 <Label htmlFor="status-filter" className="text-sm">Status:</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger id="status-filter" className="w-[140px]" data-testid="select-status-filter">
+                  <SelectTrigger id="status-filter" className="w-[140px] border border-input bg-background hover:bg-accent hover:text-accent-foreground" data-testid="select-status-filter">
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-background text-foreground">
@@ -557,7 +555,7 @@ export default function ContractorDashboard() {
               <div className="flex items-center gap-2">
                 <Label htmlFor="type-filter" className="text-sm">Type:</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger id="type-filter" className="w-[140px]" data-testid="select-type-filter">
+                  <SelectTrigger id="type-filter" className="w-[140px] border border-input bg-background hover:bg-accent hover:text-accent-foreground" data-testid="select-type-filter">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent className="bg-background text-foreground">
