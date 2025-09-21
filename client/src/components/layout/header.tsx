@@ -164,12 +164,12 @@ export default function Header({ title }: HeaderProps) {
           
           {/* Development Role Switcher */}
           {isDevMode && (
-            <div className="flex items-center space-x-2">
-              <div className="flex flex-col items-end">
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="flex flex-col items-end min-w-0">
                 <Select value={previewRole || originalRole || 'admin'} onValueChange={handleRoleChange}>
-                  <SelectTrigger className="w-32 h-8 text-xs border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100">
-                    <div className="flex items-center space-x-1">
-                      <UserCheck className="h-3 w-3" />
+                  <SelectTrigger className="w-36 h-8 text-xs border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100">
+                    <div className="flex items-center space-x-1 truncate">
+                      <UserCheck className="h-3 w-3 flex-shrink-0" />
                       <SelectValue />
                     </div>
                   </SelectTrigger>
@@ -186,12 +186,12 @@ export default function Header({ title }: HeaderProps) {
                 </Select>
                 {isPreviewing && (
                   <div className="flex items-center space-x-1 mt-1">
-                    <span className="text-xs text-orange-600 font-medium">Preview Mode</span>
+                    <span className="text-xs text-orange-600 font-medium whitespace-nowrap">Preview Mode</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={resetRole}
-                      className="h-4 w-4 p-0 text-orange-600 hover:text-orange-800"
+                      className="h-4 w-4 p-0 text-orange-600 hover:text-orange-800 flex-shrink-0"
                       data-testid="button-reset-role"
                     >
                       <RefreshCw className="h-3 w-3" />

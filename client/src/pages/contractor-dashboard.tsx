@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, User, Settings, ArrowLeft } from "lucide-react";
-import { useRolePreview } from "@/contexts/RolePreviewContext";
+import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import ContractorAvailability from "@/pages/contractor-availability";
 import { LiveNotification } from "@/components/ui/live-notification";
+import Header from "@/components/layout/header";
 
 interface ContractorCase {
   id: string;
@@ -64,7 +64,6 @@ const STATUS_COLORS = {
 
 export default function ContractorDashboard() {
   const { toast } = useToast();
-  const { effectiveRole, originalRole, setPreviewRole, isPreviewing } = useRolePreview();
   const [selectedTab, setSelectedTab] = useState("cases");
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
@@ -213,42 +212,7 @@ export default function ContractorDashboard() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Header */}
-      <header className="border-b border-border bg-background">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <User className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Contractor Dashboard</h1>
-                <p className="text-sm text-muted-foreground">Manage your assigned maintenance cases</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              {/* Role Switching */}
-              {(originalRole === 'admin' || originalRole === 'manager' || originalRole === 'staff') && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPreviewRole(null)}
-                  className="flex items-center space-x-2"
-                  data-testid="button-switch-to-admin"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span>Back to Admin View</span>
-                </Button>
-              )}
-              
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>{new Date().toLocaleDateString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header title="Contractor Dashboard" />
 
       {/* Main Content */}
       <main className="container mx-auto p-6">
