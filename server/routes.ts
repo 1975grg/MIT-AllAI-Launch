@@ -5311,6 +5311,21 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
 
     } catch (error) {
       console.error("Error accepting case:", error);
+      
+      // 🎯 Handle scheduling conflicts with helpful message
+      if ((error as any).constraint === 'exclude_contractor_time_overlap') {
+        return res.status(409).json({ 
+          message: "Scheduling conflict: You already have an appointment at this time. Please choose a different time slot." 
+        });
+      }
+      
+      // 🎯 Handle other known constraints
+      if ((error as any).code === '23P01' || (error as any).message?.includes('exclude_contractor_time_overlap')) {
+        return res.status(409).json({ 
+          message: "Time slot unavailable: You already have an appointment scheduled during this time. Please select a different date or time." 
+        });
+      }
+      
       res.status(500).json({ message: "Failed to accept case" });
     }
   });
