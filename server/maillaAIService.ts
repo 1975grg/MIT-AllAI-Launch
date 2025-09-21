@@ -361,6 +361,14 @@ export class MaillaAIService {
           ...maillaResponse.conversationSlots
         };
         
+        // 🎯 FIX: Merge location into conversation slots so prompt logic can see confirmed info
+        if (updatedLocation.buildingName && !updatedSlots.buildingName) {
+          updatedSlots.buildingName = updatedLocation.buildingName;
+        }
+        if (updatedLocation.roomNumber && !updatedSlots.roomNumber) {
+          updatedSlots.roomNumber = updatedLocation.roomNumber;
+        }
+        
         // Normalize building name in slots if present
         if (updatedSlots.buildingName) {
           const normalizedBuilding = this.resolveBuildingName(updatedSlots.buildingName);
