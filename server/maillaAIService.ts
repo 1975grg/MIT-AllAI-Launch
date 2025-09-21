@@ -1388,14 +1388,15 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         //   status: 'In Progress' as any
         // });
 
-        // 📝 Log recommended contractor but don't assign automatically
-        await this.createTicketEvent(caseId, conversationId, "contractor_recommended", 
-          `Contractor recommended: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match) - Available for acceptance`, {
-          recommendedContractorId: bestContractor.contractorId,
+        // 📝 Log contractor recommendation (using existing enum but no actual assignment)
+        await this.createTicketEvent(caseId, conversationId, "contractor_assigned", 
+          `Contractor recommended: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match) - Available for contractor acceptance`, {
+          contractorId: bestContractor.contractorId,  // Keep existing field structure
           contractorName: bestContractor.contractorName,
           matchScore: bestContractor.matchScore,
           estimatedResponseTime: bestContractor.estimatedResponseTime,
-          reasoning: bestContractor.reasoning
+          reasoning: bestContractor.reasoning,
+          isRecommendation: true  // Flag to indicate this is a recommendation, not actual assignment
         });
 
         console.log(`💡 Contractor ${bestContractor.contractorName} recommended for case ${caseId} - awaiting acceptance`);
