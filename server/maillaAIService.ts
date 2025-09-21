@@ -393,14 +393,14 @@ export class MaillaAIService {
         const hasIssueType = !!(updatedSlots.issueSummary || studentMessage?.includes('heating') || studentMessage?.includes('plumbing') || studentMessage?.includes('electrical') || studentMessage?.includes('water') || studentMessage?.includes('leak') || studentMessage?.includes('broken'));
         const hasBasicInfo = hasLocation && hasIssueType;
         
-        // AI-driven intelligent conditions for case creation
+        // 🎯 FIXED: More conservative auto-create conditions - require explicit AI completion decision
         const autoCreate = hasBasicInfo && (
-          maillaResponse.nextAction === 'complete_triage' ||
-          maillaResponse.nextAction === 'escalate_immediate' ||
-          maillaResponse.urgencyLevel === 'emergency' ||
-          maillaResponse.urgencyLevel === 'urgent' ||
-          (contextAnalysis && contextAnalysis.inferredUrgency === 'urgent') ||
-          (safetyResults && safetyResults.flags.some(f => f.startsWith('urgent_')))
+          maillaResponse.nextAction === 'complete_triage' ||     // ✅ AI explicitly says "ready to complete"
+          maillaResponse.nextAction === 'escalate_immediate' ||  // ✅ True emergencies only
+          maillaResponse.urgencyLevel === 'emergency'            // ✅ Life-threatening situations only
+          // ❌ REMOVED: maillaResponse.urgencyLevel === 'urgent' - this was too aggressive
+          // ❌ REMOVED: contextAnalysis urgent - let AI decide properly
+          // ❌ REMOVED: safety flags urgent - only emergency-level auto-creation
         );
         
         console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, AI action=${maillaResponse.nextAction}, urgency=${maillaResponse.urgencyLevel}`);
