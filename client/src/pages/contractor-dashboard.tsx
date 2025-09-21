@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, Filter, Heart, Star, ChevronDown } from "lucide-react";
+import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, Filter, Heart, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import ContractorAvailability from "@/pages/contractor-availability";
@@ -540,41 +540,35 @@ export default function ContractorDashboard() {
               
               <div className="flex items-center gap-2">
                 <Label htmlFor="status-filter" className="text-sm">Status:</Label>
-                <div className="relative">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger id="status-filter" className="w-[180px] border border-input bg-background text-foreground pr-8 cursor-pointer" data-testid="select-status-filter">
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <SelectContent className="bg-background text-foreground border border-input">
-                      <SelectItem value="All" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">All Status</SelectItem>
-                      <SelectItem value="New" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">New</SelectItem>
-                      <SelectItem value="Assigned" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">Assigned</SelectItem>
-                      <SelectItem value="Scheduled" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">Scheduled</SelectItem>
-                      <SelectItem value="In Progress" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">In Progress</SelectItem>
-                      <SelectItem value="Resolved" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">Resolved</SelectItem>
-                      <SelectItem value="Closed" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="status-filter" className="w-[180px] border border-input bg-background text-foreground cursor-pointer" data-testid="select-status-filter">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background text-foreground border border-input">
+                    <SelectItem value="All" className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">All Status</SelectItem>
+                    <SelectItem value="New" className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">New</SelectItem>
+                    <SelectItem value="Assigned" className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">Assigned</SelectItem>
+                    <SelectItem value="Scheduled" className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">Scheduled</SelectItem>
+                    <SelectItem value="In Progress" className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">In Progress</SelectItem>
+                    <SelectItem value="Resolved" className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">Resolved</SelectItem>
+                    <SelectItem value="Closed" className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center gap-2">
                 <Label htmlFor="type-filter" className="text-sm">Type:</Label>
-                <div className="relative">
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger id="type-filter" className="w-[180px] border border-input bg-background text-foreground pr-8 cursor-pointer" data-testid="select-type-filter">
-                      <SelectValue placeholder="All Types" />
-                    </SelectTrigger>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <SelectContent className="bg-background text-foreground border border-input">
-                      <SelectItem value="All" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">All Types</SelectItem>
-                      {uniqueCaseTypes.map(type => (
-                        <SelectItem key={type} value={type} className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger id="type-filter" className="w-[180px] border border-input bg-background text-foreground cursor-pointer" data-testid="select-type-filter">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background text-foreground border border-input">
+                    <SelectItem value="All" className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">All Types</SelectItem>
+                    {uniqueCaseTypes.map(type => (
+                      <SelectItem key={type} value={type} className="hover:!bg-muted focus:!bg-muted data-[highlighted]:!bg-muted data-[state=checked]:!bg-muted data-[highlighted]:!text-foreground focus:!text-foreground data-[state=checked]:!text-foreground">{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center gap-2 ml-auto">
