@@ -547,13 +547,13 @@ export default function ContractorDashboard() {
                     </SelectTrigger>
                     <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <SelectContent className="bg-background text-foreground border border-input">
-                      <SelectItem value="All" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">All Status</SelectItem>
-                      <SelectItem value="New" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">New</SelectItem>
-                      <SelectItem value="Assigned" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">Assigned</SelectItem>
-                      <SelectItem value="Scheduled" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">Scheduled</SelectItem>
-                      <SelectItem value="In Progress" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">In Progress</SelectItem>
-                      <SelectItem value="Resolved" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">Resolved</SelectItem>
-                      <SelectItem value="Closed" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">Closed</SelectItem>
+                      <SelectItem value="All" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">All Status</SelectItem>
+                      <SelectItem value="New" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">New</SelectItem>
+                      <SelectItem value="Assigned" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">Assigned</SelectItem>
+                      <SelectItem value="Scheduled" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">Scheduled</SelectItem>
+                      <SelectItem value="In Progress" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">In Progress</SelectItem>
+                      <SelectItem value="Resolved" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">Resolved</SelectItem>
+                      <SelectItem value="Closed" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">Closed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -568,9 +568,9 @@ export default function ContractorDashboard() {
                     </SelectTrigger>
                     <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <SelectContent className="bg-background text-foreground border border-input">
-                      <SelectItem value="All" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">All Types</SelectItem>
+                      <SelectItem value="All" className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">All Types</SelectItem>
                       {uniqueCaseTypes.map(type => (
-                        <SelectItem key={type} value={type} className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted focus:text-foreground">{type}</SelectItem>
+                        <SelectItem key={type} value={type} className="focus:bg-muted data-[highlighted]:bg-muted data-[state=checked]:bg-muted hover:bg-muted focus:text-foreground data-[highlighted]:text-foreground">{type}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
