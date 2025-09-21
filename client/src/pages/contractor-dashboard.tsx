@@ -123,18 +123,22 @@ const CaseCard = ({
           </div>
           <div className="flex items-center gap-2">
             {/* 🌟 Favorite Heart Button */}
-            <button
-              className="h-8 w-8 p-0 bg-transparent hover:bg-transparent focus:bg-transparent border-none outline-none" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 bg-transparent hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               onClick={() => onToggleFavorite(case_.id)}
               data-testid={`button-favorite-${case_.id}`}
+              aria-pressed={isFavorite}
+              title={isFavorite ? 'Unfavorite' : 'Favorite'}
             >
               <Heart 
                 className={`h-4 w-4 transition-colors ${isFavorite 
                   ? 'text-pink-500 fill-pink-500' 
-                  : 'text-gray-400 hover:text-pink-400'
+                  : 'text-muted-foreground hover:text-pink-400'
                 }`} 
               />
-            </button>
+            </Button>
             <div className="flex flex-col gap-2">
               <Badge variant="outline" className={PRIORITY_COLORS[case_.priority as keyof typeof PRIORITY_COLORS] || "bg-gray-100"}>
                 {case_.priority}
@@ -537,7 +541,7 @@ export default function ContractorDashboard() {
               <div className="flex items-center gap-2">
                 <Label htmlFor="status-filter" className="text-sm">Status:</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger id="status-filter" className="w-[140px] border border-input bg-background hover:bg-accent hover:text-accent-foreground" data-testid="select-status-filter">
+                  <SelectTrigger id="status-filter" className="w-[160px] border border-input bg-background cursor-pointer" data-testid="select-status-filter">
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-background text-foreground">
@@ -555,7 +559,7 @@ export default function ContractorDashboard() {
               <div className="flex items-center gap-2">
                 <Label htmlFor="type-filter" className="text-sm">Type:</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger id="type-filter" className="w-[140px] border border-input bg-background hover:bg-accent hover:text-accent-foreground" data-testid="select-type-filter">
+                  <SelectTrigger id="type-filter" className="w-[160px] border border-input bg-background cursor-pointer" data-testid="select-type-filter">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent className="bg-background text-foreground">
