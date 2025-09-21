@@ -169,7 +169,7 @@ export default function Header({ title }: HeaderProps) {
                 <Select value={previewRole || originalRole || 'admin'} onValueChange={handleRoleChange}>
                   <SelectTrigger 
                     className="w-36 sm:w-40 md:w-44 h-9 text-xs border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100 max-w-[40vw]"
-                    title={`Current role: ${roleOptions.find(r => r.value === (previewRole || originalRole))?.label}`}
+                    title={`Current role: ${roleOptions.find(r => r.value === (previewRole ?? originalRole ?? 'admin'))?.label || 'Admin'}`}
                   >
                     <div className="flex items-center space-x-2 w-full min-w-0">
                       <UserCheck className="h-3 w-3 shrink-0" />
@@ -180,7 +180,7 @@ export default function Header({ title }: HeaderProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {roleOptions.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
+                      <SelectItem key={role.value} value={role.value} textValue={role.label}>
                         <div className="flex flex-col">
                           <span className="font-medium">{role.label}</span>
                           <span className="text-xs text-muted-foreground">{role.description}</span>
