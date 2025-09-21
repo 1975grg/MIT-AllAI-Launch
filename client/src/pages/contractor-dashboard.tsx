@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, Filter, Heart, Star } from "lucide-react";
+import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, Filter, Heart, Star, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import ContractorAvailability from "@/pages/contractor-availability";
