@@ -9,6 +9,7 @@ import { useRolePreview } from "@/contexts/RolePreviewContext";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import ContractorAvailability from "@/pages/contractor-availability";
+import { LiveNotification } from "@/components/ui/live-notification";
 
 interface ContractorCase {
   id: string;
@@ -67,6 +68,12 @@ export default function ContractorDashboard() {
   const [selectedTab, setSelectedTab] = useState("cases");
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+
+  // Get current user for live notifications
+  const { data: user } = useQuery({
+    queryKey: ['/api/auth/user'],
+    enabled: true
+  });
 
   // Get assigned cases
   const { data: assignedCases = [], isLoading: casesLoading } = useQuery<ContractorCase[]>({
@@ -554,6 +561,14 @@ export default function ContractorDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Live Notifications */}
+      {user?.id && (
+        <LiveNotification 
+          userRole="contractor" 
+          userId={user.id} 
+        />
+      )}
     </div>
   );
 }

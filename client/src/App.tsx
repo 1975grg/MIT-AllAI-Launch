@@ -24,6 +24,7 @@ import Revenue from "@/pages/revenue";
 import Tax from "@/pages/tax";
 import Reminders from "@/pages/reminders";
 import ContractorDashboard from "@/pages/contractor-dashboard";
+import AdminDashboard from "@/pages/admin-dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {

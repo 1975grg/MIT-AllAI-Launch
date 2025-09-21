@@ -5726,6 +5726,55 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     }
   });
 
+  // ✅ Contractor Response API - Accept/Decline Cases
+  app.post('/api/cases/:caseId/contractor-response', isAuthenticated, requireRole(['contractor']), async (req: any, res) => {
+    try {
+      const { caseId } = req.params;
+      const { action, contractorId } = req.body; // 'accept' or 'decline'
+      const userId = req.user.claims.sub;
+      
+      // Validate action
+      if (!['accept', 'decline'].includes(action)) {
+        return res.status(400).json({ message: 'Invalid action. Must be accept or decline.' });
+      }
+      
+      // Get the case
+      const smartCase = await storage.getSmartCase(caseId);
+      if (!smartCase) {
+        return res.status(404).json({ message: 'Case not found' });
+      }
+      
+      if (action === 'accept') {
+        // Assign contractor to case
+        await storage.updateSmartCase(caseId, {
+          contractorId: userId,
+          status: 'In Progress'
+        });
+        
+        console.log(`✅ Contractor ${userId} accepted case ${caseId}`);
+        
+        res.json({ 
+          message: 'Case accepted successfully',
+          caseId,
+          status: 'accepted'
+        });
+      } else {
+        // Log the decline (case remains unassigned)
+        console.log(`❌ Contractor ${userId} declined case ${caseId}`);
+        
+        // TODO: Notify admins about decline and suggest reassignment
+        res.json({ 
+          message: 'Case declined',
+          caseId,
+          status: 'declined'
+        });
+      }
+    } catch (error) {
+      console.error('Contractor response error:', error);
+      res.status(500).json({ message: 'Failed to process contractor response' });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // ✅ WebSocket Server for Real-time Notifications
