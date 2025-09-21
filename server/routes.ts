@@ -5213,6 +5213,15 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         return res.status(404).json({ message: "Case not found" });
       }
 
+      // 🎯 DEBUG: Log case data to understand the issue
+      console.log("🔍 DEBUG accept-case:", {
+        caseId: smartCase.id,
+        status: smartCase.status,
+        contractorId: smartCase.contractorId,
+        contractorIdFromAPI: contractor.id,
+        aiTriageRouting: (smartCase.aiTriageJson as any)?.routing
+      });
+
       // 🎯 Allow self-assignment for unassigned New cases OR verify existing assignment
       const isUnassignedNewCase = !smartCase.contractorId && 
         !(smartCase.aiTriageJson as any)?.routing?.assignedContractor && 
@@ -5220,6 +5229,12 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
       
       const isAssignedToContractor = smartCase.contractorId === contractor.id || 
         (smartCase.aiTriageJson as any)?.routing?.assignedContractor === contractor.id;
+
+      console.log("🔍 DEBUG conditions:", {
+        isUnassignedNewCase,
+        isAssignedToContractor,
+        willAllow: isUnassignedNewCase || isAssignedToContractor
+      });
 
       if (!isUnassignedNewCase && !isAssignedToContractor) {
         return res.status(403).json({ message: "Case not assigned to this contractor" });
