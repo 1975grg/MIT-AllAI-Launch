@@ -99,4 +99,4 @@ localPort = 45349
 externalPort = 9000
 
 [agent]
-integrations = ["javascript_openai:1.0.0", "javascript_log_in_with_replit:1.0.0"]
+integrations = ["javascript_openai:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_sendgrid:1.0.0", "javascript_websocket:1.0.0"]
