@@ -218,11 +218,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userOrg = await storage.getUserOrganization(userId);
         let userRole = userOrg?.role;
         
-        // For now, if user has an organization but no role, default to admin
-        // This handles the case where existing users don't have roles assigned yet
-        if (userOrg && !userRole) {
-          userRole = 'admin';
-        }
+        // SECURITY: Never default to admin - require explicit role assignment
+        // Users must have roles explicitly assigned by administrators
         
         if (!userRole) {
           return res.status(403).json({ 
@@ -294,11 +291,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userOrg = await storage.getUserOrganization(userId);
       let userRole = userOrg?.role;
       
-      // For now, if user has an organization but no role, default to admin
-      // This handles the case where existing users don't have roles assigned yet
-      if (userOrg && !userRole) {
-        userRole = 'admin';
-      }
+      // SECURITY: Never default to admin - require explicit role assignment
+      // Users must have roles explicitly assigned by administrators
       
       if (!userRole) {
         return res.status(403).json({ 
@@ -324,8 +318,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Organization routes
-  app.get('/api/organizations/current', isAuthenticated, requireAdmin, async (req: any, res) => {
+  // Organization routes - Allow access for organization bootstrapping  
+  app.get('/api/organizations/current', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       let org = await storage.getUserOrganization(userId);
@@ -2125,7 +2119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Allow idempotency: if already accepted by same contractor, return success
-      if (smartCase.status === 'Accepted' && smartCase.assignedContractor === contractor.id) {
+      if (smartCase.status === 'Scheduled' && smartCase.contractorId === contractor.id) {
         return res.json({ 
           message: "Case already accepted by you",
           contractor: contractor.name,
@@ -2134,13 +2128,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if case is available for acceptance (only allow specific initial states)
-      const acceptableStates = ['New', 'Unassigned', 'Open'];
-      if (!acceptableStates.includes(smartCase.status)) {
+      const acceptableStates = ['New', 'In Review'];
+      if (!acceptableStates.includes(smartCase.status || 'New')) {
         return res.status(400).json({ message: "Case is no longer available for acceptance" });
       }
       
       // Check if case is already assigned to someone else
-      if (smartCase.assignedContractor && smartCase.assignedContractor !== contractor.id) {
+      if (smartCase.contractorId && smartCase.contractorId !== contractor.id) {
         return res.status(400).json({ message: "Case is already assigned to another contractor" });
       }
 
@@ -2150,20 +2144,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Final atomic checks before update
       if (!finalCheck || 
-          !acceptableStates.includes(finalCheck.status) ||
-          (finalCheck.assignedContractor && finalCheck.assignedContractor !== contractor.id) ||
+          !acceptableStates.includes(finalCheck.status || 'New') ||
+          (finalCheck.contractorId && finalCheck.contractorId !== contractor.id) ||
           finalCheck.orgId !== userOrg.id) {
         return res.status(409).json({ 
           message: "Case was accepted by another contractor or is no longer available" 
         });
       }
 
-      // Update case to Accepted status (best effort atomicity)
+      // Update case to Scheduled status (best effort atomicity)
       await storage.updateSmartCase(caseId, {
-        status: 'Accepted',
-        assignedContractor: contractor.id,
-        acceptedAt: new Date(),
-        contractorNotes: notes || 'Case accepted'
+        status: 'Scheduled',
+        contractorId: contractor.id
       });
 
       // Send notifications about case acceptance

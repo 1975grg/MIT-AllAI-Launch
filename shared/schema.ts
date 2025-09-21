@@ -77,7 +77,7 @@ export const organizationMembers = pgTable("organization_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orgId: varchar("org_id").notNull().references(() => organizations.id),
   userId: varchar("user_id").notNull().references(() => users.id),
-  role: varchar("role").notNull().default("admin"), // admin, manager, tenant, vendor, accountant
+  role: varchar("role").notNull(), // admin, manager, tenant, vendor, accountant - SECURITY: No default, explicit assignment required
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1152,6 +1152,7 @@ export const insertExpenseSchema = insertTransactionSchema.extend({
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type OwnershipEntity = typeof ownershipEntities.$inferSelect;
 export type InsertOwnershipEntity = z.infer<typeof insertOwnershipEntitySchema>;

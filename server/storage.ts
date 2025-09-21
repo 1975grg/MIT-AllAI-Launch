@@ -30,6 +30,7 @@ import {
   type User,
   type UpsertUser,
   type Organization,
+  type OrganizationMember,
   type InsertOrganization,
   type OwnershipEntity,
   type InsertOwnershipEntity,
@@ -160,8 +161,14 @@ export interface IStorage {
   // Vendor operations
   getVendors(orgId: string): Promise<Vendor[]>;
   getVendor(id: string): Promise<Vendor | undefined>;
+  getVendorByUserId(userId: string): Promise<Vendor | undefined>;
+  getAvailableSmartCases(orgId: string): Promise<SmartCase[]>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor>;
+  
+  // Organization member operations  
+  getOrganizationMembersByRole(orgId: string, role: string): Promise<OrganizationMember[]>;
+  updateOrganizationMemberRole(userId: string, orgId: string, role: string): Promise<void>;
   
   // Appointment operations with multi-tenant security
   getAppointments(orgId: string): Promise<Appointment[]>;
@@ -295,7 +302,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(organizationMembers.userId, userId))
       .limit(1);
     
-    return result;
+    if (!result) return undefined;
+    
+    return {
+      ...result,
+      role: result.role || undefined // Convert null to undefined for consistent typing
+    };
   }
 
   // 🔧 Organization member role management
@@ -1591,6 +1603,40 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedVendor;
+  }
+
+  async getVendorByUserId(userId: string): Promise<Vendor | undefined> {
+    const result = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.userId, userId))
+      .limit(1);
+    
+    return result[0];
+  }
+
+  async getAvailableSmartCases(orgId: string): Promise<SmartCase[]> {
+    return await db
+      .select()
+      .from(smartCases)
+      .where(and(
+        eq(smartCases.orgId, orgId),
+        or(
+          eq(smartCases.status, "New"),
+          eq(smartCases.status, "In Review")
+        )
+      ))
+      .orderBy(desc(smartCases.createdAt));
+  }
+
+  async getOrganizationMembersByRole(orgId: string, role: string): Promise<OrganizationMember[]> {
+    return await db
+      .select()
+      .from(organizationMembers)
+      .where(and(
+        eq(organizationMembers.orgId, orgId),
+        eq(organizationMembers.role, role)
+      ));
   }
 
   // Appointment operations with multi-tenant security
