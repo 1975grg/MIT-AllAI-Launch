@@ -409,7 +409,7 @@ export class MaillaAIService {
         if (emailMatches && emailMatches.length > 0) {
           const extractedEmail = emailMatches[0]; // Take first valid email
           console.log(`📧 Email extracted from message: ${extractedEmail}`);
-          currentTriageData.studentEmail = extractedEmail;
+          (currentTriageData as any).studentEmail = extractedEmail;
         }
         
         // 🧠 PHONE EXTRACTION: Capture phone numbers from student messages
@@ -418,7 +418,7 @@ export class MaillaAIService {
         if (phoneMatches && phoneMatches.length > 0) {
           const extractedPhone = phoneMatches[0].replace(/[-.\s()]/g, ''); // Clean format
           console.log(`📱 Phone extracted from message: ${extractedPhone}`);
-          currentTriageData.studentPhone = extractedPhone;
+          (currentTriageData as any).studentPhone = extractedPhone;
         }
 
         // 🧠 SMART TRIAGE: Restore AI intelligence with expanded auto-create conditions
@@ -436,8 +436,8 @@ export class MaillaAIService {
         const hasBasicInfo = hasLocation && hasIssueType;
         
         // 🎯 CONTACT INFO: Check if we have student contact information  
-        const hasStudentEmail = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
-        const hasStudentPhone = currentTriageData?.studentPhone && currentTriageData.studentPhone.trim().length > 0;
+        const hasStudentEmail = (currentTriageData as any)?.studentEmail && (currentTriageData as any).studentEmail.trim().length > 0;
+        const hasStudentPhone = (currentTriageData as any)?.studentPhone && (currentTriageData as any).studentPhone.trim().length > 0;
         const isEmergencyOverride = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
         
         // 🎯 SMART COMPLETION: Handle self-resolved cases and contractor cases separately
@@ -473,14 +473,14 @@ export class MaillaAIService {
                   },
                   completionType: 'self_resolved',
                   completedAt: new Date().toISOString(),
-                  studentPhone: currentTriageData.studentPhone // Preserve phone for notifications
+                  studentPhone: (currentTriageData as any).studentPhone // Preserve phone for notifications
                 }
               });
               
               // 🎉 SEND NOTIFICATIONS: Email confirmation + optional SMS
               if (hasStudentEmail) {
                 const emailSent = await notificationService.sendEmailNotification({
-                  to: currentTriageData.studentEmail,
+                  to: (currentTriageData as any).studentEmail,
                   subject: "✅ Great Job - Maintenance Issue Resolved!",
                   message: `Great work resolving your ${updatedSlots.issueSummary || 'maintenance issue'} in ${updatedLocation.buildingName} ${updatedLocation.roomNumber}! 
 
@@ -491,18 +491,18 @@ Please reach out again if this happens again or if you have any other maintenanc
 Best regards,
 MIT Housing Maintenance Team`,
                   type: 'case_updated'
-                }, currentTriageData.studentEmail);
+                }, (currentTriageData as any).studentEmail);
                 
                 console.log(`📧 Self-resolution email sent: ${emailSent}`);
               }
               
               if (hasStudentPhone) {
                 const smsSent = await notificationService.sendSMSNotification({
-                  to: currentTriageData.studentPhone,
+                  to: (currentTriageData as any).studentPhone,
                   subject: "Maintenance Resolved",
                   message: `✅ Great job resolving your ${updatedSlots.issueSummary || 'maintenance issue'}! Contact us if it happens again. Reply STOP to opt out.`,
                   type: 'case_updated'
-                }, currentTriageData.studentPhone);
+                }, (currentTriageData as any).studentPhone);
                 
                 console.log(`📱 Self-resolution SMS sent: ${smsSent}`);
               }
@@ -528,7 +528,7 @@ MIT Housing Maintenance Team`,
                 // 📧 STUDENT NOTIFICATIONS: Case creation confirmation
                 if (hasStudentEmail) {
                   const studentEmailSent = await notificationService.sendEmailNotification({
-                    to: currentTriageData.studentEmail,
+                    to: (currentTriageData as any).studentEmail,
                     subject: `🔧 Maintenance Case #${caseNumber} Created`,
                     message: `Hi there!
 
@@ -551,20 +551,20 @@ MIT Housing Maintenance Team`,
                     caseId: caseResult.caseId,
                     caseNumber,
                     urgencyLevel: maillaResponse.urgencyLevel
-                  }, currentTriageData.studentEmail);
+                  }, (currentTriageData as any).studentEmail);
                   
                   console.log(`📧 Student case creation email sent: ${studentEmailSent}`);
                 }
                 
                 if (hasStudentPhone) {
                   const studentSmsSent = await notificationService.sendSMSNotification({
-                    to: currentTriageData.studentPhone,
+                    to: (currentTriageData as any).studentPhone,
                     subject: "Maintenance Case Created",
                     message: `🔧 Case #${caseNumber} created for ${updatedLocation.buildingName} ${updatedLocation.roomNumber}. ${isEmergency ? 'Emergency dispatch in progress!' : 'Help is on the way!'} Reply STOP to opt out.`,
                     type: isEmergency ? 'emergency_alert' : 'case_created',
                     caseId: caseResult.caseId,
                     urgencyLevel: maillaResponse.urgencyLevel
-                  }, currentTriageData.studentPhone);
+                  }, (currentTriageData as any).studentPhone);
                   
                   console.log(`📱 Student case creation SMS sent: ${studentSmsSent}`);
                 }
@@ -591,8 +591,8 @@ MIT Housing Maintenance Team`,
             conversationSlots: updatedSlots,
             location: updatedLocation,
             pendingQuestions: updatedPendingQuestions,
-            studentEmail: currentTriageData.studentEmail, // Ensure email is persisted
-            studentPhone: currentTriageData.studentPhone  // Ensure phone is persisted
+            studentEmail: (currentTriageData as any).studentEmail, // Ensure email is persisted
+            studentPhone: (currentTriageData as any).studentPhone  // Ensure phone is persisted
           }
         });
       }
@@ -894,13 +894,11 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       const needsIssueDetails = !existingSlots.issueSummary && existingSlots.buildingName && existingSlots.roomNumber;
       
       // 🎯 FIX: Check for email and phone in the correct locations
-      const hasEmailFromExtraction = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
-      const hasEmailFromConversation = conversation?.triageData?.studentEmail && (conversation.triageData as any).studentEmail.trim().length > 0;
-      const needsEmail = !hasEmailFromExtraction && !hasEmailFromConversation;
+      const hasEmailFromConversation = conversation?.triageData && (conversation.triageData as any).studentEmail && (conversation.triageData as any).studentEmail.trim().length > 0;
+      const needsEmail = !hasEmailFromConversation;
       
-      const hasPhoneFromExtraction = currentTriageData?.studentPhone && currentTriageData.studentPhone.trim().length > 0;
-      const hasPhoneFromConversation = conversation?.triageData?.studentPhone && (conversation.triageData as any).studentPhone.trim().length > 0;
-      const needsPhone = !hasPhoneFromExtraction && !hasPhoneFromConversation;
+      const hasPhoneFromConversation = conversation?.triageData && (conversation.triageData as any).studentPhone && (conversation.triageData as any).studentPhone.trim().length > 0;
+      const needsPhone = !hasPhoneFromConversation;
       
       // Smart inference: skip questions if context analysis provides answers
       const hasTimelineFromContext = contextAnalysis?.timelineIndicators && contextAnalysis.timelineIndicators.length > 0;
