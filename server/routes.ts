@@ -67,7 +67,9 @@ async function sendStudentStatusNotification(currentCase: any, newStatus: string
       'InProgress': 'In Progress',
       'completed': 'Completed',
       'Completed': 'Completed',
-      'Complete': 'Completed'
+      'Complete': 'Completed',
+      'resolved': 'Completed',  // System uses "Resolved" as final status
+      'Resolved': 'Completed'   // Map to "Completed" for notification
     };
     
     const normalizedStatus = statusMap[newStatus] || newStatus;
