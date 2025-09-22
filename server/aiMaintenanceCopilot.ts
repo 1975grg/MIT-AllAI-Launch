@@ -191,7 +191,7 @@ export class AIMaintenanceCopilot {
 
       // 4. Generate AI troubleshooting response
       const aiResponse = await this.openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "system",
@@ -328,7 +328,7 @@ export class AIMaintenanceCopilot {
 
       // Enhanced AI vision analysis
       const visionResponse = await this.openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "system",
@@ -475,7 +475,7 @@ export class AIMaintenanceCopilot {
 
       // AI analysis for parts recommendation
       const aiResponse = await this.openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "system",

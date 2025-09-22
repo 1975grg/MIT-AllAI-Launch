@@ -17,7 +17,7 @@ interface MaillaResponse {
   message: string;
   urgencyLevel: 'emergency' | 'urgent' | 'normal' | 'low';
   safetyFlags: string[];
-  nextAction: 'ask_followup' | 'request_media' | 'escalate_immediate' | 'complete_triage' | 'recommend_diy';
+  nextAction: 'ask_followup' | 'request_media' | 'escalate_immediate' | 'complete_triage' | 'recommend_diy' | 'self_resolved';
   nextQuestion?: string;
   queuedQuestions?: string[];
   acknowledgment?: string;
@@ -42,6 +42,11 @@ interface MaillaResponse {
     action: string;
     instructions: string[];
     warnings: string[];
+  };
+  selfResolution?: {
+    problem: string;
+    solution: string;
+    preventionTips?: string[];
   };
   isComplete?: boolean;
 }
@@ -211,7 +216,7 @@ export class MaillaAIService {
 
       // 3. Get Mailla's intelligent response
       const aiResponse = await this.openai.chat.completions.create({
-        model: "gpt-4o-2024-11-20",
+        model: "gpt-5",
         messages: [
           { role: "system", content: this.getMaillaSystemPrompt() },
           { role: "user", content: contextPrompt }
@@ -237,7 +242,7 @@ export class MaillaAIService {
                 },
                 nextAction: { 
                   type: "string", 
-                  enum: ["ask_followup", "request_media", "escalate_immediate", "complete_triage", "recommend_diy"],
+                  enum: ["ask_followup", "request_media", "escalate_immediate", "complete_triage", "recommend_diy", "self_resolved"],
                   description: "Next step in triage process" 
                 },
                 location: {
@@ -425,14 +430,13 @@ export class MaillaAIService {
         const hasStudentEmail = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
         const isEmergencyOverride = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
         
-        // 🎯 FIXED: More conservative auto-create conditions - require email except for true emergencies
+        // 🎯 SMART COMPLETION: Handle self-resolved cases and contractor cases separately
+        const isSelfResolved = maillaResponse.nextAction === 'self_resolved';
         const autoCreate = hasBasicInfo && (hasStudentEmail || isEmergencyOverride) && (
           maillaResponse.nextAction === 'complete_triage' ||     // ✅ AI explicitly says "ready to complete"
           maillaResponse.nextAction === 'escalate_immediate' ||  // ✅ True emergencies only (email optional)
-          maillaResponse.urgencyLevel === 'emergency'            // ✅ Life-threatening situations only (email optional)
-          // ❌ REMOVED: maillaResponse.urgencyLevel === 'urgent' - this was too aggressive
-          // ❌ REMOVED: contextAnalysis urgent - let AI decide properly
-          // ❌ REMOVED: safety flags urgent - only emergency-level auto-creation
+          maillaResponse.urgencyLevel === 'emergency' ||         // ✅ Life-threatening situations only (email optional)
+          isSelfResolved                                         // ✅ Self-resolved cases (no contractor needed)
         );
         
         console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, email=${hasStudentEmail}, AI action=${maillaResponse.nextAction}, urgency=${maillaResponse.urgencyLevel}`);
@@ -440,22 +444,56 @@ export class MaillaAIService {
         
         if (autoCreate) {
           const isEmergency = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
-          console.log(`${isEmergency ? '🚨 EMERGENCY' : '✅ SMART'} CREATION: AI intelligence triggered case creation`);
           
-          try {
-            const caseResult = await this.completeTriageConversation(conversationId);
-            if (caseResult.success && caseResult.caseId) {
-              const caseNumber = caseResult.caseNumber || this.generateStructuredCaseNumber(maillaResponse.urgencyLevel, updatedLocation);
-              if (isEmergency) {
-                maillaResponse.message += `\n\n🚨 Emergency case #${caseNumber} created - help is being dispatched immediately!`;
-              } else {
-                maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseNumber} - help is on the way!`;
-              }
+          if (isSelfResolved) {
+            // 🎉 SELF-RESOLVED: Student fixed it themselves - no contractor needed!
+            console.log(`🎉 SELF-RESOLVED: Student successfully fixed the issue - no contractor case needed`);
+            
+            try {
+              // Mark conversation as complete with self-resolution record
+              await storage.updateTriageConversation(conversationId, {
+                currentPhase: "self_resolved",
+                isComplete: true,
+                triageData: {
+                  ...currentTriageData,
+                  selfResolution: maillaResponse.selfResolution || {
+                    problem: updatedSlots.issueSummary || "Student-reported maintenance issue",
+                    solution: "Student successfully resolved the issue with AI guidance",
+                    preventionTips: []
+                  },
+                  completionType: 'self_resolved',
+                  completedAt: new Date().toISOString()
+                }
+              });
+              
+              maillaResponse.message += `\n\n🎉 Amazing work! You handled that like a pro. I've made a note of how you resolved it. Please reach out again if this happens again or if you have any other concerns!`;
+              maillaResponse.isComplete = true;
+              
+            } catch (error) {
+              console.error('❌ Failed to record self-resolution:', error);
+              maillaResponse.message += `\n\n🎉 Great job fixing that! Feel free to contact us again if you need any help.`;
               maillaResponse.isComplete = true;
             }
-          } catch (error) {
-            console.error('❌ Case creation failed:', error);
-            maillaResponse.message += `\n\n⚡ I'm getting help dispatched right away - you'll get updates soon!`;
+            
+          } else {
+            // 🔧 CONTRACTOR CASE: Create full maintenance case
+            console.log(`${isEmergency ? '🚨 EMERGENCY' : '✅ CONTRACTOR'} CREATION: AI intelligence triggered case creation`);
+            
+            try {
+              const caseResult = await this.completeTriageConversation(conversationId);
+              if (caseResult.success && caseResult.caseId) {
+                const caseNumber = caseResult.caseNumber || this.generateStructuredCaseNumber(maillaResponse.urgencyLevel, updatedLocation);
+                if (isEmergency) {
+                  maillaResponse.message += `\n\n🚨 Emergency case #${caseNumber} created - help is being dispatched immediately!`;
+                } else {
+                  maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseNumber} - help is on the way!`;
+                }
+                maillaResponse.isComplete = true;
+              }
+            } catch (error) {
+              console.error('❌ Case creation failed:', error);
+              maillaResponse.message += `\n\n⚡ I'm getting help dispatched right away - you'll get updates soon!`;
+            }
           }
         } else {
           console.log(`🤖 AI CONTROL: Continuing diagnostic conversation (${maillaResponse.nextAction})`);
@@ -638,22 +676,37 @@ Use your intelligence to distinguish actual emergencies from routine maintenance
 - **Severity assessment**: Ask smart questions to understand actual urgency
 - **Student email**: For maintenance updates and coordination
 
-**SMART TROUBLESHOOTING (for minor issues only):**
-- **Electrical problems**: "Can you check your room's breaker panel for any switches in the middle position?"
-- **Heating issues**: "Is your thermostat set correctly? Any breakers that might have tripped?"
-- **Water leaks**: "Can you locate the water shutoff valve under the sink? A photo would help me assess this."
+**SMART TROUBLESHOOTING & SELF-RESOLUTION:**
+When students can safely fix issues themselves, guide them through it:
 
-**STUDENT-APPROPRIATE GUIDANCE:**
-- What students CAN do: Turn off water valves, flip breakers, move personal items, document with photos
+- **No power**: "Check your breaker panel - look for any switches in the middle position. Flip them OFF then back ON. This fixes 90% of power issues!"
+- **Heating issues**: "First check your thermostat is set to HEAT mode and temperature is higher than room temp. Then check for any heating breakers that tripped."  
+- **Water leaks (minor)**: "Can you locate the shutoff valve under the sink? Turn it clockwise to stop the water while we decide next steps."
+
+**SELF-RESOLUTION LOGIC:**
+If student successfully resolves the issue:
+- Set nextAction: 'self_resolved' 
+- Include selfResolution object with problem/solution details
+- End with: "Great job fixing that! Please reach out again if it happens again or if you have any other concerns."
+- NO contractor case needed for self-resolved issues - just keep record
+
+**STUDENT CAPABILITIES:**
+- What students CAN safely do: Reset breakers, turn water valves, adjust thermostats, move belongings, take photos
 - What to leave to MIT Facilities: All repairs, accessing building systems, electrical work, plumbing fixes
-- Safety first: When in doubt, have them stay safe and let professionals handle it
+- Safety first: When in doubt, have professionals handle it
 
-**COMFORT & ALTERNATIVES:**
-- Cold rooms: "Grab some blankets or study in a friend's room while we get heat working"
-- Water issues: "Use towels to protect your belongings, I'll get maintenance there quickly"
-- Any urgent issue: "You don't need to stay there - I'll text you updates on timing"
+**EXAMPLES OF SELF-RESOLUTION:**
+✅ "No power" + student resets breaker = self_resolved (no contractor needed)
+✅ "Thermostat not working" + student fixes setting = self_resolved  
+❌ "Water gushing from ceiling" = complete_triage (needs immediate contractor)
+❌ "Electrical outlet sparking" = escalate_immediate (safety issue)
 
-Be intelligent about actual emergency vs. routine maintenance. Ask clarifying questions when needed. Trust your judgment - you're helping smart MIT students who can handle basic tasks but need professional help for real maintenance work.`;
+**COMFORT & NEXT STEPS:**
+- Self-resolved: "Awesome! You've got this handled. Contact us again if you need anything else."
+- Contractor needed: "Help is on the way - you don't need to stay there, I'll text you updates"
+- Emergency: "Get to safety immediately - help is being dispatched now"
+
+Use your GPT-5 intelligence to determine if students can safely resolve issues themselves or if professional help is needed. When in doubt, err on the side of contractor dispatch for safety.`;
   }
 
   private buildTriageContextPrompt(
@@ -930,7 +983,7 @@ Respond in JSON format:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-5',
           messages: [{ role: 'user', content: estimationPrompt }],
           temperature: 0.3,
           max_tokens: 200
@@ -1930,7 +1983,7 @@ Please analyze this image and provide a comprehensive contractor assessment in J
 Focus on practical details that help contractors prepare effectively.`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [{
           role: "user",
           content: [

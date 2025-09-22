@@ -102,7 +102,7 @@ export class AIDuplicateDetectionService {
     
     const response = await Promise.race([
       openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "system", 
