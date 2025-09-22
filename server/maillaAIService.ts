@@ -177,10 +177,12 @@ export class MaillaAIService {
     conversation?: TriageConversationSelect
   ): Promise<MaillaResponse> {
     try {
-      // 1. Safety check first - ALWAYS
+      // 🎯 SMART SAFETY: Let AI reason about urgency instead of rigid keyword matching
       const safetyResults = await this.performSafetyCheck(studentMessage);
       
-      if (safetyResults.isEmergency) {
+      // Only auto-escalate for CONFIRMED life-threatening emergencies (gas, fire, etc.)
+      // Let AI ask clarifying questions for water issues, electrical problems, etc.
+      if (safetyResults.isEmergency && safetyResults.confirmLifeThreat) {
         return {
           message: safetyResults.emergencyMessage!,
           urgencyLevel: 'emergency',
@@ -526,52 +528,63 @@ export class MaillaAIService {
     isEmergency: boolean;
     flags: string[];
     emergencyMessage?: string;
+    confirmLifeThreat?: boolean;
   }> {
     const lowerMessage = message.toLowerCase();
     const flags: string[] = [];
     
-    // Critical safety keywords that trigger immediate escalation
-    const emergencyKeywords = [
+    // ✅ ONLY auto-escalate for confirmed life-threatening emergencies
+    const lifeThreatKeywords = [
       'gas smell', 'gas leak', 'smell gas', 'gas odor',
-      'electrical sparking', 'sparks', 'smoke', 'burning smell',
-      'water gushing', 'flooding', 'electrical outlet wet',
-      'no heat', 'no air conditioning', 'carbon monoxide',
-      'exposed wire', 'electrical shock'
+      'fire', 'smoke', 'burning smell', 'flames',
+      'carbon monoxide', 'electrical shock'
     ];
 
-    const urgentKeywords = [
-      'no power', 'circuit breaker', 'outlet not working',
-      'water leak', 'dripping', 'toilet overflow', 
-      'heater not working', 'ac not working'
+    // 🧠 Potential safety concerns - flag for AI reasoning, don't auto-escalate
+    const potentialConcerns = [
+      'water leak', 'dripping', 'flooding', 'gushing',
+      'electrical sparking', 'sparks', 'exposed wire',
+      'no heat', 'no power', 'circuit breaker'
     ];
 
-    // Check for emergency conditions
-    for (const keyword of emergencyKeywords) {
+    // Check for true life-threatening emergencies (gas, fire, CO, electrical shock)
+    for (const keyword of lifeThreatKeywords) {
       if (lowerMessage.includes(keyword)) {
-        flags.push(`emergency_${keyword.replace(/\s+/g, '_')}`);
+        flags.push(`life_threat_${keyword.replace(/\s+/g, '_')}`);
         
         if (keyword.includes('gas')) {
           return {
             isEmergency: true,
+            confirmLifeThreat: true,
             flags,
-            emergencyMessage: "🚨 **EMERGENCY - GAS DETECTED** 🚨\n\n**IMMEDIATELY:**\n• Leave the building now\n• Do NOT use electrical switches or phones\n• Call 911 or gas company emergency line\n• Do NOT return until authorities say it's safe\n\nThis is a serious safety emergency. Please get to safety now and call for professional help."
+            emergencyMessage: "🚨 **EMERGENCY - GAS DETECTED** 🚨\n\n**IMMEDIATELY:**\n• Leave the building now\n• Do NOT use electrical switches or phones\n• Call Campus Police (617) 253-1212 or 911\n• Do NOT return until authorities say it's safe\n\nThis is a serious safety emergency. Please get to safety now and call for professional help."
           };
         }
         
-        if (keyword.includes('electrical') && keyword.includes('water')) {
+        if (keyword.includes('fire') || keyword.includes('smoke') || keyword.includes('burning') || keyword.includes('flames')) {
           return {
             isEmergency: true,
+            confirmLifeThreat: true,
             flags,
-            emergencyMessage: "🚨 **ELECTRICAL HAZARD** 🚨\n\n**IMMEDIATELY:**\n• Stay away from the area\n• Turn off electricity at circuit breaker if safe to reach\n• Do NOT touch water near electrical outlets\n• Call maintenance emergency line\n\nElectrical + water = serious danger. Please stay safe and get help immediately."
+            emergencyMessage: "🚨 **FIRE EMERGENCY** 🚨\n\n**IMMEDIATELY:**\n• Evacuate the building now\n• Call 911 immediately\n• Do NOT use elevators\n• Meet at designated assembly area\n\nThis is a fire emergency. Please evacuate immediately and call 911."
+          };
+        }
+
+        if (keyword.includes('carbon monoxide') || keyword.includes('electrical shock')) {
+          return {
+            isEmergency: true,
+            confirmLifeThreat: true,
+            flags,
+            emergencyMessage: "🚨 **LIFE SAFETY EMERGENCY** 🚨\n\n**IMMEDIATELY:**\n• Get to fresh air/safe area\n• Call Campus Police (617) 253-1212 or 911\n• Do not return to the area\n\nThis is a life safety emergency. Please get to safety and call for help immediately."
           };
         }
       }
     }
 
-    // Check for urgent conditions
-    for (const keyword of urgentKeywords) {
+    // Flag potential concerns for AI reasoning (don't auto-escalate)
+    for (const keyword of potentialConcerns) {
       if (lowerMessage.includes(keyword)) {
-        flags.push(`urgent_${keyword.replace(/\s+/g, '_')}`);
+        flags.push(`concern_${keyword.replace(/\s+/g, '_')}`);
       }
     }
 
