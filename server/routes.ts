@@ -50,6 +50,115 @@ const completeTriageSchema = z.object({
   conversationId: z.string().min(1).max(100)
 });
 
+// ========================================
+// 📧 STUDENT NOTIFICATION HELPERS
+// ========================================
+
+async function sendStudentStatusNotification(currentCase: any, newStatus: string) {
+  try {
+    console.log(`📧 Checking if student notification needed for case ${currentCase.id}: ${currentCase.status} → ${newStatus}`);
+    
+    // Normalize status strings to handle variations
+    const statusMap: Record<string, string> = {
+      'scheduled': 'Scheduled',
+      'Scheduled': 'Scheduled',
+      'in progress': 'In Progress', 
+      'In Progress': 'In Progress',
+      'InProgress': 'In Progress',
+      'completed': 'Completed',
+      'Completed': 'Completed',
+      'Complete': 'Completed'
+    };
+    
+    const normalizedStatus = statusMap[newStatus] || newStatus;
+    const notificationStatuses = ['Scheduled', 'In Progress', 'Completed'];
+    
+    if (!notificationStatuses.includes(normalizedStatus)) {
+      console.log(`📧 No notification needed for status: ${newStatus} (normalized: ${normalizedStatus})`);
+      return;
+    }
+
+    // Get student information from the reportedBy field
+    if (!currentCase.reportedBy) {
+      console.warn(`⚠️ Case ${currentCase.id} has no reportedBy field - cannot notify student`);
+      return;
+    }
+
+    const student = await storage.getUser(currentCase.reportedBy);
+    if (!student || !student.email) {
+      console.warn(`⚠️ Student ${currentCase.reportedBy} not found or no email - cannot send notification`);
+      return;
+    }
+
+    // Ensure we have a case number for display (fallback to case ID if missing)
+    const displayCaseNumber = currentCase.caseNumber || currentCase.id || 'N/A';
+    
+    // Determine notification content based on normalized status
+    let subject = '';
+    let message = '';
+    
+    switch (normalizedStatus) {
+      case 'Scheduled':
+        subject = `✅ Your Maintenance Request Has Been Scheduled - ${displayCaseNumber}`;
+        message = `Hi ${student.firstName || 'there'}!
+
+Your maintenance request for "${currentCase.title || 'maintenance issue'}" has been scheduled with a contractor.
+
+📍 Location: ${currentCase.buildingName || 'Your location'} ${currentCase.roomNumber || ''}
+🎫 Case Number: ${displayCaseNumber}
+📝 Issue: ${currentCase.description || currentCase.title || 'Maintenance request'}
+
+A qualified technician will arrive soon to address your request. You don't need to do anything else - just be available for access if needed.
+
+We'll keep you updated on the progress!`;
+        break;
+        
+      case 'In Progress':
+        subject = `🔧 Work Started on Your Maintenance Request - ${displayCaseNumber}`;
+        message = `Hi ${student.firstName || 'there'}!
+
+Great news! Our technician has arrived and started working on your maintenance request.
+
+📍 Location: ${currentCase.buildingName || 'Your location'} ${currentCase.roomNumber || ''}
+🎫 Case Number: ${displayCaseNumber}
+📝 Issue: ${currentCase.description || currentCase.title || 'Maintenance request'}
+
+The work is now in progress. We'll notify you once it's completed.`;
+        break;
+        
+      case 'Completed':
+        subject = `🎉 Your Maintenance Request is Complete - ${displayCaseNumber}`;
+        message = `Hi ${student.firstName || 'there'}!
+
+Excellent news! Your maintenance request has been completed successfully.
+
+📍 Location: ${currentCase.buildingName || 'Your location'} ${currentCase.roomNumber || ''}
+🎫 Case Number: ${displayCaseNumber}
+📝 Issue: ${currentCase.description || currentCase.title || 'Maintenance request'}
+
+The work is now complete and the issue should be resolved. If you notice any problems or have concerns, please don't hesitate to submit a new maintenance request.
+
+Thank you for using our maintenance system!`;
+        break;
+    }
+
+    // Send the notification
+    const { notificationService } = await import('./notificationService');
+    await notificationService.notifyStudent(
+      student.email, 
+      subject, 
+      message, 
+      currentCase.orgId
+    );
+    
+    console.log(`✅ Student notification sent to ${student.email} for case ${currentCase.caseNumber} status: ${newStatus}`);
+    
+  } catch (error) {
+    console.error('❌ Failed to send student status notification:', error);
+    // Don't throw - notification failures shouldn't break case updates
+  }
+}
+
 // Helper function to create equipment reminders
 async function createEquipmentReminders({
   org,
@@ -2065,7 +2174,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/cases/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const smartCase = await storage.updateSmartCase(req.params.id, req.body);
+      const caseId = req.params.id;
+      const updateData = req.body;
+      
+      // Get current case state before updating (for comparison)
+      const currentCase = await storage.getSmartCase(caseId);
+      if (!currentCase) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // Update the case
+      const smartCase = await storage.updateSmartCase(caseId, updateData);
+      
+      // 📧 STUDENT NOTIFICATION: Send notifications for key status changes
+      if (updateData.status && updateData.status !== currentCase.status) {
+        await sendStudentStatusNotification(currentCase, updateData.status);
+      }
+      
       res.json(smartCase);
     } catch (error) {
       console.error("Error updating case:", error);
@@ -2157,6 +2282,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'Scheduled',
         contractorId: contractor.id
       });
+
+      // 📧 STUDENT NOTIFICATION: Notify student that case has been scheduled
+      await sendStudentStatusNotification(smartCase, 'Scheduled');
 
       // Send notifications about case acceptance
       await notifyOfCaseAcceptance(smartCase, contractor, estimatedArrival, userOrg.id);
@@ -5249,6 +5377,9 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         reviewedAt: new Date(),
         contractorId: contractor.id // Ensure contractor ID is set
       });
+
+      // 📧 STUDENT NOTIFICATION: Notify student that case has been scheduled
+      await sendStudentStatusNotification(smartCase, 'Scheduled');
 
       // 🎯 CREATE THE ACTUAL APPOINTMENT RECORD using contractor-selected duration
       const appointmentEndTime = new Date(scheduledDate.getTime() + estimatedDurationMinutes * 60 * 1000); // Use selected duration
