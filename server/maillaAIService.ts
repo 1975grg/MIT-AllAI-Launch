@@ -877,7 +877,7 @@ Ask for the next most important missing piece. Once you have location + issue + 
 
   // ✅ Unified case creation method - DEPRECATED: Use completeTriageConversation instead
   async completeTriageAndCreateCase(conversationId: string): Promise<string> {
-    console.log("⚠️ Using deprecated completeTriageAndCreateCase - use completeTriageConversation instead");
+    console.log("Using deprecated completeTriageAndCreateCase - use completeTriageConversation instead");
     const result = await this.completeTriageConversation(conversationId);
     return result.caseId || '';
   }
