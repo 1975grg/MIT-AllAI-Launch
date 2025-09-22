@@ -56,7 +56,14 @@ const completeTriageSchema = z.object({
 
 async function sendStudentStatusNotification(currentCase: any, newStatus: string) {
   try {
-    console.log(`📧 Checking if student notification needed for case ${currentCase.id}: ${currentCase.status} → ${newStatus}`);
+    console.log(`🚨🚨🚨 STUDENT NOTIFICATION CALLED for case ${currentCase.id}: ${currentCase.status} → ${newStatus} 🚨🚨🚨`);
+    console.log(`📊 Case data:`, JSON.stringify({
+      id: currentCase.id,
+      status: currentCase.status,
+      reportedBy: currentCase.reportedBy,
+      caseNumber: currentCase.caseNumber,
+      title: currentCase.title
+    }, null, 2));
     
     // Normalize status strings to handle variations
     const statusMap: Record<string, string> = {
