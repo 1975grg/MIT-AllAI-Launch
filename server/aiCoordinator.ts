@@ -129,9 +129,15 @@ export class AICoordinatorService {
       }
 
       const coordinationResult = JSON.parse(content);
-      const validatedResult = AssignmentResponse.parse(coordinationResult);
       
-      return this.convertToRecommendations(validatedResult, validatedRequest.availableContractors);
+      // Validate the AI response and use fallback if invalid
+      try {
+        const validatedResult = AssignmentResponse.parse(coordinationResult);
+        return this.convertToRecommendations(validatedResult, validatedRequest.availableContractors);
+      } catch (validationError) {
+        console.error('AI response validation failed, using fallback:', validationError);
+        return this.getFallbackMatching(request);
+      }
 
     } catch (error) {
       console.error('AI coordination failed:', error);

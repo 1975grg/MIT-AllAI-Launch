@@ -328,7 +328,7 @@ export default function StudentRequest() {
                         </FormControl>
                         <SelectContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                           {MAINTENANCE_CATEGORIES.map((category) => (
-                            <SelectItem key={category} value={category} className="!text-gray-900 dark:!text-gray-100 !bg-transparent hover:!bg-gray-50 dark:hover:!bg-gray-700/50 focus:!bg-gray-50 dark:focus:!bg-gray-700/50 data-[highlighted]:!bg-gray-50 data-[highlighted]:!text-gray-900 dark:data-[highlighted]:!bg-gray-700/50 dark:data-[highlighted]:!text-gray-100">
+                            <SelectItem key={category} value={category} className="text-black bg-white hover:bg-gray-100 focus:bg-gray-100 data-[highlighted]:bg-gray-100 data-[highlighted]:text-black dark:text-white dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:bg-gray-700 dark:data-[highlighted]:bg-gray-700 dark:data-[highlighted]:text-white">
                               {category}
                             </SelectItem>
                           ))}

@@ -72,32 +72,50 @@
 }
 
 /* Force dropdown text to be visible - override any conflicting styles */
-[data-radix-select-content] [data-radix-select-item] {
+[role="option"] {
   color: #1f2937 !important;
-  background-color: transparent !important;
+  background-color: white !important;
 }
 
-[data-radix-select-content] [data-radix-select-item]:hover {
+[role="option"]:hover,
+[role="option"][data-highlighted],
+[role="option"][data-state="checked"] {
   color: #1f2937 !important;
-  background-color: #f9fafb !important;
+  background-color: #f3f4f6 !important;
 }
 
-[data-radix-select-content] [data-radix-select-item][data-highlighted] {
+/* Radix UI Select item overrides */
+[data-radix-collection-item] {
   color: #1f2937 !important;
-  background-color: #f9fafb !important;
+  background-color: white !important;
 }
 
-.dark [data-radix-select-content] [data-radix-select-item] {
+[data-radix-collection-item]:hover,
+[data-radix-collection-item][data-highlighted] {
+  color: #1f2937 !important;
+  background-color: #f3f4f6 !important;
+}
+
+/* Dark mode */
+.dark [role="option"] {
   color: #f3f4f6 !important;
-  background-color: transparent !important;
+  background-color: #1f2937 !important;
 }
 
-.dark [data-radix-select-content] [data-radix-select-item]:hover {
+.dark [role="option"]:hover,
+.dark [role="option"][data-highlighted],
+.dark [role="option"][data-state="checked"] {
   color: #f3f4f6 !important;
   background-color: #374151 !important;
 }
 
-.dark [data-radix-select-content] [data-radix-select-item][data-highlighted] {
+.dark [data-radix-collection-item] {
+  color: #f3f4f6 !important;
+  background-color: #1f2937 !important;
+}
+
+.dark [data-radix-collection-item]:hover,
+.dark [data-radix-collection-item][data-highlighted] {
   color: #f3f4f6 !important;
   background-color: #374151 !important;
 }
