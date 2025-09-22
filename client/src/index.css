@@ -71,6 +71,37 @@
   --spacing: 0.25rem;
 }
 
+/* Force dropdown text to be visible - override any conflicting styles */
+[data-radix-select-content] [data-radix-select-item] {
+  color: #1f2937 !important;
+  background-color: transparent !important;
+}
+
+[data-radix-select-content] [data-radix-select-item]:hover {
+  color: #1f2937 !important;
+  background-color: #f9fafb !important;
+}
+
+[data-radix-select-content] [data-radix-select-item][data-highlighted] {
+  color: #1f2937 !important;
+  background-color: #f9fafb !important;
+}
+
+.dark [data-radix-select-content] [data-radix-select-item] {
+  color: #f3f4f6 !important;
+  background-color: transparent !important;
+}
+
+.dark [data-radix-select-content] [data-radix-select-item]:hover {
+  color: #f3f4f6 !important;
+  background-color: #374151 !important;
+}
+
+.dark [data-radix-select-content] [data-radix-select-item][data-highlighted] {
+  color: #f3f4f6 !important;
+  background-color: #374151 !important;
+}
+
 .dark {
   /* MIT AI Dark Mode - Rich Gradients */
   --background: hsl(220 25% 6%);

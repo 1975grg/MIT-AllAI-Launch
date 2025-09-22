@@ -94,7 +94,7 @@ const AssignmentResponse = z.object({
 });
 
 export class AICoordinatorService {
-  private readonly AI_COORDINATION_TIMEOUT = 12000; // 12 seconds for coordination
+  private readonly AI_COORDINATION_TIMEOUT = 25000; // 25 seconds for coordination
 
   async findOptimalContractor(request: z.infer<typeof ContractorMatchRequest>): Promise<AssignmentRecommendation[]> {
     try {
@@ -248,7 +248,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
     
     if (activeContractors.length === 0) {
       // ✅ NO CONTRACTORS AVAILABLE - SUGGEST ADMIN INTERVENTION
-      console.log(`🚨 No contractors available for ${caseData.category} case "${caseData.title}"`);
+      console.log(`🚨 No contractors available for ${caseData.category} case "${caseData.description}"`);
       
       // Return special admin intervention recommendation
       return [{
@@ -289,7 +289,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
       score += availabilityRatio * 15;
       
       // Emergency availability for urgent cases
-      if ((caseData.priority === 'Urgent' || caseData.urgency === 'Critical') && contractor.emergencyAvailable) {
+      if ((caseData.priority === 'Critical' || caseData.urgency === 'Critical') && contractor.emergencyAvailable) {
         score += 15;
       }
       
