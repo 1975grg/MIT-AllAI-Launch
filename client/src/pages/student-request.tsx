@@ -16,12 +16,13 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 const MAINTENANCE_CATEGORIES = [
   "HVAC / Heating & Cooling",
   "Plumbing (Water, Drains, Sewer)",
-  "Electrical & Lighting", 
+  "Electrical & Lighting",
   "Appliances (Kitchen, Laundry, etc.)",
+  "Roof / Structure / Exterior", 
+  "Pest & Odor Issues",
   "Safety & Security (locks, alarms, smoke detectors, windows/doors)",
   "General Interior (walls, ceilings, flooring, paint, cabinets)",
-  "Network/Internet Connectivity",
-  "Common Areas (lounges, study rooms, bathrooms)",
+  "Outdoor / Landscaping (yard, snow removal, fencing, gutters)",
   "Other / Miscellaneous"
 ];
 

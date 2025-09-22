@@ -861,30 +861,11 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       prompt += `\nWhat we already know: Location=${hasLocation ? '✓' : '✗'}, Issue=${hasIssue ? '✓' : '✗'}, Email=${hasEmail ? '✓' : '✗'}, Phone=${hasPhone ? '✓' : '✗'}
       
 Ask for the next most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
-
-💝 **PROGRESSIVE TRIAGE COMPLETION:**
-If student has engaged with your previous triage request (uploaded photo, tried DIY steps, or provided follow-up info), it's time to complete with caring final advice:
-
-🔄 **COMPLETE WITH COMFORT & UPDATES:**
-**For HEATING issues:** "Perfect! Thanks for trying that. Try to stay warm with some blankets, or hang out with friends if you want - you don't need to be there while we fix this. I'll keep you updated on timing! 🔧"
-
-**For PLUMBING issues:** "Got it! Grab some towels if you can. Help should be there within the hour. If it gets much worse, that water shutoff valve I mentioned will help - but we've got this handled! 💧"
-
-**For ELECTRICAL issues:** "Thanks for staying safe! Keep away from that area. Maintenance will text you when they're on their way - usually within 30-45 minutes. I'll keep you posted! ⚡"
-
-**For GENERAL issues:** "Perfect! You're all set. Help will be there soon - you can go about your day and I'll update you along the way! 🛠️"
-
-💝 **WHEN TO COMPLETE:**
-- Student uploaded photo or said they can't
-- Student tried DIY steps you suggested  
-- Student provided any follow-up information after your triage request
-- Student provided their email address for updates
-- They seem ready to move on
-
-⚠️ CRITICAL: DO NOT complete triage (nextAction: 'complete_triage') until you have their EMAIL ADDRESS for notifications!
-
-Set nextAction: 'complete_triage' and give caring final message with comfort advice + stay-connected promise.
-\n`;
+    } else {
+      // Continuing conversation
+      prompt += `\nWhat we already know: Location=${existingSlots.buildingName ? '✓' : '✗'}, Issue=${existingSlots.issueSummary ? '✓' : '✗'}, Email=${(conversation?.triageData as any)?.studentEmail ? '✓' : '✗'}, Phone=${(conversation?.triageData as any)?.studentPhone ? '✓' : '✗'}
+      
+Ask for the single most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
     }
 
     if (safetyResults && safetyResults.flags.length > 0) {
