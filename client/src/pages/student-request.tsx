@@ -276,21 +276,21 @@ export default function StudentRequest() {
                               <SelectValue placeholder="Select your building..." />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Next House">Next House</SelectItem>
-                            <SelectItem value="Simmons Hall">Simmons Hall</SelectItem>
-                            <SelectItem value="MacGregor House">MacGregor House</SelectItem>
-                            <SelectItem value="Burton Conner">Burton Conner</SelectItem>
-                            <SelectItem value="New House">New House</SelectItem>
-                            <SelectItem value="Baker House">Baker House</SelectItem>
-                            <SelectItem value="McCormick Hall">McCormick Hall</SelectItem>
-                            <SelectItem value="Random Hall">Random Hall</SelectItem>
-                            <SelectItem value="Senior House">Senior House</SelectItem>
-                            <SelectItem value="Tang Hall">Tang Hall</SelectItem>
-                            <SelectItem value="Westgate">Westgate</SelectItem>
-                            <SelectItem value="Ashdown House">Ashdown House</SelectItem>
-                            <SelectItem value="Sidney-Pacific">Sidney-Pacific</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                          <SelectContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700">
+                            <SelectItem value="Next House" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Next House</SelectItem>
+                            <SelectItem value="Simmons Hall" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Simmons Hall</SelectItem>
+                            <SelectItem value="MacGregor House" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">MacGregor House</SelectItem>
+                            <SelectItem value="Burton Conner" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Burton Conner</SelectItem>
+                            <SelectItem value="New House" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">New House</SelectItem>
+                            <SelectItem value="Baker House" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Baker House</SelectItem>
+                            <SelectItem value="McCormick Hall" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">McCormick Hall</SelectItem>
+                            <SelectItem value="Random Hall" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Random Hall</SelectItem>
+                            <SelectItem value="Senior House" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Senior House</SelectItem>
+                            <SelectItem value="Tang Hall" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Tang Hall</SelectItem>
+                            <SelectItem value="Westgate" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Westgate</SelectItem>
+                            <SelectItem value="Ashdown House" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Ashdown House</SelectItem>
+                            <SelectItem value="Sidney-Pacific" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Sidney-Pacific</SelectItem>
+                            <SelectItem value="Other" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Other</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -326,9 +326,9 @@ export default function StudentRequest() {
                             <SelectValue placeholder="Choose an issue type..." />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700">
                           {MAINTENANCE_CATEGORIES.map((category) => (
-                            <SelectItem key={category} value={category}>
+                            <SelectItem key={category} value={category} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
                               {category}
                             </SelectItem>
                           ))}
