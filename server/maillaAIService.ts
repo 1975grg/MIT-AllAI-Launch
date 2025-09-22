@@ -306,8 +306,17 @@ export class MaillaAIService {
         max_completion_tokens: 1500
       });
 
+      console.log('🤖 GPT-5 Response:', JSON.stringify(aiResponse, null, 2));
+      
       const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
       if (!toolCall || toolCall.type !== "function") {
+        console.error('❌ Tool call issue:', {
+          hasChoices: !!aiResponse.choices?.[0],
+          hasMessage: !!aiResponse.choices?.[0]?.message,
+          hasToolCalls: !!aiResponse.choices?.[0]?.message?.tool_calls,
+          toolCallCount: aiResponse.choices?.[0]?.message?.tool_calls?.length,
+          firstToolCall: aiResponse.choices?.[0]?.message?.tool_calls?.[0]
+        });
         throw new Error("Mailla failed to generate triage response");
       }
 
