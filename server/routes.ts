@@ -3120,7 +3120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // 🚨 NEW: Send real-time notifications to contractors and admins
-      await sendSmartCaseNotifications(smartCase, workflowData, aiTriage, org.id);
+      await sendSmartCaseNotifications(smartCase, workflowData, aiTriage, mitOrg.id);
       
       // 🔄 PERSISTENCE: Update case status and contractor assignment
       const updateData: any = {};
@@ -3152,9 +3152,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Calculate initial scheduling time based on urgency
           const scheduledAt = new Date();
-          if (triageResult.urgency === 'Critical') {
+          if (aiTriage.urgency === 'Critical') {
             scheduledAt.setHours(scheduledAt.getHours() + 1); // 1 hour for critical
-          } else if (triageResult.urgency === 'High') {
+          } else if (aiTriage.urgency === 'High') {
             scheduledAt.setHours(scheduledAt.getHours() + 4); // 4 hours for high
           } else {
             scheduledAt.setDate(scheduledAt.getDate() + 1); // next day for others
@@ -3166,10 +3166,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contractorId: workflowData.autoScheduling.contractorAssigned,
             type: 'Maintenance' as const,
             scheduledStartAt: scheduledAt,
-            scheduledEndAt: new Date(scheduledAt.getTime() + (parseInt(triageResult.estimatedDuration.replace(/\D/g, '')) || 120) * 60000),
+            scheduledEndAt: new Date(scheduledAt.getTime() + (parseInt(aiTriage.estimatedDuration.replace(/\D/g, '')) || 120) * 60000),
             status: 'Scheduled' as const,
             location: `${validatedInput.building} ${validatedInput.room}`,
-            notes: `Auto-scheduled ${triageResult.category} maintenance: ${validatedInput.title}`,
+            notes: `Auto-scheduled ${aiTriage.category} maintenance: ${validatedInput.title}`,
             priority: finalPriority
           };
           
