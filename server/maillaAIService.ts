@@ -303,10 +303,10 @@ export class MaillaAIService {
           }
         }],
         tool_choice: { type: "function", function: { name: "generate_triage_response" } },
-        max_completion_tokens: 1500
+        max_completion_tokens: 2500
       });
 
-      console.log('🤖 GPT-5 Response:', JSON.stringify(aiResponse, null, 2));
+      // Removed debug logging for production
       
       const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
       if (!toolCall || toolCall.type !== "function") {
@@ -611,10 +611,10 @@ MIT Housing Maintenance Team`,
     } catch (error) {
       console.error("🚨 Mailla AI processing error:", error);
       return {
-        message: "I'm having trouble processing your message right now. Let me connect you with someone who can help immediately.",
-        urgencyLevel: 'urgent',
+        message: "I'm having trouble processing that message. Could you tell me a bit more about your maintenance issue? For example, where is it happening and what's going on?",
+        urgencyLevel: 'normal',
         safetyFlags: ['ai_processing_error'],
-        nextAction: 'escalate_immediate'
+        nextAction: 'ask_followup'
       };
     }
   }
