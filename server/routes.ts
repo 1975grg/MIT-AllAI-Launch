@@ -315,6 +315,13 @@ async function createMortgageExpense({
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ✅ Fix for Permissions Policy payment violation (property management has payment functionality)
+  app.use((req, res, next) => {
+    // Allow payment APIs for rent collection, mortgage tracking, and financial transactions
+    res.setHeader('Permissions-Policy', 'payment=(self)');
+    next();
+  });
+
   // Auth middleware
   await setupAuth(app);
 
