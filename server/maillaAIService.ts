@@ -779,6 +779,38 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
   }
 
   // ========================================
+  // DUPLICATE DETECTION HELPERS
+  // ========================================
+
+  private areSimilarIssues(description1: string, description2: string): boolean {
+    // Normalize descriptions for comparison
+    const normalize = (text: string) => text.toLowerCase()
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ')     // Normalize whitespace
+      .trim();
+    
+    const desc1 = normalize(description1);
+    const desc2 = normalize(description2);
+    
+    // If descriptions are very similar (80%+ overlap), consider them similar
+    const words1 = new Set(desc1.split(' '));
+    const words2 = new Set(desc2.split(' '));
+    
+    const intersection = new Set([...words1].filter(word => words2.has(word)));
+    const union = new Set([...words1, ...words2]);
+    
+    const similarity = intersection.size / union.size;
+    
+    // Also check for key maintenance terms
+    const maintenanceKeywords = ['dripping', 'leak', 'broken', 'not working', 'faucet', 'toilet', 'heat', 'ac', 'electrical', 'outlet'];
+    const hasCommonKeywords = maintenanceKeywords.some(keyword => 
+      desc1.includes(keyword) && desc2.includes(keyword)
+    );
+    
+    return similarity > 0.8 || (similarity > 0.6 && hasCommonKeywords);
+  }
+
+  // ========================================
   // AI-POWERED DURATION ESTIMATION
   // ========================================
 
@@ -1223,6 +1255,44 @@ Respond in JSON format:
         }
       }
 
+      // 🚨 CROSS-CONVERSATION DEDUPLICATION: Check for similar recent cases
+      const triageData = conversation.triageData as any;
+      const location = triageData?.location || {};
+      const issueDescription = conversation.initialRequest || '';
+      
+      if (location.buildingName && location.roomNumber) {
+        // Look for recent cases in the same location (within 30 minutes)
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+        const orgCases = await storage.getSmartCases(conversation.orgId);
+        
+        const recentSimilarCases = orgCases.filter(case_ => 
+          case_.buildingName === location.buildingName &&
+          case_.roomNumber === location.roomNumber &&
+          case_.createdAt && new Date(case_.createdAt) > thirtyMinutesAgo &&
+          case_.description && issueDescription &&
+          this.areSimilarIssues(case_.description, issueDescription)
+        );
+        
+        if (recentSimilarCases.length > 0) {
+          const existingCase = recentSimilarCases[0];
+          console.log(`🚫 DUPLICATE PREVENTED: Similar case ${existingCase.id} already exists for ${location.buildingName} ${location.roomNumber}`);
+          
+          // Link this conversation to the existing case
+          await storage.updateTriageConversation(conversationId, {
+            smartCaseId: existingCase.id
+          });
+          
+          return { 
+            success: true, 
+            conversationId, 
+            caseId: existingCase.id, 
+            caseNumber: existingCase.caseNumber,
+            isDuplicate: true,
+            message: "Similar case already exists - linked to existing maintenance request."
+          };
+        }
+      }
+
       // Extract location data from triage
       const locationData = (conversation.triageData as any)?.location;
       const { propertyId, unitId, normalizedBuildingName } = this.getMITPropertyMapping(locationData?.buildingName, locationData?.roomNumber);
@@ -1526,7 +1596,8 @@ Respond in JSON format:
         // });
 
         // 🤖 AI-POWERED DURATION ESTIMATION  
-        const durationEstimate = await this.estimateRepairDuration(existingConversation.triageData);
+        const conversationData = await storage.getTriageConversation(conversationId);
+        const durationEstimate = await this.estimateRepairDuration(conversationData?.triageData);
         
         // 📝 Log contractor recommendation with duration estimate
         await this.createTicketEvent(caseId, conversationId, "contractor_assigned", 
