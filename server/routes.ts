@@ -315,10 +315,34 @@ async function createMortgageExpense({
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // ✅ Fix for Permissions Policy payment violation (property management has payment functionality)
+  // ✅ COMPREHENSIVE Security Headers Fix for CSP violations and OAuth authentication
   app.use((req, res, next) => {
-    // Allow payment APIs and related permissions for rent collection, mortgage tracking, and financial transactions
+    // Enhanced Permissions Policy for payment functionality
     res.setHeader('Permissions-Policy', 'payment=(self), cross-origin-isolated=(self), clipboard-write=(self)');
+    
+    // ✅ CRITICAL: Content Security Policy to resolve authentication CSP violations
+    const cspDirectives = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://auth.replit.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: https:",
+      "connect-src 'self' ws: wss: https://auth.replit.com https://*.replit.dev",
+      "frame-src 'self' https://auth.replit.com",
+      "frame-ancestors 'self'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://auth.replit.com"
+    ].join('; ');
+    
+    res.setHeader('Content-Security-Policy', cspDirectives);
+    
+    // Additional security headers for comprehensive protection
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    
     next();
   });
 
