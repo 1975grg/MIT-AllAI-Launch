@@ -1368,8 +1368,8 @@ Respond in JSON format:
     
     // Common patterns students use
     const patterns = [
-      // "Tang room 301", "Next room 123" - NEW: handles "building room number"
-      /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\s+(?:room|rm)\s+(\d+[a-z]?)\b/gi,
+      // "Tang room 301", "Next unit 123", "Senior house unit 1" - handles "building room/unit number"
+      /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\s+(?:house\s+)?(?:room|rm|unit)\s+(\d+[a-z]?)\b/gi,
       
       // "Tang Hall room 301", "Next House room 123" - NEW: handles full building name + room 
       /\b(tang hall|next house|simmons hall|macgregor house|burton conner|new house|baker house|mccormick hall|random hall|senior house|ashdown house|sidney pacific|sidney-pacific)\s+(?:room|rm)\s+(\d+[a-z]?)\b/gi,
