@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { storage } from './storage';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
+import { notificationService } from './notificationService';
 import type { 
   TriageConversationSelect, 
   InsertTriageConversation,
@@ -411,6 +412,15 @@ export class MaillaAIService {
           console.log(`📧 Email extracted from message: ${extractedEmail}`);
           currentTriageData.studentEmail = extractedEmail;
         }
+        
+        // 🧠 PHONE EXTRACTION: Capture phone numbers from student messages
+        const phoneRegex = /\b(\d{3}[-.]?\d{3}[-.]?\d{4}|\(\d{3}\)\s*\d{3}[-.]?\d{4})\b/g;
+        const phoneMatches = studentMessage.match(phoneRegex);
+        if (phoneMatches && phoneMatches.length > 0) {
+          const extractedPhone = phoneMatches[0].replace(/[-.\s()]/g, ''); // Clean format
+          console.log(`📱 Phone extracted from message: ${extractedPhone}`);
+          currentTriageData.studentPhone = extractedPhone;
+        }
 
         // 🧠 SMART TRIAGE: Restore AI intelligence with expanded auto-create conditions
         const hasLocation = !!(updatedLocation.buildingName && updatedLocation.roomNumber);
@@ -426,8 +436,9 @@ export class MaillaAIService {
           studentMessage?.includes('broken') || studentMessage?.includes('not working') || studentMessage?.includes('stuck') || studentMessage?.includes('damaged') || studentMessage?.includes('repair'));
         const hasBasicInfo = hasLocation && hasIssueType;
         
-        // 🎯 FIXED: Require email collection before completing triage (with emergency override)
+        // 🎯 CONTACT INFO: Check if we have student contact information  
         const hasStudentEmail = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
+        const hasStudentPhone = currentTriageData?.studentPhone && currentTriageData.studentPhone.trim().length > 0;
         const isEmergencyOverride = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
         
         // 🎯 SMART COMPLETION: Handle self-resolved cases and contractor cases separately
@@ -462,11 +473,42 @@ export class MaillaAIService {
                     preventionTips: []
                   },
                   completionType: 'self_resolved',
-                  completedAt: new Date().toISOString()
+                  completedAt: new Date().toISOString(),
+                  studentPhone: currentTriageData.studentPhone // Preserve phone for notifications
                 }
               });
               
-              maillaResponse.message += `\n\n🎉 Amazing work! You handled that like a pro. I've made a note of how you resolved it. Please reach out again if this happens again or if you have any other concerns!`;
+              // 🎉 SEND NOTIFICATIONS: Email confirmation + optional SMS
+              if (hasStudentEmail) {
+                const emailSent = await notificationService.sendEmailNotification({
+                  to: currentTriageData.studentEmail,
+                  subject: "✅ Great Job - Maintenance Issue Resolved!",
+                  message: `Great work resolving your ${updatedSlots.issueSummary || 'maintenance issue'} in ${updatedLocation.buildingName} ${updatedLocation.roomNumber}! 
+
+You handled that like a pro. We've made a note of your successful resolution.
+
+Please reach out again if this happens again or if you have any other maintenance concerns.
+
+Best regards,
+MIT Housing Maintenance Team`,
+                  type: 'case_updated'
+                }, currentTriageData.studentEmail);
+                
+                console.log(`📧 Self-resolution email sent: ${emailSent}`);
+              }
+              
+              if (hasStudentPhone) {
+                const smsSent = await notificationService.sendSMSNotification({
+                  to: currentTriageData.studentPhone,
+                  subject: "Maintenance Resolved",
+                  message: `✅ Great job resolving your ${updatedSlots.issueSummary || 'maintenance issue'}! Contact us if it happens again. Reply STOP to opt out.`,
+                  type: 'case_updated'
+                }, currentTriageData.studentPhone);
+                
+                console.log(`📱 Self-resolution SMS sent: ${smsSent}`);
+              }
+              
+              maillaResponse.message += `\n\n🎉 Amazing work! You handled that like a pro. I've sent you an email confirmation and made a note of how you resolved it. Please reach out again if this happens again or if you have any other concerns!`;
               maillaResponse.isComplete = true;
               
             } catch (error) {
@@ -483,10 +525,55 @@ export class MaillaAIService {
               const caseResult = await this.completeTriageConversation(conversationId);
               if (caseResult.success && caseResult.caseId) {
                 const caseNumber = caseResult.caseNumber || this.generateStructuredCaseNumber(maillaResponse.urgencyLevel, updatedLocation);
+                
+                // 📧 STUDENT NOTIFICATIONS: Case creation confirmation
+                if (hasStudentEmail) {
+                  const studentEmailSent = await notificationService.sendEmailNotification({
+                    to: currentTriageData.studentEmail,
+                    subject: `🔧 Maintenance Case #${caseNumber} Created`,
+                    message: `Hi there!
+
+Your maintenance request has been created:
+
+📍 Location: ${updatedLocation.buildingName} Room ${updatedLocation.roomNumber}
+🛠️ Issue: ${updatedSlots.issueSummary || 'Maintenance issue'}
+📋 Case #: ${caseNumber}
+⚡ Priority: ${maillaResponse.urgencyLevel}
+
+${isEmergency ? 
+'🚨 This is an emergency case - help is being dispatched immediately!' : 
+'Our maintenance team will be in touch soon. You don\'t need to stay there - we\'ll update you on timing!'}
+
+We'll keep you posted on progress.
+
+Best regards,
+MIT Housing Maintenance Team`,
+                    type: isEmergency ? 'emergency_alert' : 'case_created',
+                    caseId: caseResult.caseId,
+                    caseNumber,
+                    urgencyLevel: maillaResponse.urgencyLevel
+                  }, currentTriageData.studentEmail);
+                  
+                  console.log(`📧 Student case creation email sent: ${studentEmailSent}`);
+                }
+                
+                if (hasStudentPhone) {
+                  const studentSmsSent = await notificationService.sendSMSNotification({
+                    to: currentTriageData.studentPhone,
+                    subject: "Maintenance Case Created",
+                    message: `🔧 Case #${caseNumber} created for ${updatedLocation.buildingName} ${updatedLocation.roomNumber}. ${isEmergency ? 'Emergency dispatch in progress!' : 'Help is on the way!'} Reply STOP to opt out.`,
+                    type: isEmergency ? 'emergency_alert' : 'case_created',
+                    caseId: caseResult.caseId,
+                    urgencyLevel: maillaResponse.urgencyLevel
+                  }, currentTriageData.studentPhone);
+                  
+                  console.log(`📱 Student case creation SMS sent: ${studentSmsSent}`);
+                }
+                
                 if (isEmergency) {
-                  maillaResponse.message += `\n\n🚨 Emergency case #${caseNumber} created - help is being dispatched immediately!`;
+                  maillaResponse.message += `\n\n🚨 Emergency case #${caseNumber} created - help is being dispatched immediately! You'll get email and SMS updates.`;
                 } else {
-                  maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseNumber} - help is on the way!`;
+                  maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseNumber} - help is on the way! Check your email for details.`;
                 }
                 maillaResponse.isComplete = true;
               }
@@ -505,7 +592,8 @@ export class MaillaAIService {
             conversationSlots: updatedSlots,
             location: updatedLocation,
             pendingQuestions: updatedPendingQuestions,
-            studentEmail: currentTriageData.studentEmail // Ensure email is persisted
+            studentEmail: currentTriageData.studentEmail, // Ensure email is persisted
+            studentPhone: currentTriageData.studentPhone  // Ensure phone is persisted
           }
         });
       }
@@ -674,7 +762,8 @@ Use your intelligence to distinguish actual emergencies from routine maintenance
 - **Location**: Building name + room number (required)
 - **Issue details**: What's broken/not working (required)
 - **Severity assessment**: Ask smart questions to understand actual urgency
-- **Student email**: For maintenance updates and coordination
+- **Email**: Required for updates - "What's your email so I can keep you posted?"
+- **Phone**: Optional for SMS alerts - "Want SMS updates too? Share your cell number (optional, standard messaging rates apply)"
 
 **SMART TROUBLESHOOTING & SELF-RESOLUTION:**
 When students can safely fix issues themselves, guide them through it:
@@ -805,10 +894,14 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       const needsRoom = !existingSlots.roomNumber && existingSlots.buildingName;
       const needsIssueDetails = !existingSlots.issueSummary && existingSlots.buildingName && existingSlots.roomNumber;
       
-      // 🎯 FIX: Check for email in the correct location - currentTriageData is the active working data
+      // 🎯 FIX: Check for email and phone in the correct locations
       const hasEmailFromExtraction = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
-      const hasEmailFromConversation = conversation.triageData?.studentEmail && conversation.triageData.studentEmail.trim().length > 0;
+      const hasEmailFromConversation = conversation?.triageData?.studentEmail && (conversation.triageData as any).studentEmail.trim().length > 0;
       const needsEmail = !hasEmailFromExtraction && !hasEmailFromConversation;
+      
+      const hasPhoneFromExtraction = currentTriageData?.studentPhone && currentTriageData.studentPhone.trim().length > 0;
+      const hasPhoneFromConversation = conversation?.triageData?.studentPhone && (conversation.triageData as any).studentPhone.trim().length > 0;
+      const needsPhone = !hasPhoneFromExtraction && !hasPhoneFromConversation;
       
       // Smart inference: skip questions if context analysis provides answers
       const hasTimelineFromContext = contextAnalysis?.timelineIndicators && contextAnalysis.timelineIndicators.length > 0;
@@ -823,9 +916,10 @@ Next question priority (only ask for what's MISSING):
 ${needsBuilding ? '1. Building name (REQUIRED)' : '✅ Building name: already have it'}
 ${needsRoom ? '2. Room number (REQUIRED if building known)' : '✅ Room number: already have it'}  
 ${needsIssueDetails ? '3. Issue details (if location complete)' : '✅ Issue details: covered'}
-${needsEmail ? '4. Student email (REQUIRED for updates) - ask naturally: "What\'s your email so I can keep you posted?"' : '✅ Email: already have it'}
-${!hasTimelineFromContext ? '5. Timeline (if not inferred)' : '✅ Timeline: inferred from context'}
-${!hasSeverityFromContext ? '6. Severity (if not inferred)' : '✅ Severity: inferred from language'}
+${needsEmail ? '4. Student email (REQUIRED) - ask: "What\'s your email so I can keep you posted?"' : '✅ Email: already have it'}
+${needsPhone ? '5. Phone (OPTIONAL for SMS) - ask: "Want SMS alerts too? Share your cell (optional, standard messaging rates apply)"' : '✅ Phone: already have it'}
+${!hasTimelineFromContext ? '6. Timeline (if not inferred)' : '✅ Timeline: inferred from context'}
+${!hasSeverityFromContext ? '7. Severity (if not inferred)' : '✅ Severity: inferred from language'}
 
 CRITICAL: If they sound frustrated or said "it's bad/terrible", DO NOT ask about severity - it's already urgent!
 Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they shared.
