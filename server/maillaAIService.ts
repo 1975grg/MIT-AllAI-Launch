@@ -303,7 +303,6 @@ export class MaillaAIService {
           }
         }],
         tool_choice: { type: "function", function: { name: "generate_triage_response" } },
-        temperature: 0.7,
         max_completion_tokens: 1500
       });
 
@@ -1079,7 +1078,6 @@ Respond in JSON format:
         body: JSON.stringify({
           model: 'gpt-5',
           messages: [{ role: 'user', content: estimationPrompt }],
-          temperature: 0.3,
           max_completion_tokens: 200
         })
       });
