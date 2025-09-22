@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, optionalAuth } from "./replitAuth";
 import { WebSocketServer, WebSocket } from 'ws';
 import { ObjectStorageService } from "./objectStorage";
 import { 
@@ -2560,8 +2560,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return mitOrgPromise;
   };
 
-  // ✅ Mailla AI Triage Agent endpoints (public for students, optional auth)
-  app.post('/api/mailla/start-triage', publicRateLimit, async (req: any, res) => {
+  // ✅ Mailla AI Triage Agent endpoints (optional auth for student linking)
+  app.post('/api/mailla/start-triage', optionalAuth, publicRateLimit, async (req: any, res) => {
     try {
       // ✅ Handle both authenticated and anonymous students
       let studentId: string;
@@ -2604,7 +2604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/mailla/continue-triage', publicRateLimit, async (req: any, res) => {
+  app.post('/api/mailla/continue-triage', optionalAuth, publicRateLimit, async (req: any, res) => {
     try {
       // ✅ Validate conversation ownership (supports both auth'd and anonymous)
       const { conversationId, studentMessage, mediaUrls } = req.body;
@@ -2637,7 +2637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/mailla/complete-triage', publicRateLimit, async (req: any, res) => {
+  app.post('/api/mailla/complete-triage', optionalAuth, publicRateLimit, async (req: any, res) => {
     try {
       // ✅ Validate conversation ownership (supports both auth'd and anonymous)
       const { conversationId } = req.body;

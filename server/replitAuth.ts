@@ -214,3 +214,37 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return;
   }
 };
+
+// Optional authentication middleware - populates req.user if authenticated but doesn't fail if not
+export const optionalAuth: RequestHandler = async (req, res, next) => {
+  const user = req.user as any;
+
+  // If not authenticated, just continue without req.user populated
+  if (!req.isAuthenticated() || !user?.expires_at) {
+    return next();
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (now <= user.expires_at) {
+    return next();
+  }
+
+  // Try to refresh token if possible, but don't fail if it doesn't work
+  const refreshToken = user.refresh_token;
+  if (!refreshToken) {
+    // Clear the user session and continue as anonymous
+    req.logout(() => {});
+    return next();
+  }
+
+  try {
+    const config = await getOidcConfig();
+    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+    updateUserSession(user, tokenResponse);
+    return next();
+  } catch (error) {
+    // Clear the user session and continue as anonymous
+    req.logout(() => {});
+    return next();
+  }
+};
