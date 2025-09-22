@@ -879,7 +879,7 @@ Ask for the next most important missing piece. Once you have location + issue + 
   async completeTriageAndCreateCase(conversationId: string): Promise<string> {
     console.log(`⚠️ Using deprecated completeTriageAndCreateCase - use completeTriageConversation instead`);
     const result = await this.completeTriageConversation(conversationId);
-    return result.caseId;
+    return result.caseId || '';
   }
 
   // ========================================
