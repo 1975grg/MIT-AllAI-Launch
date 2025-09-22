@@ -57,7 +57,14 @@ const ContractorMatchRequest = z.object({
     availabilityPattern: z.string(),
     responseTimeHours: z.number(),
     estimatedHourlyRate: z.number().optional(),
-    rating: z.number().optional(),
+    rating: z.union([z.number(), z.string(), z.null()]).optional().transform(val => {
+      if (val === null || val === undefined) return undefined;
+      if (typeof val === 'string') {
+        const num = parseFloat(val);
+        return isNaN(num) ? undefined : num;
+      }
+      return val;
+    }),
     maxJobsPerDay: z.number(),
     currentWorkload: z.number().default(0),
     emergencyAvailable: z.boolean().default(false),
