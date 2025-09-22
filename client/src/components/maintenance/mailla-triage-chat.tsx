@@ -599,7 +599,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
             onChange={(e) => setInput(e.target.value)}
             placeholder={conversation?.isComplete ? "Triage completed" : "Describe what's happening..."}
             className="min-h-[50px] max-h-[100px] resize-none"
-            disabled={isLoading || conversation?.isComplete || isEmergencyMode}
+            disabled={isLoading || isEmergencyMode}
             data-testid="input-message"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -611,7 +611,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
           <Button 
             type="submit" 
             size="sm" 
-            disabled={!input.trim() || isLoading || conversation?.isComplete || isEmergencyMode}
+            disabled={!input.trim() || isLoading || isEmergencyMode}
             data-testid="button-send"
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

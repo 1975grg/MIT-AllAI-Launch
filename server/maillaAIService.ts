@@ -396,6 +396,15 @@ export class MaillaAIService {
           ? [...pendingQuestions, ...maillaResponse.queuedQuestions]
           : pendingQuestions;
 
+        // 🧠 EMAIL EXTRACTION: Capture email addresses from student messages  
+        const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+        const emailMatches = studentMessage.match(emailRegex);
+        if (emailMatches && emailMatches.length > 0) {
+          const extractedEmail = emailMatches[0]; // Take first valid email
+          console.log(`📧 Email extracted from message: ${extractedEmail}`);
+          currentTriageData.studentEmail = extractedEmail;
+        }
+
         // 🧠 SMART TRIAGE: Restore AI intelligence with expanded auto-create conditions
         const hasLocation = !!(updatedLocation.buildingName && updatedLocation.roomNumber);
         // 🎯 EXPANDED: Better issue detection with more maintenance keywords
@@ -410,18 +419,22 @@ export class MaillaAIService {
           studentMessage?.includes('broken') || studentMessage?.includes('not working') || studentMessage?.includes('stuck') || studentMessage?.includes('damaged') || studentMessage?.includes('repair'));
         const hasBasicInfo = hasLocation && hasIssueType;
         
-        // 🎯 FIXED: More conservative auto-create conditions - require explicit AI completion decision
-        const autoCreate = hasBasicInfo && (
+        // 🎯 FIXED: Require email collection before completing triage (with emergency override)
+        const hasStudentEmail = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
+        const isEmergencyOverride = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
+        
+        // 🎯 FIXED: More conservative auto-create conditions - require email except for true emergencies
+        const autoCreate = hasBasicInfo && (hasStudentEmail || isEmergencyOverride) && (
           maillaResponse.nextAction === 'complete_triage' ||     // ✅ AI explicitly says "ready to complete"
-          maillaResponse.nextAction === 'escalate_immediate' ||  // ✅ True emergencies only
-          maillaResponse.urgencyLevel === 'emergency'            // ✅ Life-threatening situations only
+          maillaResponse.nextAction === 'escalate_immediate' ||  // ✅ True emergencies only (email optional)
+          maillaResponse.urgencyLevel === 'emergency'            // ✅ Life-threatening situations only (email optional)
           // ❌ REMOVED: maillaResponse.urgencyLevel === 'urgent' - this was too aggressive
           // ❌ REMOVED: contextAnalysis urgent - let AI decide properly
           // ❌ REMOVED: safety flags urgent - only emergency-level auto-creation
         );
         
-        console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, AI action=${maillaResponse.nextAction}, urgency=${maillaResponse.urgencyLevel}`);
-        console.log(`🎯 Auto-create decision: ${autoCreate} (hasBasicInfo=${hasBasicInfo})`);
+        console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, email=${hasStudentEmail}, AI action=${maillaResponse.nextAction}, urgency=${maillaResponse.urgencyLevel}`);
+        console.log(`🎯 Auto-create decision: ${autoCreate} (hasBasicInfo=${hasBasicInfo}, hasEmail=${hasStudentEmail}, emergencyOverride=${isEmergencyOverride})`);
         
         if (autoCreate) {
           const isEmergency = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
@@ -451,7 +464,8 @@ export class MaillaAIService {
             ...currentTriageData,
             conversationSlots: updatedSlots,
             location: updatedLocation,
-            pendingQuestions: updatedPendingQuestions
+            pendingQuestions: updatedPendingQuestions,
+            studentEmail: currentTriageData.studentEmail // Ensure email is persisted
           }
         });
       }
@@ -715,6 +729,7 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       const needsBuilding = !existingSlots.buildingName;
       const needsRoom = !existingSlots.roomNumber && existingSlots.buildingName;
       const needsIssueDetails = !existingSlots.issueSummary && existingSlots.buildingName && existingSlots.roomNumber;
+      const needsEmail = !conversation.triageData?.studentEmail || conversation.triageData.studentEmail.trim().length === 0;
       
       // Smart inference: skip questions if context analysis provides answers
       const hasTimelineFromContext = contextAnalysis?.timelineIndicators && contextAnalysis.timelineIndicators.length > 0;
@@ -729,8 +744,9 @@ Next question priority (only ask for what's MISSING):
 ${needsBuilding ? '1. Building name (REQUIRED)' : '✅ Building name: already have it'}
 ${needsRoom ? '2. Room number (REQUIRED if building known)' : '✅ Room number: already have it'}  
 ${needsIssueDetails ? '3. Issue details (if location complete)' : '✅ Issue details: covered'}
-${!hasTimelineFromContext ? '4. Timeline (if not inferred)' : '✅ Timeline: inferred from context'}
-${!hasSeverityFromContext ? '5. Severity (if not inferred)' : '✅ Severity: inferred from language'}
+${needsEmail ? '4. Student email (REQUIRED for updates) - ask naturally: "What\'s your email so I can keep you posted?"' : '✅ Email: already have it'}
+${!hasTimelineFromContext ? '5. Timeline (if not inferred)' : '✅ Timeline: inferred from context'}
+${!hasSeverityFromContext ? '6. Severity (if not inferred)' : '✅ Severity: inferred from language'}
 
 CRITICAL: If they sound frustrated or said "it's bad/terrible", DO NOT ask about severity - it's already urgent!
 Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they shared.
@@ -750,9 +766,12 @@ If student has engaged with your previous triage request (uploaded photo, tried 
 
 💝 **WHEN TO COMPLETE:**
 - Student uploaded photo or said they can't
-- Student tried DIY steps you suggested
+- Student tried DIY steps you suggested  
 - Student provided any follow-up information after your triage request
+- Student provided their email address for updates
 - They seem ready to move on
+
+⚠️ CRITICAL: DO NOT complete triage (nextAction: 'complete_triage') until you have their EMAIL ADDRESS for notifications!
 
 Set nextAction: 'complete_triage' and give caring final message with comfort advice + stay-connected promise.
 \n`;
