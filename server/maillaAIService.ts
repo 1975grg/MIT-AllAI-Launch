@@ -861,12 +861,6 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       prompt += `\nWhat we already know: Location=${hasLocation ? '✓' : '✗'}, Issue=${hasIssue ? '✓' : '✗'}, Email=${hasEmail ? '✓' : '✗'}, Phone=${hasPhone ? '✓' : '✗'}
       
 Ask for the next most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
-    } else {
-      // Continuing conversation
-      prompt += `\nWhat we already know: Location=${existingSlots.buildingName ? '✓' : '✗'}, Issue=${existingSlots.issueSummary ? '✓' : '✗'}, Email=${(conversation?.triageData as any)?.studentEmail ? '✓' : '✗'}, Phone=${(conversation?.triageData as any)?.studentPhone ? '✓' : '✗'}
-      
-Ask for the single most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
-    }
 
     if (safetyResults && safetyResults.flags.length > 0) {
       prompt += `SAFETY ALERT: ${safetyResults.flags.join(', ')} - prioritize safety!\n`;
