@@ -729,7 +729,11 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       const needsBuilding = !existingSlots.buildingName;
       const needsRoom = !existingSlots.roomNumber && existingSlots.buildingName;
       const needsIssueDetails = !existingSlots.issueSummary && existingSlots.buildingName && existingSlots.roomNumber;
-      const needsEmail = !conversation.triageData?.studentEmail || conversation.triageData.studentEmail.trim().length === 0;
+      
+      // 🎯 FIX: Check for email in the correct location - currentTriageData is the active working data
+      const hasEmailFromExtraction = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
+      const hasEmailFromConversation = conversation.triageData?.studentEmail && conversation.triageData.studentEmail.trim().length > 0;
+      const needsEmail = !hasEmailFromExtraction && !hasEmailFromConversation;
       
       // Smart inference: skip questions if context analysis provides answers
       const hasTimelineFromContext = contextAnalysis?.timelineIndicators && contextAnalysis.timelineIndicators.length > 0;
