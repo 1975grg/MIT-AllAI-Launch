@@ -38,9 +38,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       maxAge: sessionTtl,
-      sameSite: 'lax'
     },
   });
 }
@@ -94,12 +93,9 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    console.log("🔑 OAuth verify callback called");
-    console.log("🔑 Token claims:", tokens.claims());
     const user = {};
     updateUserSession(user, tokens);
     await upsertUser(tokens.claims());
-    console.log("🔑 User session after update:", user);
     verified(null, user);
   };
 
@@ -128,7 +124,6 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    console.log("🔄 OAuth callback called");
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
@@ -190,7 +185,7 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user?.expires_at) {
+  if (!req.isAuthenticated() || !user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -216,36 +211,3 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 };
 
-// Optional authentication middleware - populates req.user if authenticated but doesn't fail if not
-export const optionalAuth: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  // If not authenticated, just continue without req.user populated
-  if (!req.isAuthenticated() || !user?.expires_at) {
-    return next();
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
-
-  // Try to refresh token if possible, but don't fail if it doesn't work
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    // Clear the user session and continue as anonymous
-    req.logout(() => {});
-    return next();
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    // Clear the user session and continue as anonymous
-    req.logout(() => {});
-    return next();
-  }
-};
