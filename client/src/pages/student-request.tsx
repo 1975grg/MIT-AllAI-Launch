@@ -326,9 +326,9 @@ export default function StudentRequest() {
                             <SelectValue placeholder="Choose an issue type..." />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700">
+                        <SelectContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 [&>*]:!bg-white [&>*]:!text-gray-900 dark:[&>*]:!bg-gray-800 dark:[&>*]:!text-gray-100">
                           {MAINTENANCE_CATEGORIES.map((category) => (
-                            <SelectItem key={category} value={category} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <SelectItem key={category} value={category} className="!bg-white !text-gray-900 hover:!bg-gray-100 dark:!bg-gray-800 dark:!text-gray-100 dark:hover:!bg-gray-700 focus:!bg-gray-100 focus:!text-gray-900 dark:focus:!bg-gray-700 dark:focus:!text-gray-100">
                               {category}
                             </SelectItem>
                           ))}
