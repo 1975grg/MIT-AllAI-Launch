@@ -5180,7 +5180,9 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
       const acceptCaseSchema = z.object({
         caseId: z.string().min(1, "Case ID is required"),
         scheduledDateTime: z.string().datetime("Invalid date/time format"),
-        notes: z.string().optional()
+        notes: z.string().optional(),
+        estimatedDurationMinutes: z.number().int().min(15).max(480).optional().default(120), // 15 min to 8 hours
+        durationSource: z.enum(['ai', 'manual']).optional().default('manual')
       });
 
       const parseResult = acceptCaseSchema.safeParse(req.body);
@@ -5191,7 +5193,7 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         });
       }
 
-      const { caseId, scheduledDateTime, notes } = parseResult.data;
+      const { caseId, scheduledDateTime, notes, estimatedDurationMinutes, durationSource } = parseResult.data;
 
       const org = await storage.getUserOrganization(userId);
       if (!org) return res.status(404).json({ message: "Organization not found" });
@@ -5248,8 +5250,8 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         contractorId: contractor.id // Ensure contractor ID is set
       });
 
-      // 🎯 CREATE THE ACTUAL APPOINTMENT RECORD
-      const appointmentEndTime = new Date(scheduledDate.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+      // 🎯 CREATE THE ACTUAL APPOINTMENT RECORD using contractor-selected duration
+      const appointmentEndTime = new Date(scheduledDate.getTime() + estimatedDurationMinutes * 60 * 1000); // Use selected duration
       const appointment = await storage.createAppointment({
         caseId,
         contractorId: contractor.id,
@@ -5271,12 +5273,16 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
       await storage.createTicketEvent({
         caseId,
         eventType: "appointment_scheduled",
-        message: `Appointment scheduled for ${new Date(scheduledDateTime).toLocaleString()} by ${contractor.name}${notes ? ` - Notes: ${notes}` : ''}`,
+        message: `Appointment scheduled for ${new Date(scheduledDateTime).toLocaleString()} by ${contractor.name} (${estimatedDurationMinutes} min ${durationSource === 'ai' ? 'AI suggested' : 'manual'})${notes ? ` - Notes: ${notes}` : ''}`,
         metadata: {
           scheduledBy: contractor.id,
           scheduledDateTime,
           contractorName: contractor.name,
-          notes
+          notes,
+          // 🎯 Track duration selection for analytics
+          estimatedDurationMinutes,
+          durationSource,
+          appointmentEndTime: appointmentEndTime.toISOString()
         }
       });
 

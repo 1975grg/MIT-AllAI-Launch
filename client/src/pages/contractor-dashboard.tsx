@@ -217,6 +217,8 @@ export default function ContractorDashboard() {
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [acceptNotes, setAcceptNotes] = useState("");
+  const [estimatedDuration, setEstimatedDuration] = useState(120); // Default 2 hours in minutes
+  const [durationSource, setDurationSource] = useState<'ai' | 'manual'>('manual'); // Don't default to 'ai' without actual AI estimate
 
   // 🔍 Filter State
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -291,15 +293,19 @@ export default function ContractorDashboard() {
 
   // 🎯 NEW! Accept Case with Scheduling Mutation
   const acceptCaseMutation = useMutation({
-    mutationFn: async ({ caseId, scheduledDateTime, notes }: { 
+    mutationFn: async ({ caseId, scheduledDateTime, notes, estimatedDurationMinutes, durationSource }: { 
       caseId: string; 
       scheduledDateTime: string; 
-      notes?: string 
+      notes?: string;
+      estimatedDurationMinutes?: number;
+      durationSource?: 'ai' | 'manual';
     }) => {
       return await apiRequest("POST", `/api/contractor/accept-case`, { 
         caseId,
         scheduledDateTime,
-        notes
+        notes,
+        estimatedDurationMinutes,
+        durationSource
       });
     },
     onSuccess: (data) => {
@@ -453,7 +459,9 @@ export default function ContractorDashboard() {
     acceptCaseMutation.mutate({
       caseId: acceptingCase.id,
       scheduledDateTime,
-      notes: acceptNotes.trim() || undefined
+      notes: acceptNotes.trim() || undefined,
+      estimatedDurationMinutes: estimatedDuration, // 🎯 Pass selected duration
+      durationSource: durationSource // Track if AI suggested or manually selected
     });
   };
 
@@ -857,6 +865,85 @@ export default function ContractorDashboard() {
                   data-testid="input-scheduled-time"
                 />
               </div>
+            </div>
+            
+            {/* 🤖 AI-Powered Duration Selection */}
+            <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <Label className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Estimated Duration
+                </Label>
+                {durationSource === 'ai' && (
+                  <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 px-2 py-1 rounded-full">
+                    🤖 AI Suggested
+                  </span>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={estimatedDuration === 30 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {setEstimatedDuration(30); setDurationSource('manual');}}
+                  data-testid="button-duration-30"
+                >
+                  30 min
+                </Button>
+                <Button
+                  type="button"
+                  variant={estimatedDuration === 60 ? "default" : "outline"}  
+                  size="sm"
+                  onClick={() => {setEstimatedDuration(60); setDurationSource('manual');}}
+                  data-testid="button-duration-60"
+                >
+                  1 hour
+                </Button>
+                <Button
+                  type="button"
+                  variant={estimatedDuration === 120 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {setEstimatedDuration(120); setDurationSource('manual');}}
+                  data-testid="button-duration-120"
+                >
+                  2 hours
+                </Button>
+                <Button
+                  type="button"
+                  variant={estimatedDuration === 180 ? "default" : "outline"}
+                  size="sm" 
+                  onClick={() => {setEstimatedDuration(180); setDurationSource('manual');}}
+                  data-testid="button-duration-180"
+                >
+                  3 hours
+                </Button>
+                <Button
+                  type="button"
+                  variant={estimatedDuration === 240 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {setEstimatedDuration(240); setDurationSource('manual');}}
+                  data-testid="button-duration-240"
+                >
+                  4 hours
+                </Button>
+                <Button
+                  type="button"
+                  variant={estimatedDuration > 240 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {setEstimatedDuration(480); setDurationSource('manual');}}
+                  data-testid="button-duration-480"
+                >
+                  All day
+                </Button>
+              </div>
+              
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                {durationSource === 'ai' 
+                  ? `AI suggested ${estimatedDuration} minutes based on issue analysis`
+                  : `Manual selection: ${estimatedDuration} minutes`
+                }
+              </p>
             </div>
             
             <div className="space-y-2">

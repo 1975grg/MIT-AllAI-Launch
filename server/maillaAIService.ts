@@ -588,6 +588,13 @@ export class MaillaAIService {
 - **Location**: Building name + room number (required)
 - **Issue details**: What's broken/not working (required)
 - **Urgency**: Severe language like "freezing/terrible" = urgent (required)
+- **Duration factors**: ONLY when confidence is low - ask strategic questions naturally
+
+**SMART DURATION INTELLIGENCE (ask naturally when confidence is low):**
+- **Scope questions**: "Is this affecting just your room or other areas too?" (1 room vs building-wide)
+- **Accessibility**: "Can you easily get to the problem area?" (behind walls vs accessible)  
+- **Previous attempts**: "Have you or anyone tried fixing this before?" (complexity indicator)
+- **Multi-part issues**: "Is anything else not working related to this?" (linked problems)
 
 **SMART TROUBLESHOOTING (offer when appropriate, skip if urgent/emergency):**
 - **Electrical problems**: "Quick check - can you look at your breaker panel? Any switches that look like they're in the middle position? Try flipping them off then back on - this fixes most electrical issues instantly!"
@@ -769,6 +776,136 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
     console.log(`⚠️ Using deprecated completeTriageAndCreateCase - use completeTriageConversation instead`);
     const result = await this.completeTriageConversation(conversationId);
     return result.caseId;
+  }
+
+  // ========================================
+  // AI-POWERED DURATION ESTIMATION
+  // ========================================
+
+  private async estimateRepairDuration(triageData: any): Promise<{
+    estimatedMinutes: number;
+    confidence: 'high' | 'medium' | 'low';
+    reasoning: string;
+    category: 'quick' | 'standard' | 'complex' | 'major';
+  }> {
+    try {
+      const conversation = triageData.conversationSlots || {};
+      const issueDescription = triageData.issueDescription || conversation.issueSummary || '';
+      const urgencyLevel = triageData.urgencyLevel || 'normal';
+      
+      // Extract duration-relevant signals
+      const durationFactors = {
+        scope: conversation.scope || 'single_room', // from "affecting just your room?"
+        accessibility: conversation.accessibility || 'accessible', // from "can you get to it?"
+        previousAttempts: conversation.previousAttempts || 'none', // from "tried fixing before?"
+        complexity: conversation.complexity || 'unknown', // from multi-part issues
+        category: triageData.category || this.categorizeIssue(issueDescription),
+        urgency: urgencyLevel
+      };
+
+      // AI-powered estimation prompt
+      const estimationPrompt = `You are an expert maintenance duration estimator. Analyze this repair scenario and provide realistic time estimates.
+
+ISSUE DETAILS:
+- Description: "${issueDescription}"
+- Category: ${durationFactors.category}
+- Urgency: ${durationFactors.urgency}
+- Scope: ${durationFactors.scope}
+- Accessibility: ${durationFactors.accessibility}  
+- Previous attempts: ${durationFactors.previousAttempts}
+- Complexity indicators: ${durationFactors.complexity}
+
+ESTIMATION GUIDELINES:
+**Quick Fixes (15-45 minutes):**
+- Simple replacements (light bulbs, faucet cartridges)
+- Reset breakers, basic adjustments
+- Accessible single-component issues
+
+**Standard Repairs (1-2 hours):**
+- Typical plumbing/electrical repairs
+- Appliance troubleshooting and basic fixes  
+- Accessible multi-step repairs
+
+**Complex Repairs (2-4 hours):**
+- Behind-wall access needed
+- Multiple components involved
+- Previous failed attempts indicate complexity
+- Diagnostic time required
+
+**Major Work (4+ hours):**
+- Building-wide issues
+- System replacements
+- Requires specialized tools/parts
+
+Respond in JSON format:
+{
+  "estimatedMinutes": <number>,
+  "confidence": "high|medium|low", 
+  "reasoning": "Brief explanation of factors considered",
+  "category": "quick|standard|complex|major"
+}`;
+
+      // Call OpenAI for intelligent estimation
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{ role: 'user', content: estimationPrompt }],
+          temperature: 0.3,
+          max_tokens: 200
+        })
+      });
+
+      const aiResult = await response.json();
+      const estimation = JSON.parse(aiResult.choices[0].message.content);
+      
+      console.log(`🤖 AI Duration Estimation: ${estimation.estimatedMinutes} minutes (${estimation.confidence} confidence) - ${estimation.reasoning}`);
+      return estimation;
+
+    } catch (error) {
+      console.error('❌ Duration estimation failed:', error);
+      
+      // Fallback to rule-based estimation
+      return this.fallbackDurationEstimation(triageData);
+    }
+  }
+
+  private categorizeIssue(description: string): string {
+    const lowerDesc = description.toLowerCase();
+    
+    if (lowerDesc.includes('electrical') || lowerDesc.includes('outlet') || lowerDesc.includes('power')) return 'electrical';
+    if (lowerDesc.includes('water') || lowerDesc.includes('leak') || lowerDesc.includes('plumb')) return 'plumbing';
+    if (lowerDesc.includes('heat') || lowerDesc.includes('ac') || lowerDesc.includes('hvac')) return 'hvac';
+    if (lowerDesc.includes('door') || lowerDesc.includes('lock') || lowerDesc.includes('window')) return 'hardware';
+    if (lowerDesc.includes('light') || lowerDesc.includes('bulb')) return 'lighting';
+    
+    return 'general';
+  }
+
+  private fallbackDurationEstimation(triageData: any): {
+    estimatedMinutes: number;
+    confidence: 'high' | 'medium' | 'low';
+    reasoning: string;
+    category: 'quick' | 'standard' | 'complex' | 'major';
+  } {
+    const description = triageData.issueDescription || '';
+    const urgency = triageData.urgencyLevel || 'normal';
+    
+    // Simple rule-based fallback
+    if (description.includes('light') || description.includes('bulb')) {
+      return { estimatedMinutes: 30, confidence: 'medium', reasoning: 'Simple lighting issue', category: 'quick' };
+    }
+    
+    if (urgency === 'emergency') {
+      return { estimatedMinutes: 180, confidence: 'low', reasoning: 'Emergency - complex diagnosis likely', category: 'complex' };
+    }
+    
+    // Default to standard 2-hour appointment
+    return { estimatedMinutes: 120, confidence: 'low', reasoning: 'Standard default estimate', category: 'standard' };
   }
 
   // ========================================
@@ -1388,15 +1525,23 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         //   status: 'In Progress' as any
         // });
 
-        // 📝 Log contractor recommendation (using existing enum but no actual assignment)
+        // 🤖 AI-POWERED DURATION ESTIMATION  
+        const durationEstimate = await this.estimateRepairDuration(existingConversation.triageData);
+        
+        // 📝 Log contractor recommendation with duration estimate
         await this.createTicketEvent(caseId, conversationId, "contractor_assigned", 
-          `Contractor recommended: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match) - Available for contractor acceptance`, {
+          `Contractor recommended: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match) - Estimated ${durationEstimate.estimatedMinutes} minutes (${durationEstimate.confidence} confidence)`, {
           contractorId: bestContractor.contractorId,  // Keep existing field structure
           contractorName: bestContractor.contractorName,
           matchScore: bestContractor.matchScore,
           estimatedResponseTime: bestContractor.estimatedResponseTime,
           reasoning: bestContractor.reasoning,
-          isRecommendation: true  // Flag to indicate this is a recommendation, not actual assignment
+          isRecommendation: true,  // Flag to indicate this is a recommendation, not actual assignment
+          // 🎯 NEW: Duration estimation data
+          estimatedDurationMinutes: durationEstimate.estimatedMinutes,
+          durationConfidence: durationEstimate.confidence,
+          durationReasoning: durationEstimate.reasoning,
+          durationCategory: durationEstimate.category
         });
 
         console.log(`💡 Contractor ${bestContractor.contractorName} recommended for case ${caseId} - awaiting acceptance`);
