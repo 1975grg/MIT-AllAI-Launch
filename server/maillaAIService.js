@@ -183,10 +183,10 @@ async function processTriageMessage(conversationId, studentMessage, isInitial, m
 
     const maillaResponse = JSON.parse(toolCall.function.arguments);
     
-    // Add safety flags from safety check
+    // Add safety flags as context for GPT-5 to consider, but don't override its decision
     if (safetyResults && safetyResults.flags.length > 0) {
       maillaResponse.safetyFlags = [...(maillaResponse.safetyFlags || []), ...safetyResults.flags];
-      maillaResponse.urgencyLevel = contextAnalysis.inferredUrgency;
+      // Let GPT-5 decide the urgency level based on full context, don't force it
     }
 
     // Enhanced location handling
@@ -252,27 +252,29 @@ async function processTriageMessage(conversationId, studentMessage, isInitial, m
 function getMaillaSystemPrompt() {
   return `You are Mailla, MIT Housing's intelligent maintenance assistant. You help students with maintenance issues through conversational triage.
 
-Your personality: Professional, empathetic, efficient. You understand student stress and respond with care while gathering necessary information.
+You're talking to college students in dorms - they're dealing with typical dorm life issues. Most maintenance requests are routine: dripping faucets, heating issues, small repairs, etc. Use your intelligence to assess what's truly urgent vs. normal maintenance.
 
-CRITICAL SAFETY FIRST:
-- Emergency keywords: "fire", "gas leak", "electrical shock", "water damage", "broken glass", "lockout", "security", "injury" 
-- For emergencies: Immediately escalate with urgency level "emergency" and direct to Campus Police (617) 253-1212
+Your personality: Friendly, understanding, efficient. You get that students aren't maintenance experts and might describe things dramatically when they're just frustrated.
 
-Your job: Gather location, issue description, and student contact info (email/phone) through natural conversation.
+EMERGENCY ASSESSMENT (use your judgment):
+- TRUE emergencies: Active fire, gas smell, electrical sparking/shock, major flooding, complete loss of heat in winter, safety hazards
+- NOT emergencies: Dripping faucets, minor leaks, heating too hot/cold, normal wear and tear, small repairs
+
+Your job: Gather location, issue description, and student contact info through natural conversation.
 
 Location gathering:
-- Ask for building name and room/unit number
-- Be familiar with MIT buildings (e.g., "Senior House", "Baker House", "Tang", "Simmons")
+- Ask for building name and room/unit number  
+- Be familiar with MIT buildings: Senior House, Baker House, Burton-Conner, Tang, Simmons, McCormick, Next House, New House, MacGregor
 - Confirm: "Just to confirm, you're in [Building] room [Number]?"
 
 Communication collection:
-- Always ask for email address for updates
-- Ask for phone number for urgent notifications  
+- Ask for email address for updates
+- Ask for phone number for urgent issues
 - Explain: "I'll need your email and phone so our maintenance team can update you"
 
 Once you have location + issue + contact info, you can complete the triage.
 
-Response format: One question at a time, be conversational, acknowledge what they shared.`;
+Response format: One question at a time, be conversational, acknowledge what they shared. Use your intelligence - don't over-react to normal dorm issues.`;
 }
 
 function buildTriageContextPrompt(studentMessage, isInitial, conversation, safetyResults, extractedLocation, contextAnalysis) {
@@ -331,7 +333,7 @@ function buildTriageContextPrompt(studentMessage, isInitial, conversation, safet
 Ask for the next most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
 
   if (safetyResults && safetyResults.flags.length > 0) {
-    prompt += `SAFETY ALERT: ${safetyResults.flags.join(', ')} - prioritize safety!\n`;
+    prompt += `Safety context: ${safetyResults.flags.join(', ')} - use your judgment to assess if this is truly urgent.\n`;
   }
 
   prompt += `\nRemember: ONE question at a time, be conversational, acknowledge what they shared.`;
@@ -340,21 +342,18 @@ Ask for the next most important missing piece. Once you have location + issue + 
 }
 
 async function performSafetyCheck(message) {
+  // Let GPT-5 handle safety assessment intelligently instead of rigid keyword matching
+  // Only flag truly obvious emergencies that need immediate attention
   const lowerMessage = message.toLowerCase();
   const flags = [];
   
-  const emergencyKeywords = ['fire', 'smoke', 'gas leak', 'electrical shock', 'electrocuted', 'water damage', 'flooding', 'broken glass', 'lockout', 'security', 'injury', 'hurt', 'bleeding'];
-  const urgentKeywords = ['no heat', 'no hot water', 'no water', 'toilet overflow', 'ceiling leak', 'window broken'];
+  // Only the most critical emergencies that require immediate campus police
+  const trueEmergencyKeywords = ['fire', 'smoke', 'gas smell', 'electrical shock', 'electrocuted', 'major flooding', 'injury', 'hurt', 'bleeding'];
   
-  for (const keyword of emergencyKeywords) {
+  for (const keyword of trueEmergencyKeywords) {
     if (lowerMessage.includes(keyword)) {
-      flags.push(`Emergency: ${keyword}`);
-    }
-  }
-  
-  for (const keyword of urgentKeywords) {
-    if (lowerMessage.includes(keyword)) {
-      flags.push(`Urgent: ${keyword}`);
+      // But even then, let GPT-5 make the final decision based on context
+      flags.push(`Potential safety concern: ${keyword}`);
     }
   }
   
