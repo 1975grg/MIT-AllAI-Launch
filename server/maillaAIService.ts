@@ -129,7 +129,7 @@ export class MaillaAIService {
 
       // 2. Update conversation history
       const updatedHistory = [
-        ...(conversation.conversationHistory as any[]),
+        ...conversation.conversationHistory,
         {
           role: "student",
           message: update.studentMessage,
@@ -367,9 +367,9 @@ export class MaillaAIService {
       // 8. Update conversation slots and queue pending questions
       if (maillaResponse.conversationSlots || maillaResponse.queuedQuestions || maillaResponse.location) {
         const currentTriageData = conversation?.triageData || { initialRequest: studentMessage, category: null, context: {} };
-        const existingSlots = (currentTriageData as any)?.conversationSlots || {};
-        const existingLocation = (currentTriageData as any)?.location || {};
-        const pendingQuestions = (currentTriageData as any)?.pendingQuestions || [];
+        const existingSlots = currentTriageData?.conversationSlots || {};
+        const existingLocation = currentTriageData?.location || {};
+        const pendingQuestions = currentTriageData?.pendingQuestions || [];
         
         // Merge conversation slots with building name normalization
         const updatedSlots = {
@@ -418,7 +418,7 @@ export class MaillaAIService {
         if (emailMatches && emailMatches.length > 0) {
           const extractedEmail = emailMatches[0]; // Take first valid email
           console.log(`📧 Email extracted from message: ${extractedEmail}`);
-          (currentTriageData as any).studentEmail = extractedEmail;
+          currentTriageData.studentEmail = extractedEmail;
         }
         
         // 🧠 PHONE EXTRACTION: Capture phone numbers from student messages
@@ -427,7 +427,7 @@ export class MaillaAIService {
         if (phoneMatches && phoneMatches.length > 0) {
           const extractedPhone = phoneMatches[0].replace(/[-.\s()]/g, ''); // Clean format
           console.log(`📱 Phone extracted from message: ${extractedPhone}`);
-          (currentTriageData as any).studentPhone = extractedPhone;
+          currentTriageData.studentPhone = extractedPhone;
         }
 
         // 🧠 SMART TRIAGE: Restore AI intelligence with expanded auto-create conditions
@@ -445,8 +445,8 @@ export class MaillaAIService {
         const hasBasicInfo = hasLocation && hasIssueType;
         
         // 🎯 CONTACT INFO: Check if we have student contact information  
-        const hasStudentEmail = (currentTriageData as any)?.studentEmail && (currentTriageData as any).studentEmail.trim().length > 0;
-        const hasStudentPhone = (currentTriageData as any)?.studentPhone && (currentTriageData as any).studentPhone.trim().length > 0;
+        const hasStudentEmail = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
+        const hasStudentPhone = currentTriageData?.studentPhone && currentTriageData.studentPhone.trim().length > 0;
         const isEmergencyOverride = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
         
         // 🎯 SMART COMPLETION: Handle self-resolved cases and contractor cases separately
@@ -489,7 +489,7 @@ export class MaillaAIService {
               // 🎉 SEND NOTIFICATIONS: Email confirmation + optional SMS
               if (hasStudentEmail) {
                 const emailSent = await notificationService.sendEmailNotification({
-                  to: (currentTriageData as any).studentEmail,
+                  to: currentTriageData.studentEmail,
                   subject: "✅ Great Job - Maintenance Issue Resolved!",
                   message: `Great work resolving your ${updatedSlots.issueSummary || 'maintenance issue'} in ${updatedLocation.buildingName} ${updatedLocation.roomNumber}! 
 
@@ -537,7 +537,7 @@ MIT Housing Maintenance Team`,
                 // 📧 STUDENT NOTIFICATIONS: Case creation confirmation
                 if (hasStudentEmail) {
                   const studentEmailSent = await notificationService.sendEmailNotification({
-                    to: (currentTriageData as any).studentEmail,
+                    to: currentTriageData.studentEmail,
                     subject: `🔧 Maintenance Case #${caseNumber} Created`,
                     message: `Hi there!
 
