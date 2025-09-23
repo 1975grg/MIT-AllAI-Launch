@@ -27,6 +27,9 @@ interface MaillaResponse {
     issueSummary?: string;
     timeline?: string;
     severity?: string;
+    studentName?: string;
+    studentEmail?: string;
+    studentPhone?: string;
   };
   location?: {
     buildingName?: string;
@@ -267,7 +270,10 @@ export class MaillaAIService {
                     roomNumber: { type: "string" },
                     issueSummary: { type: "string" },
                     timeline: { type: "string" },
-                    severity: { type: "string" }
+                    severity: { type: "string" },
+                    studentName: { type: "string", description: "Student's name if provided" },
+                    studentEmail: { type: "string", description: "Student's email for updates" },
+                    studentPhone: { type: "string", description: "Student's phone for urgent contact" }
                   },
                   description: "Information slots filled from this interaction"
                 },
@@ -593,7 +599,9 @@ export class MaillaAIService {
 
 *For electrical issues:* "Quick check - have you looked at your circuit breaker? Sometimes flipping it off and back on fixes the problem instantly."
 
-*For contact info:* "To keep you updated on when the contractor is coming, could you share your name, cell number, and email?" 
+*For contact info:* "To keep you updated on when the contractor is coming, could you share your name, cell number, and email?"
+
+*When students introduce themselves:* If they say something like "Hi, this is Ben from Next House" or "I'm Sarah in room 312", capture their name immediately in conversationSlots.studentName. 
 
 *For valve guidance:* "If the leak gets worse, look under the sink for two knobs - turn them clockwise (righty-tighty) to shut off the water."
 
@@ -1324,8 +1332,22 @@ Respond in JSON format:
       // 🎯 Enhanced category detection from conversation
       const detectedCategory = this.detectMaintenanceCategory(conversation);
       
-      // 👤 Get student full name from user data
-      const studentInfo = await this.getStudentFullName(conversation.studentId);
+      // 👤 Get student contact info from triage conversation (preferred) or user data (fallback)
+      const triageSlots = (conversation.triageData as any)?.conversationSlots || {};
+      let studentInfo = {
+        firstName: triageSlots.studentName || '',
+        lastName: '',
+        email: triageSlots.studentEmail || '',
+        phone: triageSlots.studentPhone || ''
+      };
+      
+      // Fallback to user lookup if no triage contact info available
+      if (!studentInfo.firstName && !studentInfo.email) {
+        const fallbackInfo = await this.getStudentFullName(conversation.studentId);
+        if (fallbackInfo) {
+          studentInfo = fallbackInfo;
+        }
+      }
       
       // 🎬 Get media analysis insights if available
       const mediaInsights = await this.analyzeConversationMedia(conversation);
@@ -1352,6 +1374,8 @@ Respond in JSON format:
           mitBuilding: locationData?.buildingName,
           roomNumber: locationData?.roomNumber,
           studentName: `${studentInfo?.firstName || ''} ${studentInfo?.lastName || ''}`.trim(),
+          studentEmail: studentInfo?.email || '',
+          studentPhone: studentInfo?.phone || '',
           category: detectedCategory,
           mediaInsights: mediaInsights || null
         }
