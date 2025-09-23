@@ -513,10 +513,15 @@ async function completeTriageConversation(conversationId) {
     }
 
     // Create smart case
-    const caseId = await createSmartCase(conversation);
-    console.log(`✅ Created smart case: ${caseId}`);
+    const caseResult = await createSmartCase(conversation);
+    console.log(`✅ Created smart case: ${caseResult.caseNumber} (ID: ${caseResult.caseId})`);
     
-    return { isComplete: true, caseId };
+    return { 
+      isComplete: true, 
+      caseId: caseResult.caseId,
+      caseNumber: caseResult.caseNumber,
+      ...caseResult
+    };
   } catch (error) {
     console.error("Error completing triage:", error);
     throw error;
@@ -556,7 +561,7 @@ async function createSmartCase(conversation) {
     console.log(`✅ AI Triage Complete: ${triageResult.urgency} urgency, ${triageResult.category} category`);
     
     // 🎯 STEP 4: Find optimal contractors with AI coordination
-    const rawContractors = await storage.getContractors(conversation.orgId) || [];
+    const rawContractors = await storage.getVendors(conversation.orgId) || [];
     
     // Map storage format to AICoordinator schema format
     const availableContractors = rawContractors.map(contractor => ({
