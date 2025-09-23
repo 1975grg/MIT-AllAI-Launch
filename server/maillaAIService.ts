@@ -740,7 +740,7 @@ Collect naturally, in conversation:
 Behavior: Acknowledge feelings and summarize briefly. If emergency is suspected, prioritize safety and prompt immediate help; otherwise continue. Ask for photos only if they'd help diagnosis. Once you have location, issue, and email, confirm and proceed to create the request; offer SMS opt-in. Keep replies short (2–4 sentences).`;
   }
 
-  buildTriageContextPrompt(studentMessage, isInitial, conversation, safetyResults, extractedLocation, contextAnalysis) {
+  buildTriageContextPrompt(studentMessage: string, isInitial: boolean, conversation: any, safetyResults: any, extractedLocation: any, contextAnalysis: any): string {
     let prompt = `Student message: "${studentMessage}"\n\n`;
 
     // Extract existing conversation slots from triageData
@@ -861,7 +861,7 @@ Ask for the next most important missing piece. Once you have location + issue + 
   // DUPLICATE DETECTION HELPERS  
   // ========================================
   
-  areSimilarIssues(description1, description2) {
+  areSimilarIssues(description1: string, description2: string): boolean {
     const desc1 = description1.toLowerCase().trim();
     const desc2 = description2.toLowerCase().trim();
     
@@ -878,7 +878,7 @@ Ask for the next most important missing piece. Once you have location + issue + 
   // AI-POWERED DURATION ESTIMATION
   // ========================================
 
-  async estimateRepairDuration(triageData) {
+  async estimateRepairDuration(triageData: any): Promise<{ duration: string; reasoning: string; }> {
     try {
       const conversation = triageData.conversationSlots || {};
       const issueDescription = triageData.issueDescription || conversation.issueSummary || '';
@@ -964,7 +964,7 @@ Respond in JSON format:
     }
   }
 
-  categorizeIssue(description) {
+  categorizeIssue(description: string): string {
     const lowerDesc = description.toLowerCase();
     
     if (lowerDesc.includes('electrical') || lowerDesc.includes('outlet') || lowerDesc.includes('power')) return 'electrical';
@@ -976,7 +976,7 @@ Respond in JSON format:
     return 'general';
   }
 
-  fallbackDurationEstimation(triageData) {
+  fallbackDurationEstimation(triageData: any): { duration: string; reasoning: string; } {
     const description = triageData.issueDescription || '';
     const urgency = triageData.urgencyLevel || 'normal';
     
@@ -998,7 +998,7 @@ Respond in JSON format:
   // ========================================
 
   // Enhanced MIT building mapping with aliases and fuzzy matching
-  getMITPropertyMapping(buildingName, roomNumber) {
+  getMITPropertyMapping(buildingName: string, roomNumber: string): { propertyId: string | null; unitId: string | null; reasoning: string; } {
     if (!buildingName) {
       return { propertyId: null, unitId: null };
     }
@@ -1036,7 +1036,7 @@ Respond in JSON format:
   }
 
   // Smart building name resolution with aliases and fuzzy matching
-  resolveBuildingName(input) {
+  resolveBuildingName(input: string): string {
     const normalizedInput = input.trim().toLowerCase();
 
     // Building aliases map - handles how students actually talk
@@ -1122,7 +1122,7 @@ Respond in JSON format:
   // ========================================
 
   // Smart context inference from student messages
-  analyzeMessageContext(message) {
+  analyzeMessageContext(message: string): { isUrgent: boolean; isEmergency: boolean; hasComplexity: boolean; needsScheduling: boolean; hasMultipleIssues: boolean; } {
     emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried';
     inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low';
     timelineIndicators: string[];
@@ -1219,7 +1219,7 @@ Respond in JSON format:
   }
 
   // Pre-process student message to extract and standardize location info
-  extractLocationFromMessage(message) {
+  extractLocationFromMessage(message: string): { buildingName: string | null; roomNumber: string | null; confidence: number; reasoning: string; } {
     const normalizedMessage = message.toLowerCase();
     
     // Common patterns students use
@@ -1523,7 +1523,7 @@ Respond in JSON format:
   /**
    * Maps database priority enum to AI Coordinator urgency format
    */
-  mapPriorityToUrgency(priority) {
+  mapPriorityToUrgency(priority: string): string {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Critical'> = {
       'Low': 'Low',
       'Medium': 'Medium', 
@@ -1536,7 +1536,7 @@ Respond in JSON format:
   /**
    * Maps Mailla urgency levels to AI Coordinator urgency format
    */
-  mapMaillaUrgencyToCoordinator(urgencyLevel) {
+  mapMaillaUrgencyToCoordinator(urgencyLevel: string): string {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Critical'> = {
       'low': 'Low',
       'normal': 'Medium',
@@ -1549,7 +1549,7 @@ Respond in JSON format:
   /**
    * Maps Mailla urgency levels to database priority enum values
    */
-  mapUrgencyToPriority(urgencyLevel) {
+  mapUrgencyToPriority(urgencyLevel: string): string {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Urgent'> = {
       'low': 'Low',
       'normal': 'Medium', 
@@ -1562,7 +1562,7 @@ Respond in JSON format:
   /**
    * Generates user-friendly case number from UUID
    */
-  generateFriendlyCaseNumber(caseId) {
+  generateFriendlyCaseNumber(caseId: string): string {
     // Convert UUID to a short, memorable number
     const hash = caseId.split('-')[0]; // Use first part of UUID
     const num = parseInt(hash.substring(0, 6), 16) % 9000 + 1000; // Generate 1000-9999
@@ -1682,7 +1682,7 @@ Respond in JSON format:
     }
   }
 
-  shouldRequestMedia(conversation) {
+  shouldRequestMedia(conversation: any): boolean {
     const description = conversation.initialRequest?.toLowerCase() || '';
     
     // Skip media requests for safety hazards - prioritize evacuation
