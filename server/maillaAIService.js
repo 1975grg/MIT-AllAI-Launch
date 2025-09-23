@@ -486,5 +486,6 @@ async function createSmartCase(conversation) {
 // Export the service as an object for compatibility
 export const maillaAIService = {
   startTriageConversation,
-  continueTriageConversation
+  continueTriageConversation,
+  completeTriageConversation
 };
