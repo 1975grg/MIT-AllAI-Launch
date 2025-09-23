@@ -875,7 +875,6 @@ Ask for the next most important missing piece. Once you have location + issue + 
   // COMPLETE TRIAGE & CASE CREATION
   // ========================================
 
-  // Legacy method removed - use completeTriageConversation instead
 
   // ========================================
   // DUPLICATE DETECTION HELPERS
