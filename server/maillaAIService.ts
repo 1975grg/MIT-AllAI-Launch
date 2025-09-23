@@ -859,7 +859,7 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       const hasPhone = (conversation?.triageData as any)?.studentPhone;
       
       prompt += `\nWhat we already know: Location=${hasLocation ? '✓' : '✗'}, Issue=${hasIssue ? '✓' : '✗'}, Email=${hasEmail ? '✓' : '✗'}, Phone=${hasPhone ? '✓' : '✗'}
-      
+
 Ask for the next most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
 
     if (safetyResults && safetyResults.flags.length > 0) {
