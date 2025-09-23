@@ -94,12 +94,33 @@ export async function continueTriageConversation(update) {
       }
     ];
 
-    // 5. Update conversation
+    // 5. Update conversation - IMPORTANT: Persist triageData with slots and location
+    const updatedTriageData = {
+      ...conversation.triageData,
+      conversationSlots: {
+        ...conversation.triageData?.conversationSlots,
+        ...maillaResponse.conversationSlots
+      }
+    };
+    
+    // Merge location data if present
+    if (maillaResponse.location) {
+      updatedTriageData.location = {
+        ...conversation.triageData?.location,
+        ...maillaResponse.location
+      };
+    }
+    
+    // Store student contact info if present
+    if (maillaResponse.studentEmail) updatedTriageData.studentEmail = maillaResponse.studentEmail;
+    if (maillaResponse.studentPhone) updatedTriageData.studentPhone = maillaResponse.studentPhone;
+    
     await storage.updateTriageConversation(update.conversationId, {
       conversationHistory: finalHistory,
       urgencyLevel: maillaResponse.urgencyLevel,
       safetyFlags: maillaResponse.safetyFlags,
-      currentPhase: maillaResponse.isComplete ? "completed" : "gathering_info"
+      currentPhase: maillaResponse.isComplete ? "completed" : "gathering_info",
+      triageData: updatedTriageData  // CRITICAL: Persist the conversation data
     });
 
     console.log(`✅ Mailla response: ${maillaResponse.urgencyLevel} priority, complete: ${maillaResponse.isComplete}`);
@@ -189,16 +210,22 @@ async function processTriageMessage(conversationId, studentMessage, isInitial, m
       // Let GPT-5 decide the urgency level based on full context, don't force it
     }
 
-    // Enhanced location handling
+    // Enhanced location handling - also update conversationSlots
     if (extractedLocation && (extractedLocation.buildingName || extractedLocation.roomNumber)) {
       if (!maillaResponse.location) {
         maillaResponse.location = {};
       }
+      if (!maillaResponse.conversationSlots) {
+        maillaResponse.conversationSlots = {};
+      }
+      
       if (!maillaResponse.location.buildingName && extractedLocation.buildingName) {
         maillaResponse.location.buildingName = extractedLocation.buildingName;
+        maillaResponse.conversationSlots.buildingName = extractedLocation.buildingName;
       }
       if (!maillaResponse.location.roomNumber && extractedLocation.roomNumber) {
         maillaResponse.location.roomNumber = extractedLocation.roomNumber;
+        maillaResponse.conversationSlots.roomNumber = extractedLocation.roomNumber;
       }
       if (maillaResponse.location.buildingName && maillaResponse.location.roomNumber) {
         maillaResponse.location.isLocationConfirmed = true;
@@ -322,15 +349,21 @@ function buildTriageContextPrompt(studentMessage, isInitial, conversation, safet
     }
   }
 
-  // Check what we still need
-  const hasLocation = (existingSlots.buildingName && existingSlots.roomNumber);
-  const hasIssue = existingSlots.issueSummary;
+  // Check what we still need - prioritize persisted triageData over current extraction
+  const persistedLocation = conversation?.triageData?.location;
+  const locationFromPersisted = (persistedLocation?.buildingName && persistedLocation?.roomNumber);
+  const locationFromExtracted = (extractedLocation?.buildingName && extractedLocation?.roomNumber);
+  const locationFromSlots = (existingSlots.buildingName && existingSlots.roomNumber);
+  const hasLocation = locationFromPersisted || locationFromSlots || locationFromExtracted;
+  const locationIsConfirmed = persistedLocation?.isLocationConfirmed || false;
+  
+  const hasIssue = existingSlots.issueSummary || conversation.initialRequest;
   const hasEmail = conversation?.triageData?.studentEmail;
   const hasPhone = conversation?.triageData?.studentPhone;
   
   prompt += `\nWhat we already know: Location=${hasLocation ? '✓' : '✗'}, Issue=${hasIssue ? '✓' : '✗'}, Email=${hasEmail ? '✓' : '✗'}, Phone=${hasPhone ? '✓' : '✗'}
 
-Ask for the next most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
+${locationIsConfirmed ? 'Location is confirmed. ' : ''}Ask for the next most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
 
   if (safetyResults && safetyResults.flags.length > 0) {
     prompt += `Safety context: ${safetyResults.flags.join(', ')} - use your judgment to assess if this is truly urgent.\n`;
@@ -420,24 +453,32 @@ function extractLocationFromMessage(message) {
   for (const [key, value] of Object.entries(buildings)) {
     if (lowerMessage.includes(key)) {
       buildingName = value;
-      confidence += 0.7;
+      confidence += 0.8;
       break;
     }
   }
   
-  // Room number detection
+  // Enhanced room number detection - handle "unit", "room", "apt", "apartment"
   const roomMatch = message.match(/(?:room|unit|apt|apartment)\s*(\d+[a-z]?)/i) || 
+                   message.match(/(?:rm\.?|#)\s*(\d+[a-z]?)/i) ||
                    message.match(/\b(\d{2,4}[a-z]?)\b/);
   if (roomMatch) {
     roomNumber = roomMatch[1];
-    confidence += 0.3;
+    confidence += 0.5;
+  }
+  
+  // Special handling for "unit X" format common in dorms
+  const unitMatch = message.match(/unit\s+(\d+[a-z]?)/i);
+  if (unitMatch) {
+    roomNumber = unitMatch[1];
+    confidence += 0.4;
   }
   
   return {
     buildingName,
     roomNumber, 
     confidence,
-    reasoning: `Detected building: ${buildingName || 'none'}, room: ${roomNumber || 'none'}`
+    reasoning: `Detected building: ${buildingName || 'none'}, room/unit: ${roomNumber || 'none'}`
   };
 }
 
