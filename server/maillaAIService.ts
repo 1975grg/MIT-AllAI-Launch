@@ -1836,7 +1836,7 @@ Respond in JSON format:
   // ENHANCED MEDIA ANALYSIS FOR CONTRACTORS
   // ========================================
 
-  private async analyzeConversationMedia(conversation: any): Promise<any> {
+  async analyzeConversationMedia(conversation) {
     try {
       // Extract media from conversation history and triage data
       const mediaUrls: string[] = [];
@@ -1905,7 +1905,7 @@ Respond in JSON format:
     }
   }
 
-  private async analyzePhotosForContractors(imageUrls: string[], conversation: any): Promise<any> {
+  async analyzePhotosForContractors(imageUrls, conversation) {
     try {
       const firstImage = imageUrls[0]; // Focus on first image for now
       
@@ -1963,7 +1963,7 @@ Focus on practical details that help contractors prepare effectively.`;
     }
   }
 
-  private async analyzeAudioForContractors(audioUrls: string[], conversation: any): Promise<any> {
+  async analyzeAudioForContractors(audioUrls, conversation) {
     try {
       // For now, provide structured analysis based on audio description patterns
       // This can be enhanced with actual audio analysis APIs later
@@ -2196,7 +2196,7 @@ Questions? Just ask! I'm here to help coordinate your maintenance needs.`;
     return 'General';
   }
 
-  private async getStudentFullName(studentId: string): Promise<{ firstName?: string; lastName?: string } | null> {
+  async getStudentFullName(studentId) {
     try {
       // Get user information from storage
       const user = await storage.getUser(studentId);
