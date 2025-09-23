@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, Filter, Heart, Star, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import ContractorAvailability from "@/pages/contractor-availability";
 import { LiveNotification } from "@/components/ui/live-notification";
 import Header from "@/components/layout/header";
@@ -902,7 +904,7 @@ export default function ContractorDashboard() {
                     
                     // Check if this time slot conflicts with existing appointments
                     const isBooked = appointments.some(apt => {
-                      const aptDate = new Date(apt.scheduled_date);
+                      const aptDate = new Date(apt.scheduledStartAt);
                       const aptTime = format(aptDate, 'HH:mm');
                       const selectedDate = new Date(scheduledDate);
                       const isSameDay = format(aptDate, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
