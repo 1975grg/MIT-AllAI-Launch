@@ -28,7 +28,7 @@ import { aiTriageService } from "./aiTriage";
 import { aiCoordinatorService } from "./aiCoordinator";
 import { aiDuplicateDetectionService } from "./aiDuplicateDetection";
 import { dataAuditService } from "./dataAudit";
-// import { maillaAIService } from "./maillaAIService";
+import { maillaAIService } from "./maillaAIService.js";
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
@@ -2618,21 +2618,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Invalid initial request - must be at least 10 characters' });
       }
       
-      // TEMPORARY: Return mock response while fixing maillaAIService
-      const response = {
-        conversationId: `mock-${Date.now()}`,
-        maillaResponse: {
-          message: "Thank you for your maintenance request. Due to a technical issue, please contact MIT Housing directly at housing@mit.edu or call (617) 253-1600. We apologize for the inconvenience.",
-          isComplete: false,
-          nextAction: "contact_support"
-        }
-      };
-      
-      /* const response = await maillaAIService.startTriageConversation(
+      const response = await maillaAIService.startTriageConversation(
         studentId, 
         orgId, 
         initialRequest
-      ); */
+      );
       
       res.json(response);
     } catch (error) {
