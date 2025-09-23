@@ -4,6 +4,7 @@ import { storage } from './storage.js';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import { notificationService } from './notificationService.js';
+import { aiCoordinatorService } from './aiCoordinator.ts';
 
 // ========================================
 // 🛡️ Mailla AI Triage Agent Service (JS Module)
@@ -510,15 +511,14 @@ async function completeTriageConversation(conversationId) {
 }
 
 async function createSmartCase(conversation) {
-  const triageData = conversation.triageData;
+  const triageData = conversation?.triageData || {};
   const locationData = triageData?.location;
   
   console.log(`🤖 Starting full AI workflow for maintenance request`);
   
   try {
     // 🎯 STEP 1: Import the full AI services
-    const { aiTriageService } = await import('./aiTriage.js');
-    const { aiCoordinatorService } = await import('./aiCoordinator.js');
+    const { aiTriageService } = await import('./aiTriage.ts');
     
     // 🎯 STEP 2: Transform conversation into MaintenanceRequest format
     const maintenanceRequest = {
@@ -543,8 +543,56 @@ async function createSmartCase(conversation) {
     console.log(`✅ AI Triage Complete: ${triageResult.urgency} urgency, ${triageResult.category} category`);
     
     // 🎯 STEP 4: Find optimal contractors with AI coordination
-    const contractorRecommendations = await aiTriageService.findMatchingContractors(triageResult, conversation.orgId);
-    console.log(`✅ Found ${contractorRecommendations.length} contractor matches`);
+    const rawContractors = await storage.getContractors(conversation.orgId) || [];
+    
+    // Map storage format to AICoordinator schema format
+    const availableContractors = rawContractors.map(contractor => ({
+      id: contractor.id || contractor.contractorId || `contractor-${Date.now()}`,
+      name: contractor.name || contractor.contractorName || 'Unknown Contractor',
+      category: contractor.category || contractor.specialization || 'General',
+      specializations: contractor.specializations || [contractor.category || 'General'],
+      availabilityPattern: contractor.availabilityPattern || 'Monday-Friday 9AM-5PM',
+      responseTimeHours: contractor.responseTimeHours || contractor.responseTime || 2,
+      estimatedHourlyRate: contractor.hourlyRate || contractor.rate || 50,
+      rating: contractor.rating || 4.5,
+      maxJobsPerDay: contractor.maxJobsPerDay || 3,
+      currentWorkload: contractor.currentWorkload || 0,
+      emergencyAvailable: contractor.emergencyAvailable || false,
+      isActiveContractor: contractor.status === 'Active' || contractor.isActive || true
+    }));
+    
+    const contractorMatchRequest = {
+      caseData: {
+        id: `temp-${Date.now()}`,
+        category: triageResult.category,
+        priority: triageResult.urgency,
+        description: conversation.initialRequest,
+        location: `${triageData?.location?.buildingName || 'MIT Campus'} ${triageData?.location?.roomNumber || 'Unknown'}`,
+        urgency: triageResult.urgency,
+        estimatedDuration: triageResult.estimatedDuration,
+        safetyRisk: triageResult.safetyRisk,
+        contractorType: triageResult.contractorType
+      },
+      availableContractors
+    };
+    
+    let contractorRecommendations = [];
+    try {
+      contractorRecommendations = await aiCoordinatorService.findOptimalContractor(contractorMatchRequest) || [];
+      console.log(`✅ Found ${contractorRecommendations.length} contractor matches with AI coordination`);
+    } catch (error) {
+      console.error('❌ AI contractor matching failed:', error);
+      // Fallback to basic contractor list
+      contractorRecommendations = availableContractors.slice(0, 3).map((contractor, index) => ({
+        contractorId: contractor.id,
+        contractorName: contractor.name,
+        matchScore: 85 - (index * 10), // Simple scoring
+        reasoning: `Basic match for ${triageResult.contractorType}`,
+        estimatedResponseTime: `${contractor.responseTimeHours} hours`,
+        availability: { isAvailable: true }
+      }));
+      console.log(`🔄 Using fallback contractor matching: ${contractorRecommendations.length} matches`);
+    }
     
     // 🎯 STEP 5: Create the sophisticated case with proper MIT- numbers
     const smartCase = {
@@ -569,7 +617,16 @@ async function createSmartCase(conversation) {
     // 🎯 STEP 6: Save to database (this generates the proper MIT-XXXX case number)
     const caseId = await storage.createSmartCase(smartCase);
     const savedCase = await storage.getSmartCase(caseId);
-    const caseNumber = savedCase?.caseNumber || `MIT-${Math.floor(Math.random() * 9000) + 1000}`;
+    
+    // Ensure case number is properly formatted as a string
+    let caseNumber;
+    if (savedCase?.caseNumber && typeof savedCase.caseNumber === 'string') {
+      caseNumber = savedCase.caseNumber;
+    } else {
+      // Generate fallback MIT-XXXX number
+      caseNumber = `MIT-${Math.floor(Math.random() * 9000) + 1000}`;
+      console.log(`⚠️ Generated fallback case number: ${caseNumber}`);
+    }
     
     console.log(`✅ Smart case created: ${caseNumber} (${caseId})`);
     
@@ -601,25 +658,42 @@ async function createSmartCase(conversation) {
     // 🎯 STEP 9: Enhanced notifications with AI intelligence
     const { notificationService } = await import('./notificationService.js');
     
-    // Send intelligent student notification
+    // Send intelligent student notification with comprehensive AI insights
     if (triageData?.studentEmail) {
-      const studentMessage = `Your ${triageResult.category.toLowerCase()} request has been submitted and assigned case ${caseNumber}.
+      const contractorInfo = contractorRecommendations.length > 0 ? contractorRecommendations[0] : null;
+      
+      const studentMessage = `Your ${triageResult.category.toLowerCase()} request has been analyzed by our AI system and assigned case ${caseNumber}.
 
+🔍 AI ANALYSIS:
 📋 Issue: ${triageResult.subcategory}
-⏱️ Estimated time: ${triageResult.estimatedDuration}
-🏗️ Assigned to: ${triageResult.contractorType}
+⚡ Priority: ${triageResult.urgency}
+⏱️ Estimated repair time: ${triageResult.estimatedDuration}
+🏗️ Requires: ${triageResult.contractorType}
+${triageResult.safetyRisk !== 'None' ? `⚠️ Safety level: ${triageResult.safetyRisk}` : ''}
 
-${contractorRecommendations.length > 0 ? 
-  `Your case has been automatically assigned to ${contractorRecommendations[0].contractorName} with an estimated response time of ${contractorRecommendations[0].estimatedResponseTime}.` : 
-  'We are finding the best contractor for your request and will update you soon.'
+${contractorInfo ? 
+  `🎯 AUTO-ASSIGNED CONTRACTOR:
+  • ${contractorInfo.contractorName}
+  • Expected response: ${contractorInfo.estimatedResponseTime}
+  • Match confidence: ${contractorInfo.matchScore}%` : 
+  '⏳ Finding the best contractor for your specific issue...'
 }
 
-You can try these troubleshooting steps while we arrange your repair:
-${triageResult.troubleshootingSteps.slice(0, 3).map(step => `• ${step}`).join('\n')}`;
+💡 TRY THESE FIRST (while we arrange repair):
+${(triageResult.troubleshootingSteps || ['Check if issue is still occurring', 'Restart/reset the system if safe', 'Document any changes before the problem started']).map((step, i) => `${i + 1}. ${step}`).join('\n')}
+
+🔧 PRELIMINARY DIAGNOSIS:
+${triageResult.preliminaryDiagnosis}
+
+${(triageResult.specialEquipment && triageResult.specialEquipment.length > 0) ? 
+  `🛠️ Special equipment needed: ${triageResult.specialEquipment.join(', ')}` : ''
+}
+
+We'll keep you updated on progress. Reply to this email with any questions!`;
 
       await notificationService.notifyStudent(
         triageData.studentEmail,
-        `Maintenance Request Submitted - Case ${caseNumber}`,
+        `🏗️ Maintenance Case ${caseNumber} - ${triageResult.urgency} Priority`,
         studentMessage,
         conversation.orgId
       );
