@@ -880,7 +880,7 @@ Ask for the next most important missing piece. Once you have location + issue + 
   // DUPLICATE DETECTION HELPERS  
   // ========================================
   
-  private areSimilarIssues(description1: string, description2: string): boolean {
+  areSimilarIssues(description1, description2) {
     const desc1 = description1.toLowerCase().trim();
     const desc2 = description2.toLowerCase().trim();
     
