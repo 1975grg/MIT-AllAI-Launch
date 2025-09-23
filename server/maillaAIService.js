@@ -517,7 +517,7 @@ async function createSmartCase(conversation) {
     title: `MAINTENANCE: ${conversation.initialRequest.substring(0, 40)}...`,
     description: `Student maintenance request from triage conversation.\n\nInitial request: ${conversation.initialRequest}`,
     category: 'maintenance',
-    priority: 'normal', 
+    priority: 'Low', 
     status: "New",
     reportedBy: conversation.studentId,
     orgId: conversation.orgId,
