@@ -1122,7 +1122,7 @@ Respond in JSON format:
   // ========================================
 
   // Smart context inference from student messages
-  private analyzeMessageContext(message: string): {
+  analyzeMessageContext(message) {
     emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried';
     inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low';
     timelineIndicators: string[];
@@ -1219,7 +1219,7 @@ Respond in JSON format:
   }
 
   // Pre-process student message to extract and standardize location info
-  private extractLocationFromMessage(message: string): { buildingName?: string; roomNumber?: string; confidence: 'high' | 'medium' | 'low' } {
+  extractLocationFromMessage(message) {
     const normalizedMessage = message.toLowerCase();
     
     // Common patterns students use
@@ -1441,7 +1441,7 @@ Respond in JSON format:
   // POST-ESCALATION WORKFLOW SYSTEM
   // ========================================
 
-  private async initiatePostEscalationWorkflow(caseId: string, conversationId: string, conversation: any) {
+  async initiatePostEscalationWorkflow(caseId, conversationId, conversation) {
     try {
       console.log(`🚀 Starting post-escalation workflow for case ${caseId}`);
 
@@ -1523,7 +1523,7 @@ Respond in JSON format:
   /**
    * Maps database priority enum to AI Coordinator urgency format
    */
-  private mapPriorityToUrgency(priority: string): 'Low' | 'Medium' | 'High' | 'Critical' {
+  mapPriorityToUrgency(priority) {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Critical'> = {
       'Low': 'Low',
       'Medium': 'Medium', 
@@ -1536,7 +1536,7 @@ Respond in JSON format:
   /**
    * Maps Mailla urgency levels to AI Coordinator urgency format
    */
-  private mapMaillaUrgencyToCoordinator(urgencyLevel: string): 'Low' | 'Medium' | 'High' | 'Critical' {
+  mapMaillaUrgencyToCoordinator(urgencyLevel) {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Critical'> = {
       'low': 'Low',
       'normal': 'Medium',
@@ -1549,7 +1549,7 @@ Respond in JSON format:
   /**
    * Maps Mailla urgency levels to database priority enum values
    */
-  private mapUrgencyToPriority(urgencyLevel: string): 'Low' | 'Medium' | 'High' | 'Urgent' {
+  mapUrgencyToPriority(urgencyLevel) {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Urgent'> = {
       'low': 'Low',
       'normal': 'Medium', 
@@ -1562,14 +1562,14 @@ Respond in JSON format:
   /**
    * Generates user-friendly case number from UUID
    */
-  private generateFriendlyCaseNumber(caseId: string): string {
+  generateFriendlyCaseNumber(caseId) {
     // Convert UUID to a short, memorable number
     const hash = caseId.split('-')[0]; // Use first part of UUID
     const num = parseInt(hash.substring(0, 6), 16) % 9000 + 1000; // Generate 1000-9999
     return `MIT-${num}`;
   }
 
-  private async assignOptimalContractor(caseId: string, conversationId: string, conversation: any) {
+  async assignOptimalContractor(caseId, conversationId, conversation) {
     try {
       console.log(`🔧 Starting contractor assignment for case ${caseId}`);
 
@@ -1682,7 +1682,7 @@ Respond in JSON format:
     }
   }
 
-  private shouldRequestMedia(conversation: any): { request: boolean; types: string[]; reason: string } {
+  shouldRequestMedia(conversation) {
     const description = conversation.initialRequest?.toLowerCase() || '';
     
     // Skip media requests for safety hazards - prioritize evacuation
@@ -1729,7 +1729,7 @@ Respond in JSON format:
     return { request: false, types: [], reason: 'No media needed for this issue type' };
   }
 
-  private async requestMedia(caseId: string, conversationId: string, mediaRequest: any) {
+  async requestMedia(caseId, conversationId, mediaRequest) {
     const message = `One quick thing that would help - ${mediaRequest.reason}. ${
       mediaRequest.types.includes('photo') ? 'Can you take a photo showing the problem?' : 
       'Can you record a short audio clip of the sound?'
