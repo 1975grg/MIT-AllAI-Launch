@@ -5234,6 +5234,17 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         });
       }
 
+      // 📅 CONFLICT PREVENTION: Check contractor availability
+      const appointmentEndTime = new Date(scheduledDate.getTime() + estimatedDurationMinutes * 60 * 1000);
+      const isAvailable = await storage.checkContractorAvailability(contractor.id, scheduledDate, appointmentEndTime);
+      
+      if (!isAvailable) {
+        return res.status(409).json({ 
+          message: `Contractor ${contractor.name} is not available at ${scheduledDate.toLocaleString()}. Please choose a different time slot.`,
+          error: "SCHEDULE_CONFLICT"
+        });
+      }
+
       // Update case status to "Scheduled"
       const updatedCase = await storage.updateSmartCase(caseId, {
         status: "Scheduled",
@@ -5243,7 +5254,6 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
       });
 
       // 🎯 CREATE THE ACTUAL APPOINTMENT RECORD using contractor-selected duration
-      const appointmentEndTime = new Date(scheduledDate.getTime() + estimatedDurationMinutes * 60 * 1000); // Use selected duration
       const appointment = await storage.createAppointment({
         caseId,
         contractorId: contractor.id,

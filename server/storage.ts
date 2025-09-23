@@ -145,6 +145,15 @@ export interface IStorage {
   createSmartCase(smartCase: InsertSmartCase): Promise<SmartCase>;
   updateSmartCase(id: string, smartCase: Partial<InsertSmartCase>): Promise<SmartCase>;
   
+  // 🧠 AI Learning System
+  createDurationLearningLog(log: any): Promise<any>;
+  getDurationLearningLogs(contractorId?: string, category?: string): Promise<any[]>;
+  updateDurationLearningLog(id: string, updates: any): Promise<any>;
+  
+  // 📅 Contractor Scheduling & Conflict Prevention
+  getContractorAppointments(contractorId: string, dateRange?: { start: Date; end: Date }): Promise<any[]>;
+  checkContractorAvailability(contractorId: string, startTime: Date, endTime: Date): Promise<boolean>;
+  
   // Case Media operations
   createCaseMedia(media: CaseMediaInsert): Promise<CaseMediaSelect>;
   getCaseMedia(caseId: string): Promise<CaseMediaSelect[]>;
@@ -1543,6 +1552,61 @@ export class DatabaseStorage implements IStorage {
       .where(eq(smartCases.id, id))
       .returning();
     return updated;
+  }
+
+  // 🧠 AI LEARNING SYSTEM IMPLEMENTATION
+  async createDurationLearningLog(log: any): Promise<any> {
+    // Placeholder for learning log creation - will be implemented when DB schema is ready
+    console.log('📊 Duration learning log:', log);
+    return log;
+  }
+
+  async getDurationLearningLogs(contractorId?: string, category?: string): Promise<any[]> {
+    // Placeholder - will return historical learning data once schema is ready
+    console.log('📈 Fetching learning logs for contractor:', contractorId, 'category:', category);
+    return [];
+  }
+
+  async updateDurationLearningLog(id: string, updates: any): Promise<any> {
+    // Placeholder - will update actual completion times once schema is ready
+    console.log('✅ Updating learning log:', id, updates);
+    return updates;
+  }
+
+  // 📅 Enhanced contractor availability checking
+  async checkContractorAvailability(contractorId: string, startTime: Date, endTime: Date): Promise<boolean> {
+    try {
+      // Check for appointment conflicts
+      const conflicts = await db.select()
+        .from(appointments)
+        .where(
+          and(
+            eq(appointments.contractorId, contractorId),
+            or(
+              // New appointment starts during existing appointment
+              and(
+                lte(appointments.scheduledStartAt, startTime),
+                gt(appointments.scheduledEndAt, startTime)
+              ),
+              // New appointment ends during existing appointment
+              and(
+                lt(appointments.scheduledStartAt, endTime),
+                gte(appointments.scheduledEndAt, endTime)
+              ),
+              // New appointment completely covers existing appointment
+              and(
+                gte(appointments.scheduledStartAt, startTime),
+                lte(appointments.scheduledEndAt, endTime)
+              )
+            )
+          )
+        );
+
+      return conflicts.length === 0;
+    } catch (error) {
+      console.error('❌ Error checking contractor availability:', error);
+      return false; // Conservative approach - assume unavailable if check fails
+    }
   }
 
   // Asset operations

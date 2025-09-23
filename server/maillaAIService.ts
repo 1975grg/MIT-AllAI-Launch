@@ -814,11 +814,12 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
   // AI-POWERED DURATION ESTIMATION
   // ========================================
 
-  private async estimateRepairDuration(triageData: any): Promise<{
+  private async estimateRepairDuration(triageData: any, contractorId?: string): Promise<{
     estimatedMinutes: number;
     confidence: 'high' | 'medium' | 'low';
     reasoning: string;
     category: 'quick' | 'standard' | 'complex' | 'major';
+    learningAdjustment?: number;
   }> {
     try {
       const conversation = triageData.conversationSlots || {};
@@ -835,8 +836,32 @@ Set nextAction: 'complete_triage' and give caring final message with comfort adv
         urgency: urgencyLevel
       };
 
-      // AI-powered estimation prompt
-      const estimationPrompt = `You are an expert maintenance duration estimator. Analyze this repair scenario and provide realistic time estimates.
+      // 🧠 LEARNING ENHANCEMENT: Get historical data for this contractor/category
+      let learningAdjustment = 0;
+      let learningConfidenceBoost = 0;
+      
+      if (contractorId) {
+        try {
+          const historicalData = await storage.getDurationLearningLogs(contractorId, durationFactors.category);
+          if (historicalData.length > 0) {
+            // Calculate average accuracy and apply learning adjustment
+            const avgAccuracy = historicalData.reduce((sum, log) => sum + (log.accuracyScore || 0), 0) / historicalData.length;
+            const avgActualTime = historicalData.reduce((sum, log) => sum + (log.actualMinutes || 0), 0) / historicalData.length;
+            const avgEstimatedTime = historicalData.reduce((sum, log) => sum + log.estimatedMinutes, 0) / historicalData.length;
+            
+            if (avgActualTime > 0 && avgEstimatedTime > 0) {
+              learningAdjustment = avgActualTime - avgEstimatedTime; // Positive = underestimated in past
+              learningConfidenceBoost = Math.min(0.2, historicalData.length * 0.02); // Up to 20% boost with experience
+              console.log(`🧠 Learning adjustment: ${learningAdjustment} minutes from ${historicalData.length} past cases`);
+            }
+          }
+        } catch (error) {
+          console.log('📊 Learning data not yet available:', error.message);
+        }
+      }
+
+      // 🎯 ENHANCED AI ESTIMATION with Learning Integration
+      const estimationPrompt = `You are an expert maintenance duration estimator with access to historical performance data. Analyze this repair scenario and provide realistic time estimates.
 
 ISSUE DETAILS:
 - Description: "${issueDescription}"
@@ -846,6 +871,8 @@ ISSUE DETAILS:
 - Accessibility: ${durationFactors.accessibility}  
 - Previous attempts: ${durationFactors.previousAttempts}
 - Complexity indicators: ${durationFactors.complexity}
+${contractorId ? `- Contractor experience level: ${learningAdjustment > 0 ? 'tends to underestimate' : learningAdjustment < 0 ? 'tends to overestimate' : 'accurate estimator'}` : ''}
+${learningAdjustment !== 0 ? `- Historical adjustment needed: ${Math.abs(learningAdjustment)} minutes ${learningAdjustment > 0 ? 'longer' : 'shorter'} than initial estimates` : ''}
 
 ESTIMATION GUIDELINES:
 **Quick Fixes (15-45 minutes):**
@@ -895,8 +922,19 @@ Respond in JSON format:
       const aiResult = await response.json();
       const estimation = JSON.parse(aiResult.choices[0].message.content);
       
-      console.log(`🤖 AI Duration Estimation: ${estimation.estimatedMinutes} minutes (${estimation.confidence} confidence) - ${estimation.reasoning}`);
-      return estimation;
+      // Apply learning adjustment
+      const finalEstimate = {
+        ...estimation,
+        estimatedMinutes: Math.max(15, Math.round(estimation.estimatedMinutes + learningAdjustment)),
+        confidence: learningConfidenceBoost > 0 ? 
+          (estimation.confidence === 'low' ? 'medium' : estimation.confidence === 'medium' ? 'high' : 'high') : 
+          estimation.confidence,
+        reasoning: estimation.reasoning + (learningAdjustment !== 0 ? ` (Adjusted ${learningAdjustment > 0 ? '+' : ''}${Math.round(learningAdjustment)} min based on contractor history)` : ''),
+        learningAdjustment
+      };
+      
+      console.log(`🤖 AI Duration Estimation: ${finalEstimate.estimatedMinutes} minutes (${finalEstimate.confidence} confidence) - ${finalEstimate.reasoning}`);
+      return finalEstimate;
 
     } catch (error) {
       console.error('❌ Duration estimation failed:', error);
@@ -1595,13 +1633,36 @@ Respond in JSON format:
         //   status: 'In Progress' as any
         // });
 
-        // 🤖 AI-POWERED DURATION ESTIMATION  
+        // 🤖 AI-POWERED DURATION ESTIMATION with Learning
         const conversationData = await storage.getTriageConversation(conversationId);
-        const durationEstimate = await this.estimateRepairDuration(conversationData?.triageData);
+        const durationEstimate = await this.estimateRepairDuration(conversationData?.triageData, bestContractor.contractorId);
         
         // 📝 Log contractor recommendation with duration estimate
+        // 🧠 Create learning log for future improvement
+        try {
+          await storage.createDurationLearningLog({
+            caseId,
+            contractorId: bestContractor.contractorId,
+            orgId: smartCase.orgId,
+            estimatedMinutes: durationEstimate.estimatedMinutes,
+            estimationConfidence: durationEstimate.confidence,
+            estimationMethod: 'ai',
+            estimationReasoning: durationEstimate.reasoning,
+            issueCategory: durationEstimate.category || aiTriage.category,
+            urgencyLevel: aiTriage.urgency,
+            complexityFactors: {
+              scope: conversationData?.triageData?.conversationSlots?.scope,
+              accessibility: conversationData?.triageData?.conversationSlots?.accessibility,
+              previousAttempts: conversationData?.triageData?.conversationSlots?.previousAttempts,
+              complexity: conversationData?.triageData?.conversationSlots?.complexity
+            }
+          });
+        } catch (error) {
+          console.log('📊 Learning log creation deferred until schema ready:', error.message);
+        }
+        
         await this.createTicketEvent(caseId, conversationId, "contractor_assigned", 
-          `Contractor recommended: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match) - Estimated ${durationEstimate.estimatedMinutes} minutes (${durationEstimate.confidence} confidence)`, {
+          `Contractor recommended: ${bestContractor.contractorName} (${Math.round(bestContractor.matchScore)}% match) - Estimated ${durationEstimate.estimatedMinutes} minutes (${durationEstimate.confidence} confidence)${durationEstimate.learningAdjustment ? ` [Learning-adjusted: ${durationEstimate.learningAdjustment > 0 ? '+' : ''}${durationEstimate.learningAdjustment}min]` : ''}`, {
           contractorId: bestContractor.contractorId,  // Keep existing field structure
           contractorName: bestContractor.contractorName,
           matchScore: bestContractor.matchScore,

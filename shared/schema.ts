@@ -10,6 +10,7 @@ import {
   integer,
   boolean,
   pgEnum,
+  real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -1031,6 +1032,42 @@ export const contractorAvailabilityUpdateSchema = insertVendorSchema.pick({
 }).partial();
 export const insertContractorAvailabilitySchema = createInsertSchema(contractorAvailability).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertContractorBlackoutSchema = createInsertSchema(contractorBlackouts).omit({ id: true, createdAt: true });
+
+// 🧠 AI LEARNING SYSTEM: Track estimates vs actual times for continuous improvement
+export const durationLearningLogs = pgTable("duration_learning_logs", {
+  id: varchar("id").primaryKey().$defaultFn(() => nanoid()),
+  caseId: varchar("case_id").notNull().references(() => smartCases.id, { onDelete: "cascade" }),
+  contractorId: varchar("contractor_id").notNull().references(() => vendors.id),
+  orgId: varchar("org_id").notNull().references(() => organizations.id),
+  
+  // Estimation data
+  estimatedMinutes: integer("estimated_minutes").notNull(),
+  estimationConfidence: varchar("estimation_confidence").notNull(), // high, medium, low
+  estimationMethod: varchar("estimation_method").notNull(), // ai, rule_based, manual
+  estimationReasoning: text("estimation_reasoning"),
+  
+  // Actual performance data
+  actualMinutes: integer("actual_minutes"), // Set when work completes
+  actualStartTime: timestamp("actual_start_time", { withTimezone: true }),
+  actualEndTime: timestamp("actual_end_time", { withTimezone: true }),
+  
+  // Context factors for learning
+  issueCategory: varchar("issue_category").notNull(),
+  urgencyLevel: varchar("urgency_level").notNull(),
+  complexityFactors: jsonb("complexity_factors"), // Store scope, accessibility, etc.
+  
+  // Learning metrics
+  accuracyScore: real("accuracy_score"), // How close estimate was to actual (0-1)
+  learningWeight: real("learning_weight").default(1.0), // Weight for future learning
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertDurationLearningLogSchema = createInsertSchema(durationLearningLogs).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDurationLearningLog = z.infer<typeof insertDurationLearningLogSchema>;
+export type DurationLearningLog = typeof durationLearningLogs.$inferSelect;
+
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   scheduledStartAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
   scheduledEndAt: z.union([z.date(), z.string().transform((str) => new Date(str))]),
