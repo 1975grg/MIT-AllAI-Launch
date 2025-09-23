@@ -658,12 +658,7 @@ MIT Housing Maintenance Team`,
   // SAFETY-FIRST PROTOCOLS
   // ========================================
 
-  private async performSafetyCheck(message: string): Promise<{
-    isEmergency: boolean;
-    flags: string[];
-    emergencyMessage?: string;
-    confirmLifeThreat?: boolean;
-  }> {
+  async performSafetyCheck(message) {
     const lowerMessage = message.toLowerCase();
     const flags: string[] = [];
     
@@ -729,7 +724,7 @@ MIT Housing Maintenance Team`,
   // MAILLA CONVERSATION PROMPTS
   // ========================================
 
-  private getMaillaSystemPrompt(): string {
+  getMaillaSystemPrompt() {
     return `You are Mailla, the MIT Housing maintenance assistant. Your job is to help MIT students report dorm maintenance issues in a calm, supportive, and efficient way so we can dispatch maintenance if needed.
 
 Context: MIT undergraduate/graduate dorms (e.g., Next House, Simmons, Senior House). Students may be stressed, tired, or unsure. Be warm, brief, and human. Ask one question at a time, only what's needed next. Use what the student already said; don't repeat.
@@ -983,7 +978,7 @@ Respond in JSON format:
     }
   }
 
-  private categorizeIssue(description: string): string {
+  categorizeIssue(description) {
     const lowerDesc = description.toLowerCase();
     
     if (lowerDesc.includes('electrical') || lowerDesc.includes('outlet') || lowerDesc.includes('power')) return 'electrical';
@@ -995,12 +990,7 @@ Respond in JSON format:
     return 'general';
   }
 
-  private fallbackDurationEstimation(triageData: any): {
-    estimatedMinutes: number;
-    confidence: 'high' | 'medium' | 'low';
-    reasoning: string;
-    category: 'quick' | 'standard' | 'complex' | 'major';
-  } {
+  fallbackDurationEstimation(triageData) {
     const description = triageData.issueDescription || '';
     const urgency = triageData.urgencyLevel || 'normal';
     
@@ -1022,7 +1012,7 @@ Respond in JSON format:
   // ========================================
 
   // Enhanced MIT building mapping with aliases and fuzzy matching
-  private getMITPropertyMapping(buildingName?: string, roomNumber?: string): { propertyId: string | null; unitId: string | null; normalizedBuildingName?: string } {
+  getMITPropertyMapping(buildingName, roomNumber) {
     if (!buildingName) {
       return { propertyId: null, unitId: null };
     }
@@ -1060,7 +1050,7 @@ Respond in JSON format:
   }
 
   // Smart building name resolution with aliases and fuzzy matching
-  private resolveBuildingName(input: string): string | null {
+  resolveBuildingName(input) {
     const normalizedInput = input.trim().toLowerCase();
 
     // Building aliases map - handles how students actually talk
