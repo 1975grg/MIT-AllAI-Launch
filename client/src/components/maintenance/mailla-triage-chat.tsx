@@ -533,17 +533,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
                   }`}>
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     
-                    {/* Safety Flags */}
-                    {message.safetyFlags && message.safetyFlags.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {message.safetyFlags.map((flag, idx) => (
-                          <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                            {getSafetyIcon(flag)}
-                            {flag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    {/* Safety Flags - HIDDEN to reduce overwhelm */}
 
                     {/* Natural conversation flow - only one question at a time via quick replies */}
 
