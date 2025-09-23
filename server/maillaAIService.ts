@@ -212,7 +212,7 @@ export class MaillaAIService {
 
       // 3. Get Mailla's intelligent response
       const aiResponse = await this.openai.chat.completions.create({
-        model: "gpt-4o-2024-11-20",
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         messages: [
           { role: "system", content: this.getMaillaSystemPrompt() },
           { role: "user", content: contextPrompt }
@@ -1024,7 +1024,7 @@ Respond in JSON format:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-5', // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
           messages: [{ role: 'user', content: estimationPrompt }],
           temperature: 0.3,
           max_tokens: 200
@@ -2080,7 +2080,7 @@ Please analyze this image and provide a comprehensive contractor assessment in J
 Focus on practical details that help contractors prepare effectively.`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         messages: [{
           role: "user",
           content: [
