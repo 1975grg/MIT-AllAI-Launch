@@ -867,6 +867,84 @@ export default function ContractorDashboard() {
               </div>
             </div>
             
+            {/* 📅 AVAILABILITY TIME SLOTS VISUALIZATION */}
+            {scheduledDate && (
+              <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <Label className="font-medium">Available Time Slots - {new Date(scheduledDate).toLocaleDateString()}</Label>
+                </div>
+                
+                <div className="text-xs text-muted-foreground mb-2">
+                  Duration: {estimatedDuration} minutes • Showing available appointment times
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                  {/* Generate time slots from 8 AM to 6 PM */}
+                  {Array.from({ length: 20 }, (_, i) => {
+                    const hour = Math.floor(i / 2) + 8;
+                    const minute = (i % 2) * 30;
+                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    const endTime = new Date(`2000-01-01 ${timeStr}`);
+                    endTime.setMinutes(endTime.getMinutes() + estimatedDuration);
+                    const endTimeStr = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
+                    
+                    const formatTime = (time: string) => {
+                      const [h, m] = time.split(':');
+                      const hourNum = parseInt(h);
+                      const ampm = hourNum >= 12 ? 'PM' : 'AM';
+                      const displayHour = hourNum > 12 ? hourNum - 12 : hourNum === 0 ? 12 : hourNum;
+                      return `${displayHour}:${m} ${ampm}`;
+                    };
+                    
+                    const isSelected = scheduledTime === timeStr;
+                    const isAvailable = hour < 18; // Basic availability - can be enhanced with real data
+                    
+                    return (
+                      <Button
+                        key={timeStr}
+                        type="button"
+                        variant={isSelected ? "default" : isAvailable ? "outline" : "secondary"}
+                        size="sm"
+                        disabled={!isAvailable}
+                        onClick={() => setScheduledTime(timeStr)}
+                        className={`text-xs h-auto py-2 px-2 flex flex-col gap-1 ${
+                          isSelected ? 'ring-2 ring-primary' : ''
+                        } ${
+                          !isAvailable ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        data-testid={`timeslot-${timeStr}`}
+                      >
+                        <span className="font-medium">{formatTime(timeStr)}</span>
+                        <span className="text-[10px] opacity-70">to {formatTime(endTimeStr)}</span>
+                        {!isAvailable && (
+                          <span className="text-[9px] text-red-600 dark:text-red-400">Booked</span>
+                        )}
+                      </Button>
+                    );
+                  }).filter((_, i) => {
+                    const hour = Math.floor(i / 2) + 8;
+                    return hour < 18; // Only show 8 AM to 6 PM slots
+                  })}
+                </div>
+                
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 border border-gray-300 rounded"></div>
+                    <span>Available</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-blue-600 rounded"></div>
+                    <span>Selected</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-gray-400 rounded"></div>
+                    <span>Booked</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* 🤖 AI-Powered Duration Selection */}
             <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-2">
