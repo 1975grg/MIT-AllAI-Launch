@@ -34,6 +34,106 @@ import { dataAuditService } from "./dataAudit";
 const insertRevenueSchema = insertTransactionSchema;
 import { startCronJobs } from "./cronJobs";
 
+// Ensure MIT properties exist in database
+async function initializeMITProperties() {
+  try {
+    console.log('🏢 Initializing MIT properties...');
+    
+    // Find or create the MIT housing organization
+    let mitOrg;
+    const orgs = await storage.getOrganizations();
+    
+    // Look for existing MIT housing organization
+    mitOrg = orgs.find(org => org.name === 'MIT Housing' || org.id === 'mit-housing');
+    
+    if (!mitOrg) {
+      console.log('🏫 Creating MIT Housing organization...');
+      // Create MIT housing organization if it doesn't exist
+      const orgData = {
+        id: 'mit-housing',
+        name: 'MIT Housing',
+        email: 'housing@mit.edu',
+        phone: '617-253-2301',
+        address: '77 Massachusetts Avenue',
+        city: 'Cambridge',
+        state: 'MA',
+        zipCode: '02139',
+        ownerId: 'system-owner', // Use system owner for MIT org
+        createdAt: new Date()
+      };
+      
+      try {
+        mitOrg = await storage.createOrganization(orgData);
+        console.log('✅ Created MIT Housing organization');
+      } catch (error) {
+        console.error('❌ Failed to create MIT Housing organization:', error);
+        return;
+      }
+    }
+    
+    const mitProperties = [
+      { id: 'mit-senior-house', name: 'Senior House', street: '3 Ames Street' },
+      { id: 'mit-burton-conner', name: 'Burton Conner', street: '410 Memorial Drive' },
+      { id: 'mit-next-house', name: 'Next House', street: '500 Memorial Drive' },
+      { id: 'mit-simmons-hall', name: 'Simmons Hall', street: '229 Vassar Street' },
+      { id: 'mit-macgregor-house', name: 'MacGregor House', street: '450 Memorial Drive' },
+      { id: 'mit-tang-hall', name: 'Tang Hall', street: '550 Memorial Drive' },
+      { id: 'mit-new-house', name: 'New House', street: '476 Memorial Drive' },
+      { id: 'mit-baker-house', name: 'Baker House', street: '362 Memorial Drive' },
+      { id: 'mit-mccormick-hall', name: 'McCormick Hall', street: '320 Memorial Drive' },
+      { id: 'mit-random-hall', name: 'Random Hall', street: '282 Memorial Drive' },
+      { id: 'mit-westgate', name: 'Westgate', street: '222 Albany Street' },
+      { id: 'mit-ashdown-house', name: 'Ashdown House', street: '305 Memorial Drive' },
+      { id: 'mit-sidney-pacific', name: 'Sidney-Pacific', street: '70 Pacific Street' }
+    ];
+    
+    for (const prop of mitProperties) {
+      // Check if property already exists
+      const existing = await storage.getProperty(prop.id).catch(() => null);
+      if (!existing) {
+        // Create new property
+        const propertyData = {
+          id: prop.id,
+          orgId: mitOrg.id,
+          name: prop.name,
+          type: 'Residential Building',
+          street: prop.street,
+          city: 'Cambridge',
+          state: 'MA',
+          zipCode: '02139',
+          country: 'US',
+          status: 'Active' as const,
+          createdAt: new Date()
+        };
+        
+        await storage.createProperty(propertyData);
+        console.log(`✅ Created MIT property: ${prop.name}`);
+      } else if (existing.orgId !== mitOrg.id) {
+        // Fix existing property with wrong organization
+        console.log(`🔧 Reassigning ${prop.name} from org ${existing.orgId} to MIT Housing org ${mitOrg.id}`);
+        await storage.updateProperty(prop.id, {
+          orgId: mitOrg.id,
+          name: prop.name, // Ensure name is correct
+          type: 'Residential Building',
+          street: prop.street,
+          city: 'Cambridge',
+          state: 'MA',
+          zipCode: '02139',
+          country: 'US'
+        });
+        console.log(`✅ Fixed MIT property: ${prop.name}`);
+      } else {
+        console.log(`✓ MIT property already correct: ${prop.name}`);
+      }
+    }
+    
+    console.log('🏢 MIT properties initialization complete');
+  } catch (error) {
+    console.error('❌ Error initializing MIT properties:', error);
+    // Don't throw - let the app continue even if initialization fails
+  }
+}
+
 // ✅ Mailla AI Triage validation schemas
 const startTriageSchema = z.object({
   initialRequest: z.string().min(10).max(2000)
@@ -209,6 +309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Start cron jobs
   startCronJobs();
+
+  // Initialize MIT properties
+  await initializeMITProperties();
 
   // Role-based authorization middleware
   function requireRole(allowedRoles: string[]) {

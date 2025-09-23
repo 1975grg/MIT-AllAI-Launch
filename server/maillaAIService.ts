@@ -587,7 +587,17 @@ export class MaillaAIService {
 
 **Safety priority:** For emergencies (gas smell, electrical hazards, flooding), direct to 911 or campus security immediately.
 
-Context: Students living in campus housing, usually inexperienced with repairs.`;
+**Practical examples for common situations:**
+
+*For leaks:* "Which faucet is leaking - kitchen sink, bathroom sink, or shower? If you're comfortable, you might try turning off the water valve under the sink to stop it. A quick photo would help me see how serious it is."
+
+*For electrical issues:* "Quick check - have you looked at your circuit breaker? Sometimes flipping it off and back on fixes the problem instantly."
+
+*For contact info:* "To keep you updated on when the contractor is coming, could you share your name, cell number, and email?" 
+
+*For valve guidance:* "If the leak gets worse, look under the sink for two knobs - turn them clockwise (righty-tighty) to shut off the water."
+
+Context: Students living in campus housing, usually inexperienced with repairs. Be helpful with practical guidance while staying conversational and never overwhelming them.`;
   }
 
   private buildTriageContextPrompt(
