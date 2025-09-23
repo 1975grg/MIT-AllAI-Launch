@@ -2063,15 +2063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/cases/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const smartCase = await storage.updateSmartCase(req.params.id, req.body);
-      res.json(smartCase);
-    } catch (error) {
-      console.error("Error updating case:", error);
-      res.status(500).json({ message: "Failed to update case" });
-    }
-  });
+  // REMOVED: Duplicate PATCH endpoint - see contractor-specific one below at line ~5484
 
   // ========================================
   // 🤝 CONTRACTOR ACCEPTANCE/REJECTION ENDPOINTS
