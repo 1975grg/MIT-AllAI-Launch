@@ -2618,7 +2618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Invalid initial request - must be at least 10 characters' });
       }
       
-      const { maillaAIService } = await import('./maillaAIService');
+      const { maillaAIService } = await import('./maillaWrapper.js');
       const response = await maillaAIService.startTriageConversation(
         studentId, 
         orgId, 
@@ -2651,7 +2651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Access denied to this conversation' });
       }
       
-      const { maillaAIService } = await import('./maillaAIService');
+      const { maillaAIService } = await import('./maillaWrapper.js');
       const response = await maillaAIService.continueTriageConversation({
         conversationId,
         studentMessage,
@@ -2684,7 +2684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Access denied to this conversation' });
       }
       
-      const { maillaAIService } = await import('./maillaAIService');
+      const { maillaAIService } = await import('./maillaWrapper.js');
       const response = await maillaAIService.completeTriageConversation(conversationId);
       
       res.json(response);
@@ -3435,7 +3435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 🔔 APPOINTMENT RELAY SYSTEM - Mailla notifies student automatically
       try {
-        const { maillaAIService } = await import('./maillaAIService');
+        const { maillaAIService } = await import('./maillaWrapper.js');
         await maillaAIService.relayAppointmentToStudent(appointment);
         console.log(`✅ Appointment relay sent to student for appointment ${appointment.id}`);
       } catch (relayError) {
