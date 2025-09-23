@@ -408,7 +408,7 @@ export class MaillaAIService {
           updatedLocation, 
           studentMessage, 
           contextAnalysis,
-          conversation?.conversationHistory || []
+          Array.isArray(conversation?.conversationHistory) ? conversation.conversationHistory : []
         );
 
         // 🧠 SMART TRIAGE: Use adaptive scoring for intelligent completion decisions
@@ -901,8 +901,8 @@ Keep it caring and informative:
     const words1 = new Set(desc1.split(' '));
     const words2 = new Set(desc2.split(' '));
     
-    const intersection = new Set([...words1].filter(word => words2.has(word)));
-    const union = new Set([...words1, ...words2]);
+    const intersection = new Set(Array.from(words1).filter(word => words2.has(word)));
+    const union = new Set([...Array.from(words1), ...Array.from(words2)]);
     
     const similarity = intersection.size / union.size;
     
@@ -1775,8 +1775,8 @@ Respond in JSON format:
             estimationConfidence: durationEstimate.confidence,
             estimationMethod: 'ai',
             estimationReasoning: durationEstimate.reasoning,
-            issueCategory: durationEstimate.category || aiTriage.category,
-            urgencyLevel: aiTriage.urgency,
+            issueCategory: durationEstimate.category || conversationData?.triageData?.category || 'general',
+            urgencyLevel: conversationData?.triageData?.urgencyLevel || 'normal',
             complexityFactors: {
               scope: conversationData?.triageData?.conversationSlots?.scope,
               accessibility: conversationData?.triageData?.conversationSlots?.accessibility,
@@ -1784,8 +1784,8 @@ Respond in JSON format:
               complexity: conversationData?.triageData?.conversationSlots?.complexity
             }
           });
-        } catch (error) {
-          console.log('📊 Learning log creation deferred until schema ready:', error.message);
+        } catch (error: any) {
+          console.log('📊 Learning log creation deferred until schema ready:', error?.message || 'Unknown error');
         }
         
         await this.createTicketEvent(caseId, conversationId, "contractor_assigned", 
