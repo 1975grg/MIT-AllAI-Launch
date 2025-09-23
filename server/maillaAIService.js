@@ -11,8 +11,13 @@ import { notificationService } from './notificationService.js';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-development'
+  apiKey: process.env.OPENAI_API_KEY
 });
+
+if (!process.env.OPENAI_API_KEY) {
+  console.error('❌ OPENAI_API_KEY is required for triage system');
+  throw new Error('Missing OPENAI_API_KEY environment variable');
+}
 
 // ========================================
 // MAIN TRIAGE CONVERSATION FLOW
@@ -181,6 +186,8 @@ async function processTriageMessage(conversationId, studentMessage, isInitial, m
                   severity: { type: "string" }
                 }
               },
+              studentEmail: { type: "string", description: "Student's email address for updates" },
+              studentPhone: { type: "string", description: "Student's phone number for urgent notifications" },
               location: {
                 type: "object",
                 properties: {
@@ -263,10 +270,10 @@ async function processTriageMessage(conversationId, studentMessage, isInitial, m
   } catch (error) {
     console.error("Error in processTriageMessage:", error);
     return {
-      message: "I'm experiencing technical difficulties. Please contact MIT Housing directly at housing@mit.edu or (617) 253-1600 for immediate assistance.",
+      message: "I'm having technical difficulties right now. Can you help me with a few more details? What's your email address so our maintenance team can contact you?",
       urgencyLevel: "normal",
       safetyFlags: [],
-      nextAction: "escalate_immediate",
+      nextAction: "ask_followup",
       isComplete: false
     };
   }
@@ -519,6 +526,37 @@ async function createSmartCase(conversation) {
   };
 
   const caseId = await storage.createSmartCase(newCase);
+  
+  // 🚨 CRITICAL: Wire notifications and WebSocket updates
+  try {
+    const { notificationService } = await import('./notificationService.js');
+    
+    // Send email notification to student if available
+    if (triageData?.studentEmail) {
+      await notificationService.notifyStudent(
+        triageData.studentEmail,
+        `Maintenance Request Submitted - Case #${newCase.caseNumber || caseId}`,
+        `Your maintenance request for ${locationData?.buildingName} ${locationData?.roomNumber} has been submitted and assigned case #${newCase.caseNumber || caseId}. Our maintenance team will contact you soon.`,
+        conversation.orgId
+      );
+    }
+    
+    // Notify admins about new case
+    await notificationService.notifyAdmins({
+      type: 'case_created',
+      subject: `New Maintenance Case: ${newCase.title}`,
+      message: `${locationData?.buildingName} ${locationData?.roomNumber}: ${conversation.initialRequest}`,
+      caseId,
+      caseNumber: newCase.caseNumber || caseId,
+      urgencyLevel: 'normal'
+    }, conversation.orgId);
+    
+    console.log(`✅ Notifications sent for case ${caseId}`);
+  } catch (error) {
+    console.error('❌ Failed to send notifications for case:', error);
+    // Don't fail case creation if notifications fail
+  }
+  
   return caseId;
 }
 
