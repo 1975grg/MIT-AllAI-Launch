@@ -836,8 +836,8 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       // What we know so far
       const hasLocation = (existingSlots.buildingName && existingSlots.roomNumber);
       const hasIssue = existingSlots.issueSummary;
-      const hasEmail = (conversation?.triageData as any)?.studentEmail;
-      const hasPhone = (conversation?.triageData as any)?.studentPhone;
+      const hasEmail = conversation?.triageData?.studentEmail;
+      const hasPhone = conversation?.triageData?.studentPhone;
       
       prompt += `\nWhat we already know: Location=${hasLocation ? '✓' : '✗'}, Issue=${hasIssue ? '✓' : '✗'}, Email=${hasEmail ? '✓' : '✗'}, Phone=${hasPhone ? '✓' : '✗'}
 
