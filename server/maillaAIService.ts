@@ -301,7 +301,7 @@ export class MaillaAIService {
           }
         }],
         tool_choice: { type: "function", function: { name: "generate_triage_response" } },
-        temperature: 0.7,
+        // temperature removed - GPT-5 only supports default temperature of 1
         max_completion_tokens: 1500 // GPT-5 requires max_completion_tokens instead of max_tokens
       });
 
@@ -1026,7 +1026,7 @@ Respond in JSON format:
         body: JSON.stringify({
           model: 'gpt-5', // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
           messages: [{ role: 'user', content: estimationPrompt }],
-          temperature: 0.3,
+          // temperature removed - GPT-5 only supports default temperature of 1
           max_completion_tokens: 200 // GPT-5 requires max_completion_tokens instead of max_tokens
         })
       });
