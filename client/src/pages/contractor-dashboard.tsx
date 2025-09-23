@@ -898,7 +898,18 @@ export default function ContractorDashboard() {
                     };
                     
                     const isSelected = scheduledTime === timeStr;
-                    const isAvailable = hour < 18; // Basic availability - can be enhanced with real data
+                    const isWorkingHours = hour >= 8 && hour < 18;
+                    
+                    // Check if this time slot conflicts with existing appointments
+                    const isBooked = appointments.some(apt => {
+                      const aptDate = new Date(apt.scheduled_date);
+                      const aptTime = format(aptDate, 'HH:mm');
+                      const selectedDate = new Date(scheduledDate);
+                      const isSameDay = format(aptDate, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
+                      return isSameDay && aptTime === timeStr;
+                    });
+                    
+                    const isAvailable = isWorkingHours && !isBooked;
                     
                     return (
                       <Button
@@ -908,17 +919,22 @@ export default function ContractorDashboard() {
                         size="sm"
                         disabled={!isAvailable}
                         onClick={() => setScheduledTime(timeStr)}
-                        className={`text-xs h-auto py-2 px-2 flex flex-col gap-1 ${
-                          isSelected ? 'ring-2 ring-primary' : ''
-                        } ${
-                          !isAvailable ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className={cn(
+                          "text-xs h-auto py-2 px-2 flex flex-col gap-1 transition-colors",
+                          isSelected && "bg-blue-600 hover:bg-blue-700 text-white border-blue-600 ring-2 ring-blue-200",
+                          isBooked && "bg-gray-200 text-gray-500 cursor-not-allowed border-gray-300",
+                          !isWorkingHours && "bg-gray-100 text-gray-400 cursor-not-allowed",
+                          isAvailable && !isSelected && "border-gray-300 hover:border-blue-400 hover:bg-blue-50"
+                        )}
                         data-testid={`timeslot-${timeStr}`}
                       >
                         <span className="font-medium">{formatTime(timeStr)}</span>
                         <span className="text-[10px] opacity-70">to {formatTime(endTimeStr)}</span>
-                        {!isAvailable && (
+                        {isBooked && (
                           <span className="text-[9px] text-red-600 dark:text-red-400">Booked</span>
+                        )}
+                        {!isWorkingHours && !isBooked && (
+                          <span className="text-[9px] text-gray-500">Closed</span>
                         )}
                       </Button>
                     );
