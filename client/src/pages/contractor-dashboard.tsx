@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle, AlertTriangle, Filter, Heart, Star, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -237,6 +238,7 @@ export default function ContractorDashboard() {
   // 🔍 Filter State
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [typeFilter, setTypeFilter] = useState<string>("All");
+  const [hideClosedCases, setHideClosedCases] = useState<boolean>(true); // Default to hide closed cases
   const [favoriteCases, setFavoriteCases] = useState<Set<string>>(new Set());
 
   // Get current user for live notifications
@@ -510,7 +512,9 @@ export default function ContractorDashboard() {
   const filteredCases = assignedCases.filter((case_: ContractorCase) => {
     const matchesStatus = statusFilter === "All" || case_.status === statusFilter;
     const matchesType = typeFilter === "All" || getCaseType(case_) === typeFilter;
-    return matchesStatus && matchesType;
+    // Allow closed cases if explicitly selected in status filter, otherwise respect toggle
+    const isNotClosedOrShowingClosed = statusFilter === "Closed" || !hideClosedCases || case_.status !== "Closed";
+    return matchesStatus && matchesType && isNotClosedOrShowingClosed;
   });
 
   // Separate favorite cases for display
@@ -623,6 +627,16 @@ export default function ContractorDashboard() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="hide-closed-toggle" className="text-sm">Hide Closed:</Label>
+                <Switch
+                  id="hide-closed-toggle"
+                  checked={hideClosedCases}
+                  onCheckedChange={setHideClosedCases}
+                  data-testid="switch-hide-closed"
+                />
               </div>
 
               <div className="flex items-center gap-2 ml-auto">
