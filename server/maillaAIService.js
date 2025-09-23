@@ -513,51 +513,169 @@ async function createSmartCase(conversation) {
   const triageData = conversation.triageData;
   const locationData = triageData?.location;
   
-  const newCase = {
-    title: `MAINTENANCE: ${conversation.initialRequest.substring(0, 40)}...`,
-    description: `Student maintenance request from triage conversation.\n\nInitial request: ${conversation.initialRequest}`,
-    category: 'maintenance',
-    priority: 'Low', 
-    status: "New",
-    reportedBy: conversation.studentId,
-    orgId: conversation.orgId,
-    buildingName: locationData?.buildingName || 'Unknown',
-    roomNumber: locationData?.roomNumber || 'Unknown'
-  };
-
-  const caseId = await storage.createSmartCase(newCase);
+  console.log(`🤖 Starting full AI workflow for maintenance request`);
   
-  // 🚨 CRITICAL: Wire notifications and WebSocket updates
   try {
+    // 🎯 STEP 1: Import the full AI services
+    const { aiTriageService } = await import('./aiTriage.js');
+    const { aiCoordinatorService } = await import('./aiCoordinator.js');
+    
+    // 🎯 STEP 2: Transform conversation into MaintenanceRequest format
+    const maintenanceRequest = {
+      title: conversation.initialRequest.substring(0, 100),
+      description: conversation.initialRequest,
+      building: locationData?.buildingName || 'MIT Campus',
+      room: locationData?.roomNumber || 'Unknown',
+      orgId: conversation.orgId,
+      studentContact: {
+        name: 'Student', // Mailla doesn't collect name yet
+        email: triageData?.studentEmail || '',
+        phone: triageData?.studentPhone || '',
+        building: locationData?.buildingName || 'MIT Campus',
+        room: locationData?.roomNumber || 'Unknown'
+      }
+    };
+    
+    console.log(`🤖 AI Analysis: Processing "${maintenanceRequest.title}"`);
+    
+    // 🎯 STEP 3: Full AI triage analysis (GPT-5 intelligence)
+    const triageResult = await aiTriageService.analyzeMaintenanceRequest(maintenanceRequest);
+    console.log(`✅ AI Triage Complete: ${triageResult.urgency} urgency, ${triageResult.category} category`);
+    
+    // 🎯 STEP 4: Find optimal contractors with AI coordination
+    const contractorRecommendations = await aiTriageService.findMatchingContractors(triageResult, conversation.orgId);
+    console.log(`✅ Found ${contractorRecommendations.length} contractor matches`);
+    
+    // 🎯 STEP 5: Create the sophisticated case with proper MIT- numbers
+    const smartCase = {
+      title: `${triageResult.category.toUpperCase()}: ${triageResult.subcategory}`,
+      description: `${triageResult.preliminaryDiagnosis}\n\nOriginal request: ${conversation.initialRequest}\n\nTroubleshooting steps:\n${triageResult.troubleshootingSteps.map(step => `• ${step}`).join('\n')}`,
+      category: triageResult.category.toLowerCase(),
+      priority: triageResult.urgency, // Now uses AI-determined urgency: Low/Medium/High/Critical
+      status: contractorRecommendations.length > 0 ? "Scheduled" : "New",
+      reportedBy: conversation.studentId,
+      orgId: conversation.orgId,
+      buildingName: locationData?.buildingName || 'Unknown',
+      roomNumber: locationData?.roomNumber || 'Unknown',
+      // AI-enhanced fields
+      estimatedDuration: triageResult.estimatedDuration,
+      contractorType: triageResult.contractorType,
+      requiredExpertise: triageResult.requiredExpertise.join(', '),
+      safetyRisk: triageResult.safetyRisk,
+      specialEquipment: triageResult.specialEquipment?.join(', ') || '',
+      urgencyReasoning: triageResult.reasoning
+    };
+    
+    // 🎯 STEP 6: Save to database (this generates the proper MIT-XXXX case number)
+    const caseId = await storage.createSmartCase(smartCase);
+    const savedCase = await storage.getSmartCase(caseId);
+    const caseNumber = savedCase?.caseNumber || `MIT-${Math.floor(Math.random() * 9000) + 1000}`;
+    
+    console.log(`✅ Smart case created: ${caseNumber} (${caseId})`);
+    
+    // 🎯 STEP 7: Auto-assign contractor if available
+    if (contractorRecommendations.length > 0) {
+      const bestMatch = contractorRecommendations[0];
+      console.log(`🎯 Auto-assigning to contractor: ${bestMatch.contractorName} (${bestMatch.matchScore}% match)`);
+      
+      // Update case with contractor assignment
+      await storage.assignContractorToCase(caseId, bestMatch.contractorId);
+    }
+    
+    // 🎯 STEP 8: Generate workflow steps and events
+    const workflowSteps = [
+      `✅ AI triage analysis completed (${triageResult.urgency} priority)`,
+      `📋 Categorized as ${triageResult.category} - ${triageResult.subcategory}`,
+      `🔧 Estimated duration: ${triageResult.estimatedDuration}`,
+      `👷 Requires: ${triageResult.contractorType}`,
+      ...triageResult.troubleshootingSteps.map(step => `💡 ${step}`)
+    ];
+    
+    if (contractorRecommendations.length > 0) {
+      const bestMatch = contractorRecommendations[0];
+      workflowSteps.push(`🎯 Auto-assigned to ${bestMatch.contractorName} (${bestMatch.estimatedResponseTime} response)`);
+    }
+    
+    console.log(`🔄 Workflow initialized with ${workflowSteps.length} steps`);
+    
+    // 🎯 STEP 9: Enhanced notifications with AI intelligence
     const { notificationService } = await import('./notificationService.js');
     
-    // Send email notification to student if available
+    // Send intelligent student notification
     if (triageData?.studentEmail) {
+      const studentMessage = `Your ${triageResult.category.toLowerCase()} request has been submitted and assigned case ${caseNumber}.
+
+📋 Issue: ${triageResult.subcategory}
+⏱️ Estimated time: ${triageResult.estimatedDuration}
+🏗️ Assigned to: ${triageResult.contractorType}
+
+${contractorRecommendations.length > 0 ? 
+  `Your case has been automatically assigned to ${contractorRecommendations[0].contractorName} with an estimated response time of ${contractorRecommendations[0].estimatedResponseTime}.` : 
+  'We are finding the best contractor for your request and will update you soon.'
+}
+
+You can try these troubleshooting steps while we arrange your repair:
+${triageResult.troubleshootingSteps.slice(0, 3).map(step => `• ${step}`).join('\n')}`;
+
       await notificationService.notifyStudent(
         triageData.studentEmail,
-        `Maintenance Request Submitted - Case #${newCase.caseNumber || caseId}`,
-        `Your maintenance request for ${locationData?.buildingName} ${locationData?.roomNumber} has been submitted and assigned case #${newCase.caseNumber || caseId}. Our maintenance team will contact you soon.`,
+        `Maintenance Request Submitted - Case ${caseNumber}`,
+        studentMessage,
         conversation.orgId
       );
     }
     
-    // Notify admins about new case
+    // Send enhanced admin notification
     await notificationService.notifyAdmins({
       type: 'case_created',
-      subject: `New Maintenance Case: ${newCase.title}`,
-      message: `${locationData?.buildingName} ${locationData?.roomNumber}: ${conversation.initialRequest}`,
+      subject: `🏗️ New ${triageResult.category} Case: ${caseNumber}`,
+      message: `${locationData?.buildingName} ${locationData?.roomNumber}: ${triageResult.subcategory}
+      
+Priority: ${triageResult.urgency}
+Duration: ${triageResult.estimatedDuration}
+Contractor: ${triageResult.contractorType}
+${contractorRecommendations.length > 0 ? `Auto-assigned: ${contractorRecommendations[0].contractorName}` : 'Awaiting assignment'}`,
       caseId,
-      caseNumber: newCase.caseNumber || caseId,
-      urgencyLevel: 'normal'
+      caseNumber,
+      urgencyLevel: triageResult.urgency.toLowerCase()
     }, conversation.orgId);
     
-    console.log(`✅ Notifications sent for case ${caseId}`);
+    console.log(`✅ Enhanced notifications sent for case ${caseNumber}`);
+    console.log(`🎉 Full AI workflow complete - Smart case ${caseNumber} ready!`);
+    
+    return {
+      caseId,
+      caseNumber,
+      aiAnalysis: triageResult,
+      contractorRecommendations,
+      workflowSteps
+    };
+    
   } catch (error) {
-    console.error('❌ Failed to send notifications for case:', error);
-    // Don't fail case creation if notifications fail
+    console.error('❌ AI workflow failed, falling back to basic case creation:', error);
+    
+    // Fallback to basic case if AI fails
+    const basicCase = {
+      title: `MAINTENANCE: ${conversation.initialRequest.substring(0, 40)}...`,
+      description: `Student maintenance request from triage conversation.\n\nInitial request: ${conversation.initialRequest}`,
+      category: 'maintenance',
+      priority: 'Medium', 
+      status: "New",
+      reportedBy: conversation.studentId,
+      orgId: conversation.orgId,
+      buildingName: locationData?.buildingName || 'Unknown',
+      roomNumber: locationData?.roomNumber || 'Unknown'
+    };
+
+    const caseId = await storage.createSmartCase(basicCase);
+    const savedCase = await storage.getSmartCase(caseId);
+    
+    return {
+      caseId,
+      caseNumber: savedCase?.caseNumber || `MIT-${Math.floor(Math.random() * 9000) + 1000}`,
+      fallback: true
+    };
   }
-  
-  return caseId;
 }
 
 // Export the service as an object for compatibility
