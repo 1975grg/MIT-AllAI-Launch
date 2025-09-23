@@ -38,7 +38,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       maxAge: sessionTtl,
     },
   });
@@ -93,9 +93,12 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
+    console.log("🔑 OAuth verify callback called");
+    console.log("🔑 Token claims:", tokens.claims());
     const user = {};
     updateUserSession(user, tokens);
     await upsertUser(tokens.claims());
+    console.log("🔑 User session after update:", user);
     verified(null, user);
   };
 
@@ -124,6 +127,7 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log("🔄 OAuth callback called");
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
@@ -185,7 +189,7 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -210,4 +214,3 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return;
   }
 };
-

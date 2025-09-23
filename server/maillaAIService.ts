@@ -2,7 +2,6 @@ import OpenAI from 'openai';
 import { storage } from './storage';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
-import { notificationService } from './notificationService';
 import type { 
   TriageConversationSelect, 
   InsertTriageConversation,
@@ -18,7 +17,7 @@ interface MaillaResponse {
   message: string;
   urgencyLevel: 'emergency' | 'urgent' | 'normal' | 'low';
   safetyFlags: string[];
-  nextAction: 'ask_followup' | 'request_media' | 'escalate_immediate' | 'complete_triage' | 'recommend_diy' | 'self_resolved';
+  nextAction: 'ask_followup' | 'request_media' | 'escalate_immediate' | 'complete_triage' | 'recommend_diy';
   nextQuestion?: string;
   queuedQuestions?: string[];
   acknowledgment?: string;
@@ -43,11 +42,6 @@ interface MaillaResponse {
     action: string;
     instructions: string[];
     warnings: string[];
-  };
-  selfResolution?: {
-    problem: string;
-    solution: string;
-    preventionTips?: string[];
   };
   isComplete?: boolean;
 }
@@ -129,7 +123,7 @@ export class MaillaAIService {
 
       // 2. Update conversation history
       const updatedHistory = [
-        ...conversation.conversationHistory,
+        ...(conversation.conversationHistory as any[]),
         {
           role: "student",
           message: update.studentMessage,
@@ -183,12 +177,10 @@ export class MaillaAIService {
     conversation?: TriageConversationSelect
   ): Promise<MaillaResponse> {
     try {
-      // 🎯 SMART SAFETY: Let AI reason about urgency instead of rigid keyword matching
+      // 1. Safety check first - ALWAYS
       const safetyResults = await this.performSafetyCheck(studentMessage);
       
-      // Only auto-escalate for CONFIRMED life-threatening emergencies (gas, fire, etc.)
-      // Let AI ask clarifying questions for water issues, electrical problems, etc.
-      if (safetyResults.isEmergency && safetyResults.confirmLifeThreat) {
+      if (safetyResults.isEmergency) {
         return {
           message: safetyResults.emergencyMessage!,
           urgencyLevel: 'emergency',
@@ -217,7 +209,7 @@ export class MaillaAIService {
 
       // 3. Get Mailla's intelligent response
       const aiResponse = await this.openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o-2024-11-20",
         messages: [
           { role: "system", content: this.getMaillaSystemPrompt() },
           { role: "user", content: contextPrompt }
@@ -243,7 +235,7 @@ export class MaillaAIService {
                 },
                 nextAction: { 
                   type: "string", 
-                  enum: ["ask_followup", "request_media", "escalate_immediate", "complete_triage", "recommend_diy", "self_resolved"],
+                  enum: ["ask_followup", "request_media", "escalate_immediate", "complete_triage", "recommend_diy"],
                   description: "Next step in triage process" 
                 },
                 location: {
@@ -303,20 +295,12 @@ export class MaillaAIService {
           }
         }],
         tool_choice: { type: "function", function: { name: "generate_triage_response" } },
-        max_completion_tokens: 2500
+        temperature: 0.7,
+        max_tokens: 1500
       });
 
-      // Removed debug logging for production
-      
       const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
       if (!toolCall || toolCall.type !== "function") {
-        console.error('❌ Tool call issue:', {
-          hasChoices: !!aiResponse.choices?.[0],
-          hasMessage: !!aiResponse.choices?.[0]?.message,
-          hasToolCalls: !!aiResponse.choices?.[0]?.message?.tool_calls,
-          toolCallCount: aiResponse.choices?.[0]?.message?.tool_calls?.length,
-          firstToolCall: aiResponse.choices?.[0]?.message?.tool_calls?.[0]
-        });
         throw new Error("Mailla failed to generate triage response");
       }
 
@@ -367,9 +351,9 @@ export class MaillaAIService {
       // 8. Update conversation slots and queue pending questions
       if (maillaResponse.conversationSlots || maillaResponse.queuedQuestions || maillaResponse.location) {
         const currentTriageData = conversation?.triageData || { initialRequest: studentMessage, category: null, context: {} };
-        const existingSlots = currentTriageData?.conversationSlots || {};
-        const existingLocation = currentTriageData?.location || {};
-        const pendingQuestions = currentTriageData?.pendingQuestions || [];
+        const existingSlots = (currentTriageData as any)?.conversationSlots || {};
+        const existingLocation = (currentTriageData as any)?.location || {};
+        const pendingQuestions = (currentTriageData as any)?.pendingQuestions || [];
         
         // Merge conversation slots with building name normalization
         const updatedSlots = {
@@ -412,24 +396,6 @@ export class MaillaAIService {
           ? [...pendingQuestions, ...maillaResponse.queuedQuestions]
           : pendingQuestions;
 
-        // 🧠 EMAIL EXTRACTION: Capture email addresses from student messages  
-        const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
-        const emailMatches = studentMessage.match(emailRegex);
-        if (emailMatches && emailMatches.length > 0) {
-          const extractedEmail = emailMatches[0]; // Take first valid email
-          console.log(`📧 Email extracted from message: ${extractedEmail}`);
-          currentTriageData.studentEmail = extractedEmail;
-        }
-        
-        // 🧠 PHONE EXTRACTION: Capture phone numbers from student messages
-        const phoneRegex = /\b(\d{3}[-.]?\d{3}[-.]?\d{4}|\(\d{3}\)\s*\d{3}[-.]?\d{4})\b/g;
-        const phoneMatches = studentMessage.match(phoneRegex);
-        if (phoneMatches && phoneMatches.length > 0) {
-          const extractedPhone = phoneMatches[0].replace(/[-.\s()]/g, ''); // Clean format
-          console.log(`📱 Phone extracted from message: ${extractedPhone}`);
-          currentTriageData.studentPhone = extractedPhone;
-        }
-
         // 🧠 SMART TRIAGE: Restore AI intelligence with expanded auto-create conditions
         const hasLocation = !!(updatedLocation.buildingName && updatedLocation.roomNumber);
         // 🎯 EXPANDED: Better issue detection with more maintenance keywords
@@ -444,151 +410,37 @@ export class MaillaAIService {
           studentMessage?.includes('broken') || studentMessage?.includes('not working') || studentMessage?.includes('stuck') || studentMessage?.includes('damaged') || studentMessage?.includes('repair'));
         const hasBasicInfo = hasLocation && hasIssueType;
         
-        // 🎯 CONTACT INFO: Check if we have student contact information  
-        const hasStudentEmail = currentTriageData?.studentEmail && currentTriageData.studentEmail.trim().length > 0;
-        const hasStudentPhone = currentTriageData?.studentPhone && currentTriageData.studentPhone.trim().length > 0;
-        const isEmergencyOverride = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
-        
-        // 🎯 SMART COMPLETION: Handle self-resolved cases and contractor cases separately
-        const isSelfResolved = maillaResponse.nextAction === 'self_resolved';
-        const autoCreate = hasBasicInfo && (hasStudentEmail || isEmergencyOverride) && (
+        // 🎯 FIXED: More conservative auto-create conditions - require explicit AI completion decision
+        const autoCreate = hasBasicInfo && (
           maillaResponse.nextAction === 'complete_triage' ||     // ✅ AI explicitly says "ready to complete"
-          maillaResponse.nextAction === 'escalate_immediate' ||  // ✅ True emergencies only (email optional)
-          maillaResponse.urgencyLevel === 'emergency' ||         // ✅ Life-threatening situations only (email optional)
-          isSelfResolved                                         // ✅ Self-resolved cases (no contractor needed)
+          maillaResponse.nextAction === 'escalate_immediate' ||  // ✅ True emergencies only
+          maillaResponse.urgencyLevel === 'emergency'            // ✅ Life-threatening situations only
+          // ❌ REMOVED: maillaResponse.urgencyLevel === 'urgent' - this was too aggressive
+          // ❌ REMOVED: contextAnalysis urgent - let AI decide properly
+          // ❌ REMOVED: safety flags urgent - only emergency-level auto-creation
         );
         
-        console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, email=${hasStudentEmail}, AI action=${maillaResponse.nextAction}, urgency=${maillaResponse.urgencyLevel}`);
-        console.log(`🎯 Auto-create decision: ${autoCreate} (hasBasicInfo=${hasBasicInfo}, hasEmail=${hasStudentEmail}, emergencyOverride=${isEmergencyOverride})`);
+        console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, AI action=${maillaResponse.nextAction}, urgency=${maillaResponse.urgencyLevel}`);
+        console.log(`🎯 Auto-create decision: ${autoCreate} (hasBasicInfo=${hasBasicInfo})`);
         
         if (autoCreate) {
           const isEmergency = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
+          console.log(`${isEmergency ? '🚨 EMERGENCY' : '✅ SMART'} CREATION: AI intelligence triggered case creation`);
           
-          if (isSelfResolved) {
-            // 🎉 SELF-RESOLVED: Student fixed it themselves - no contractor needed!
-            console.log(`🎉 SELF-RESOLVED: Student successfully fixed the issue - no contractor case needed`);
-            
-            try {
-              // Mark conversation as complete with self-resolution record
-              await storage.updateTriageConversation(conversationId, {
-                currentPhase: "self_resolved",
-                isComplete: true,
-                triageData: {
-                  ...currentTriageData,
-                  selfResolution: maillaResponse.selfResolution || {
-                    problem: updatedSlots.issueSummary || "Student-reported maintenance issue",
-                    solution: "Student successfully resolved the issue with AI guidance",
-                    preventionTips: []
-                  },
-                  completionType: 'self_resolved',
-                  completedAt: new Date().toISOString(),
-                  studentPhone: currentTriageData.studentPhone // Preserve phone for notifications
-                }
-              });
-              
-              // 🎉 SEND NOTIFICATIONS: Email confirmation + optional SMS
-              if (hasStudentEmail) {
-                const emailSent = await notificationService.sendEmailNotification({
-                  to: currentTriageData.studentEmail,
-                  subject: "✅ Great Job - Maintenance Issue Resolved!",
-                  message: `Great work resolving your ${updatedSlots.issueSummary || 'maintenance issue'} in ${updatedLocation.buildingName} ${updatedLocation.roomNumber}! 
-
-You handled that like a pro. We've made a note of your successful resolution.
-
-Please reach out again if this happens again or if you have any other maintenance concerns.
-
-Best regards,
-MIT Housing Maintenance Team`,
-                  type: 'case_updated'
-                }, currentTriageData.studentEmail);
-                
-                console.log(`📧 Self-resolution email sent: ${emailSent}`);
+          try {
+            const caseResult = await this.completeTriageConversation(conversationId);
+            if (caseResult.success && caseResult.caseId) {
+              const caseNumber = caseResult.caseNumber || this.generateStructuredCaseNumber(maillaResponse.urgencyLevel, updatedLocation);
+              if (isEmergency) {
+                maillaResponse.message += `\n\n🚨 Emergency case #${caseNumber} created - help is being dispatched immediately!`;
+              } else {
+                maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseNumber} - help is on the way!`;
               }
-              
-              if (hasStudentPhone) {
-                const smsSent = await notificationService.sendSMSNotification({
-                  to: currentTriageData.studentPhone,
-                  subject: "Maintenance Resolved",
-                  message: `✅ Great job resolving your ${updatedSlots.issueSummary || 'maintenance issue'}! Contact us if it happens again. Reply STOP to opt out.`,
-                  type: 'case_updated'
-                }, currentTriageData.studentPhone);
-                
-                console.log(`📱 Self-resolution SMS sent: ${smsSent}`);
-              }
-              
-              maillaResponse.message += `\n\n🎉 Amazing work! You handled that like a pro. I've sent you an email confirmation and made a note of how you resolved it. Please reach out again if this happens again or if you have any other concerns!`;
-              maillaResponse.isComplete = true;
-              
-            } catch (error) {
-              console.error('❌ Failed to record self-resolution:', error);
-              maillaResponse.message += `\n\n🎉 Great job fixing that! Feel free to contact us again if you need any help.`;
               maillaResponse.isComplete = true;
             }
-            
-          } else {
-            // 🔧 CONTRACTOR CASE: Create full maintenance case
-            console.log(`${isEmergency ? '🚨 EMERGENCY' : '✅ CONTRACTOR'} CREATION: AI intelligence triggered case creation`);
-            
-            try {
-              const caseResult = await this.completeTriageConversation(conversationId);
-              if (caseResult.success && caseResult.caseId) {
-                const caseNumber = caseResult.caseNumber || this.generateStructuredCaseNumber(maillaResponse.urgencyLevel, updatedLocation);
-                
-                // 📧 STUDENT NOTIFICATIONS: Case creation confirmation
-                if (hasStudentEmail) {
-                  const studentEmailSent = await notificationService.sendEmailNotification({
-                    to: currentTriageData.studentEmail,
-                    subject: `🔧 Maintenance Case #${caseNumber} Created`,
-                    message: `Hi there!
-
-Your maintenance request has been created:
-
-📍 Location: ${updatedLocation.buildingName} Room ${updatedLocation.roomNumber}
-🛠️ Issue: ${updatedSlots.issueSummary || 'Maintenance issue'}
-📋 Case #: ${caseNumber}
-⚡ Priority: ${maillaResponse.urgencyLevel}
-
-${isEmergency ? 
-'🚨 This is an emergency case - help is being dispatched immediately!' : 
-'Our maintenance team will be in touch soon. You don\'t need to stay there - we\'ll update you on timing!'}
-
-We'll keep you posted on progress.
-
-Best regards,
-MIT Housing Maintenance Team`,
-                    type: isEmergency ? 'emergency_alert' : 'case_created',
-                    caseId: caseResult.caseId,
-                    caseNumber,
-                    urgencyLevel: maillaResponse.urgencyLevel
-                  }, currentTriageData.studentEmail);
-                  
-                  console.log(`📧 Student case creation email sent: ${studentEmailSent}`);
-                }
-                
-                if (hasStudentPhone) {
-                  const studentSmsSent = await notificationService.sendSMSNotification({
-                    to: currentTriageData.studentPhone,
-                    subject: "Maintenance Case Created",
-                    message: `🔧 Case #${caseNumber} created for ${updatedLocation.buildingName} ${updatedLocation.roomNumber}. ${isEmergency ? 'Emergency dispatch in progress!' : 'Help is on the way!'} Reply STOP to opt out.`,
-                    type: isEmergency ? 'emergency_alert' : 'case_created',
-                    caseId: caseResult.caseId,
-                    urgencyLevel: maillaResponse.urgencyLevel
-                  }, currentTriageData.studentPhone);
-                  
-                  console.log(`📱 Student case creation SMS sent: ${studentSmsSent}`);
-                }
-                
-                if (isEmergency) {
-                  maillaResponse.message += `\n\n🚨 Emergency case #${caseNumber} created - help is being dispatched immediately! You'll get email and SMS updates.`;
-                } else {
-                  maillaResponse.message += `\n\n✅ Perfect! I've created maintenance case #${caseNumber} - help is on the way! Check your email for details.`;
-                }
-                maillaResponse.isComplete = true;
-              }
-            } catch (error) {
-              console.error('❌ Case creation failed:', error);
-              maillaResponse.message += `\n\n⚡ I'm getting help dispatched right away - you'll get updates soon!`;
-            }
+          } catch (error) {
+            console.error('❌ Case creation failed:', error);
+            maillaResponse.message += `\n\n⚡ I'm getting help dispatched right away - you'll get updates soon!`;
           }
         } else {
           console.log(`🤖 AI CONTROL: Continuing diagnostic conversation (${maillaResponse.nextAction})`);
@@ -599,9 +451,7 @@ MIT Housing Maintenance Team`,
             ...currentTriageData,
             conversationSlots: updatedSlots,
             location: updatedLocation,
-            pendingQuestions: updatedPendingQuestions,
-            studentEmail: currentTriageData.studentEmail, // Ensure email is persisted
-            studentPhone: currentTriageData.studentPhone  // Ensure phone is persisted
+            pendingQuestions: updatedPendingQuestions
           }
         });
       }
@@ -611,10 +461,10 @@ MIT Housing Maintenance Team`,
     } catch (error) {
       console.error("🚨 Mailla AI processing error:", error);
       return {
-        message: "I'm having trouble processing that message. Could you tell me a bit more about your maintenance issue? For example, where is it happening and what's going on?",
-        urgencyLevel: 'normal',
+        message: "I'm having trouble processing your message right now. Let me connect you with someone who can help immediately.",
+        urgencyLevel: 'urgent',
         safetyFlags: ['ai_processing_error'],
-        nextAction: 'ask_followup'
+        nextAction: 'escalate_immediate'
       };
     }
   }
@@ -658,62 +508,56 @@ MIT Housing Maintenance Team`,
   // SAFETY-FIRST PROTOCOLS
   // ========================================
 
-  async performSafetyCheck(message) {
+  private async performSafetyCheck(message: string): Promise<{
+    isEmergency: boolean;
+    flags: string[];
+    emergencyMessage?: string;
+  }> {
     const lowerMessage = message.toLowerCase();
     const flags: string[] = [];
     
-    // ✅ ONLY auto-escalate for confirmed life-threatening emergencies
-    const lifeThreatKeywords = [
+    // Critical safety keywords that trigger immediate escalation
+    const emergencyKeywords = [
       'gas smell', 'gas leak', 'smell gas', 'gas odor',
-      'fire', 'smoke', 'burning smell', 'flames',
-      'carbon monoxide', 'electrical shock'
+      'electrical sparking', 'sparks', 'smoke', 'burning smell',
+      'water gushing', 'flooding', 'electrical outlet wet',
+      'no heat', 'no air conditioning', 'carbon monoxide',
+      'exposed wire', 'electrical shock'
     ];
 
-    // 🧠 Potential safety concerns - flag for AI reasoning, don't auto-escalate
-    const potentialConcerns = [
-      'water leak', 'dripping', 'flooding', 'gushing',
-      'electrical sparking', 'sparks', 'exposed wire',
-      'no heat', 'no power', 'circuit breaker'
+    const urgentKeywords = [
+      'no power', 'circuit breaker', 'outlet not working',
+      'water leak', 'dripping', 'toilet overflow', 
+      'heater not working', 'ac not working'
     ];
 
-    // Check for true life-threatening emergencies (gas, fire, CO, electrical shock)
-    for (const keyword of lifeThreatKeywords) {
+    // Check for emergency conditions
+    for (const keyword of emergencyKeywords) {
       if (lowerMessage.includes(keyword)) {
-        flags.push(`life_threat_${keyword.replace(/\s+/g, '_')}`);
+        flags.push(`emergency_${keyword.replace(/\s+/g, '_')}`);
         
         if (keyword.includes('gas')) {
           return {
             isEmergency: true,
-            confirmLifeThreat: true,
             flags,
-            emergencyMessage: "🚨 **EMERGENCY - GAS DETECTED** 🚨\n\n**IMMEDIATELY:**\n• Leave the building now\n• Do NOT use electrical switches or phones\n• Call Campus Police (617) 253-1212 or 911\n• Do NOT return until authorities say it's safe\n\nThis is a serious safety emergency. Please get to safety now and call for professional help."
+            emergencyMessage: "🚨 **EMERGENCY - GAS DETECTED** 🚨\n\n**IMMEDIATELY:**\n• Leave the building now\n• Do NOT use electrical switches or phones\n• Call 911 or gas company emergency line\n• Do NOT return until authorities say it's safe\n\nThis is a serious safety emergency. Please get to safety now and call for professional help."
           };
         }
         
-        if (keyword.includes('fire') || keyword.includes('smoke') || keyword.includes('burning') || keyword.includes('flames')) {
+        if (keyword.includes('electrical') && keyword.includes('water')) {
           return {
             isEmergency: true,
-            confirmLifeThreat: true,
             flags,
-            emergencyMessage: "🚨 **FIRE EMERGENCY** 🚨\n\n**IMMEDIATELY:**\n• Evacuate the building now\n• Call 911 immediately\n• Do NOT use elevators\n• Meet at designated assembly area\n\nThis is a fire emergency. Please evacuate immediately and call 911."
-          };
-        }
-
-        if (keyword.includes('carbon monoxide') || keyword.includes('electrical shock')) {
-          return {
-            isEmergency: true,
-            confirmLifeThreat: true,
-            flags,
-            emergencyMessage: "🚨 **LIFE SAFETY EMERGENCY** 🚨\n\n**IMMEDIATELY:**\n• Get to fresh air/safe area\n• Call Campus Police (617) 253-1212 or 911\n• Do not return to the area\n\nThis is a life safety emergency. Please get to safety and call for help immediately."
+            emergencyMessage: "🚨 **ELECTRICAL HAZARD** 🚨\n\n**IMMEDIATELY:**\n• Stay away from the area\n• Turn off electricity at circuit breaker if safe to reach\n• Do NOT touch water near electrical outlets\n• Call maintenance emergency line\n\nElectrical + water = serious danger. Please stay safe and get help immediately."
           };
         }
       }
     }
 
-    // Flag potential concerns for AI reasoning (don't auto-escalate)
-    for (const keyword of potentialConcerns) {
+    // Check for urgent conditions
+    for (const keyword of urgentKeywords) {
       if (lowerMessage.includes(keyword)) {
-        flags.push(`concern_${keyword.replace(/\s+/g, '_')}`);
+        flags.push(`urgent_${keyword.replace(/\s+/g, '_')}`);
       }
     }
 
@@ -724,28 +568,78 @@ MIT Housing Maintenance Team`,
   // MAILLA CONVERSATION PROMPTS
   // ========================================
 
-  getMaillaSystemPrompt() {
-    return `You are Mailla, the MIT Housing maintenance assistant. Your job is to help MIT students report dorm maintenance issues in a calm, supportive, and efficient way so we can dispatch maintenance if needed.
+  private getMaillaSystemPrompt(): string {
+    return `You are Mailla, MIT Housing's caring maintenance assistant. You're like a helpful friend who works in maintenance - warm, empathetic, and genuinely caring about students' wellbeing.
 
-Context: MIT undergraduate/graduate dorms (e.g., Next House, Simmons, Senior House). Students may be stressed, tired, or unsure. Be warm, brief, and human. Ask one question at a time, only what's needed next. Use what the student already said; don't repeat.
+**CORE PERSONALITY:**
+- **Be naturally caring** - acknowledge their discomfort ("Oh no, that sounds awful!")
+- **Be practical** - offer helpful advice and alternatives
+- **Be reassuring** - let them know help is coming
+- **Be conversational** - talk like a caring friend, not a corporate bot
 
-Goal: Understand the issue and where it is, assess urgency, and collect the minimum contact info required to schedule help.
+**NATURAL CONVERSATION APPROACH:**
+1. **Acknowledge their situation** with empathy first
+2. **Extract key information** naturally through conversation
+3. **Offer practical help** when appropriate (photos, simple troubleshooting)
+4. **Provide comfort and alternatives** (blankets for cold, friends to stay with)
+5. **Stay connected** - promise updates and check-ins
 
-Collect naturally, in conversation:
-- Location: building + room/unit
-- Issue summary: what's wrong and any key details affecting urgency (e.g., water, power, smell of gas, risk of damage)
-- Email (required to schedule and send updates)
-- Phone (optional) for SMS updates (standard messaging rates may apply)
+**WHAT YOU NEED TO COLLECT:**
+- **Location**: Building name + room number (required)
+- **Issue details**: What's broken/not working (required)
+- **Urgency**: Severe language like "freezing/terrible" = urgent (required)
+- **Duration factors**: ONLY when confidence is low - ask strategic questions naturally
 
-Behavior: Acknowledge feelings and summarize briefly. If emergency is suspected, prioritize safety and prompt immediate help; otherwise continue. Ask for photos only if they'd help diagnosis. Once you have location, issue, and email, confirm and proceed to create the request; offer SMS opt-in. Keep replies short (2–4 sentences).`;
+**SMART DURATION INTELLIGENCE (ask naturally when confidence is low):**
+- **Scope questions**: "Is this affecting just your room or other areas too?" (1 room vs building-wide)
+- **Accessibility**: "Can you easily get to the problem area?" (behind walls vs accessible)  
+- **Previous attempts**: "Have you or anyone tried fixing this before?" (complexity indicator)
+- **Multi-part issues**: "Is anything else not working related to this?" (linked problems)
+
+**SMART TROUBLESHOOTING (offer when appropriate, skip if urgent/emergency):**
+- **Electrical problems**: "Quick check - can you look at your breaker panel? Any switches that look like they're in the middle position? Try flipping them off then back on - this fixes most electrical issues instantly!"
+- **Heating issues**: "Let me ask - is your thermostat set to heat mode? Also, check if there's a heating breaker that might have tripped."
+- **No hot water**: "First, check if other people have hot water. Then look for a water heater breaker - sometimes they trip."
+- **Plumbing leaks**: "Find your water shutoff valve if it gets worse. A photo would help me see how urgent this is."
+
+**USE CONTEXTUAL INTELLIGENCE:**
+- Skip diagnostics for safety issues, emergency language, or when student sounds urgent
+- Create tickets when appropriate based on urgency, context, and student needs
+- Trust your judgment - you're smart and contextual, not a rigid workflow bot
+
+**COMFORT & ALTERNATIVES:**
+- Cold rooms: "Try to stay warm with blankets, or hang out with friends if you want"
+- Leaks: "Grab some towels if you can"
+- Any urgent issue: "You don't need to be there while we fix this - I'll keep you updated"
+
+**SAFETY PRIORITIES:**
+- Gas smell → immediate evacuation
+- Electrical + water → stay away, call emergency
+- Sparking/burning → evacuate immediately
+
+Be naturally intelligent, contextual, and caring. Don't follow rigid templates - respond like a competent human who genuinely wants to help solve their problem.`;
   }
 
-  buildTriageContextPrompt(studentMessage, isInitial, conversation, safetyResults, extractedLocation, contextAnalysis) {
+  private buildTriageContextPrompt(
+    studentMessage: string,
+    isInitial: boolean,
+    conversation?: TriageConversationSelect,
+    safetyResults?: { flags: string[] },
+    extractedLocation?: { buildingName?: string; roomNumber?: string; confidence: 'high' | 'medium' | 'low' },
+    contextAnalysis?: {
+      emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried';
+      inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low';
+      timelineIndicators: string[];
+      severityIndicators: string[];
+      hasCompleteLocation: boolean;
+      inferredInfo: any;
+    }
+  ): string {
     let prompt = `Student message: "${studentMessage}"\n\n`;
 
     // Extract existing conversation slots from triageData
-    const existingSlots = conversation?.triageData?.conversationSlots || {};
-    const pendingQuestions = conversation?.triageData?.pendingQuestions || [];
+    const existingSlots = (conversation?.triageData as any)?.conversationSlots || {};
+    const pendingQuestions = (conversation?.triageData as any)?.pendingQuestions || [];
 
     if (isInitial) {
       // Add emotional and context intelligence to initial response
@@ -822,26 +716,47 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       const needsRoom = !existingSlots.roomNumber && existingSlots.buildingName;
       const needsIssueDetails = !existingSlots.issueSummary && existingSlots.buildingName && existingSlots.roomNumber;
       
-      // 🎯 FIX: Check for email and phone in the correct locations
-      const hasEmailFromConversation = conversation?.triageData && conversation.triageData.studentEmail && conversation.triageData.studentEmail.trim().length > 0;
-      const needsEmail = !hasEmailFromConversation;
-      
-      const hasPhoneFromConversation = conversation?.triageData && conversation.triageData.studentPhone && conversation.triageData.studentPhone.trim().length > 0;
-      const needsPhone = !hasPhoneFromConversation;
-      
       // Smart inference: skip questions if context analysis provides answers
       const hasTimelineFromContext = contextAnalysis?.timelineIndicators && contextAnalysis.timelineIndicators.length > 0;
       const hasSeverityFromContext = contextAnalysis?.severityIndicators && contextAnalysis.severityIndicators.length > 0;
       
-      // What we know so far
-      const hasLocation = (existingSlots.buildingName && existingSlots.roomNumber);
-      const hasIssue = existingSlots.issueSummary;
-      const hasEmail = conversation?.triageData?.studentEmail;
-      const hasPhone = conversation?.triageData?.studentPhone;
-      
-      prompt += `\nWhat we already know: Location=${hasLocation ? '✓' : '✗'}, Issue=${hasIssue ? '✓' : '✗'}, Email=${hasEmail ? '✓' : '✗'}, Phone=${hasPhone ? '✓' : '✗'}
+      prompt += `\nINTELLIGENT ANALYSIS:
+${hasTimelineFromContext ? '✅ Timeline inferred from context - no need to ask' : '❓ May need timeline'}
+${hasSeverityFromContext ? '✅ Severity inferred from language - no need to ask' : '❓ May need severity'}
+${contextAnalysis?.emotionalContext !== 'calm' ? '⚠️ Student sounds ' + contextAnalysis?.emotionalContext + ' - acknowledge empathetically' : ''}
 
-Ask for the next most important missing piece. Once you have location + issue + email, you can proceed to complete the triage.`;
+Next question priority (only ask for what's MISSING):
+${needsBuilding ? '1. Building name (REQUIRED)' : '✅ Building name: already have it'}
+${needsRoom ? '2. Room number (REQUIRED if building known)' : '✅ Room number: already have it'}  
+${needsIssueDetails ? '3. Issue details (if location complete)' : '✅ Issue details: covered'}
+${!hasTimelineFromContext ? '4. Timeline (if not inferred)' : '✅ Timeline: inferred from context'}
+${!hasSeverityFromContext ? '5. Severity (if not inferred)' : '✅ Severity: inferred from language'}
+
+CRITICAL: If they sound frustrated or said "it's bad/terrible", DO NOT ask about severity - it's already urgent!
+Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they shared.
+NEVER ask for information you already have!
+
+💝 **PROGRESSIVE TRIAGE COMPLETION:**
+If student has engaged with your previous triage request (uploaded photo, tried DIY steps, or provided follow-up info), it's time to complete with caring final advice:
+
+🔄 **COMPLETE WITH COMFORT & UPDATES:**
+**For HEATING issues:** "Perfect! Thanks for trying that. Try to stay warm with some blankets, or hang out with friends if you want - you don't need to be there while we fix this. I'll keep you updated on timing! 🔧"
+
+**For PLUMBING issues:** "Got it! Grab some towels if you can. Help should be there within the hour. If it gets much worse, that water shutoff valve I mentioned will help - but we've got this handled! 💧"
+
+**For ELECTRICAL issues:** "Thanks for staying safe! Keep away from that area. Maintenance will text you when they're on their way - usually within 30-45 minutes. I'll keep you posted! ⚡"
+
+**For GENERAL issues:** "Perfect! You're all set. Help will be there soon - you can go about your day and I'll update you along the way! 🛠️"
+
+💝 **WHEN TO COMPLETE:**
+- Student uploaded photo or said they can't
+- Student tried DIY steps you suggested
+- Student provided any follow-up information after your triage request
+- They seem ready to move on
+
+Set nextAction: 'complete_triage' and give caring final message with comfort advice + stay-connected promise.
+\n`;
+    }
 
     if (safetyResults && safetyResults.flags.length > 0) {
       prompt += `SAFETY ALERT: ${safetyResults.flags.join(', ')} - prioritize safety!\n`;
@@ -856,21 +771,55 @@ Ask for the next most important missing piece. Once you have location + issue + 
   // COMPLETE TRIAGE & CASE CREATION
   // ========================================
 
+  // ✅ Unified case creation method - DEPRECATED: Use completeTriageConversation instead
+  async completeTriageAndCreateCase(conversationId: string): Promise<string> {
+    console.log(`⚠️ Using deprecated completeTriageAndCreateCase - use completeTriageConversation instead`);
+    const result = await this.completeTriageConversation(conversationId);
+    return result.caseId;
+  }
 
   // ========================================
-  // DUPLICATE DETECTION HELPERS  
+  // DUPLICATE DETECTION HELPERS
   // ========================================
+
+  private areSimilarIssues(description1: string, description2: string): boolean {
+    // Normalize descriptions for comparison
+    const normalize = (text: string) => text.toLowerCase()
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ')     // Normalize whitespace
+      .trim();
+    
+    const desc1 = normalize(description1);
+    const desc2 = normalize(description2);
+    
+    // If descriptions are very similar (80%+ overlap), consider them similar
+    const words1 = new Set(desc1.split(' '));
+    const words2 = new Set(desc2.split(' '));
+    
+    const intersection = new Set([...words1].filter(word => words2.has(word)));
+    const union = new Set([...words1, ...words2]);
+    
+    const similarity = intersection.size / union.size;
+    
+    // Also check for key maintenance terms
+    const maintenanceKeywords = ['dripping', 'leak', 'broken', 'not working', 'faucet', 'toilet', 'heat', 'ac', 'electrical', 'outlet'];
+    const hasCommonKeywords = maintenanceKeywords.some(keyword => 
+      desc1.includes(keyword) && desc2.includes(keyword)
+    );
+    
+    return similarity > 0.8 || (similarity > 0.6 && hasCommonKeywords);
+  }
 
   // ========================================
   // AI-POWERED DURATION ESTIMATION
   // ========================================
 
-  async estimateRepairDuration(triageData) {
-    return { duration: '2-4 hours', reasoning: 'Default estimation' };
-  }
-
-  // TEMP: Simplified version to test compilation
-  async estimateRepairDurationOld(triageData) {
+  private async estimateRepairDuration(triageData: any): Promise<{
+    estimatedMinutes: number;
+    confidence: 'high' | 'medium' | 'low';
+    reasoning: string;
+    category: 'quick' | 'standard' | 'complex' | 'major';
+  }> {
     try {
       const conversation = triageData.conversationSlots || {};
       const issueDescription = triageData.issueDescription || conversation.issueSummary || '';
@@ -936,9 +885,10 @@ Respond in JSON format:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-5',
+          model: 'gpt-4o',
           messages: [{ role: 'user', content: estimationPrompt }],
-          max_completion_tokens: 200
+          temperature: 0.3,
+          max_tokens: 200
         })
       });
 
@@ -956,7 +906,7 @@ Respond in JSON format:
     }
   }
 
-  categorizeIssue(description) {
+  private categorizeIssue(description: string): string {
     const lowerDesc = description.toLowerCase();
     
     if (lowerDesc.includes('electrical') || lowerDesc.includes('outlet') || lowerDesc.includes('power')) return 'electrical';
@@ -968,7 +918,12 @@ Respond in JSON format:
     return 'general';
   }
 
-  fallbackDurationEstimation(triageData) {
+  private fallbackDurationEstimation(triageData: any): {
+    estimatedMinutes: number;
+    confidence: 'high' | 'medium' | 'low';
+    reasoning: string;
+    category: 'quick' | 'standard' | 'complex' | 'major';
+  } {
     const description = triageData.issueDescription || '';
     const urgency = triageData.urgencyLevel || 'normal';
     
@@ -990,7 +945,7 @@ Respond in JSON format:
   // ========================================
 
   // Enhanced MIT building mapping with aliases and fuzzy matching
-  getMITPropertyMapping(buildingName, roomNumber) {
+  private getMITPropertyMapping(buildingName?: string, roomNumber?: string): { propertyId: string | null; unitId: string | null; normalizedBuildingName?: string } {
     if (!buildingName) {
       return { propertyId: null, unitId: null };
     }
@@ -1028,7 +983,7 @@ Respond in JSON format:
   }
 
   // Smart building name resolution with aliases and fuzzy matching
-  resolveBuildingName(input) {
+  private resolveBuildingName(input: string): string | null {
     const normalizedInput = input.trim().toLowerCase();
 
     // Building aliases map - handles how students actually talk
@@ -1114,7 +1069,7 @@ Respond in JSON format:
   // ========================================
 
   // Smart context inference from student messages
-  analyzeMessageContext(message) {
+  private analyzeMessageContext(message: string): {
     emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried';
     inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low';
     timelineIndicators: string[];
@@ -1211,13 +1166,13 @@ Respond in JSON format:
   }
 
   // Pre-process student message to extract and standardize location info
-  extractLocationFromMessage(message) {
+  private extractLocationFromMessage(message: string): { buildingName?: string; roomNumber?: string; confidence: 'high' | 'medium' | 'low' } {
     const normalizedMessage = message.toLowerCase();
     
     // Common patterns students use
     const patterns = [
-      // "Tang room 301", "Next unit 123", "Senior house unit 1" - handles "building room/unit number"
-      /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\s+(?:house\s+)?(?:room|rm|unit)\s+(\d+[a-z]?)\b/gi,
+      // "Tang room 301", "Next room 123" - NEW: handles "building room number"
+      /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\s+(?:room|rm)\s+(\d+[a-z]?)\b/gi,
       
       // "Tang Hall room 301", "Next House room 123" - NEW: handles full building name + room 
       /\b(tang hall|next house|simmons hall|macgregor house|burton conner|new house|baker house|mccormick hall|random hall|senior house|ashdown house|sidney pacific|sidney-pacific)\s+(?:room|rm)\s+(\d+[a-z]?)\b/gi,
@@ -1301,7 +1256,7 @@ Respond in JSON format:
       }
 
       // 🚨 CROSS-CONVERSATION DEDUPLICATION: Check for similar recent cases
-      const triageData = conversation.triageData;
+      const triageData = conversation.triageData as any;
       const location = triageData?.location || {};
       const issueDescription = conversation.initialRequest || '';
       
@@ -1339,7 +1294,7 @@ Respond in JSON format:
       }
 
       // Extract location data from triage
-      const locationData = conversation.triageData?.location;
+      const locationData = (conversation.triageData as any)?.location;
       const { propertyId, unitId, normalizedBuildingName } = this.getMITPropertyMapping(locationData?.buildingName, locationData?.roomNumber);
 
       // Critical validation: Ensure we have valid property mapping
@@ -1364,7 +1319,7 @@ Respond in JSON format:
         description: this.buildEnhancedTicketDescription(conversation, locationData, studentInfo, mediaInsights),
         category: detectedCategory, // 🎯 AI-detected category
         priority: this.mapUrgencyToPriority(conversation.urgencyLevel),
-        status: "New",
+        status: "New" as any,
         reportedBy: conversation.studentId,
         propertyId: propertyId,
         unitId: unitId,
@@ -1433,7 +1388,7 @@ Respond in JSON format:
   // POST-ESCALATION WORKFLOW SYSTEM
   // ========================================
 
-  async initiatePostEscalationWorkflow(caseId, conversationId, conversation) {
+  private async initiatePostEscalationWorkflow(caseId: string, conversationId: string, conversation: any) {
     try {
       console.log(`🚀 Starting post-escalation workflow for case ${caseId}`);
 
@@ -1493,7 +1448,7 @@ Respond in JSON format:
       const event = {
         caseId,
         conversationId,
-        eventType: eventType,
+        eventType: eventType as any,
         message,
         metadata,
         createdBy: 'mailla'
@@ -1515,7 +1470,7 @@ Respond in JSON format:
   /**
    * Maps database priority enum to AI Coordinator urgency format
    */
-  mapPriorityToUrgency(priority) {
+  private mapPriorityToUrgency(priority: string): 'Low' | 'Medium' | 'High' | 'Critical' {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Critical'> = {
       'Low': 'Low',
       'Medium': 'Medium', 
@@ -1528,7 +1483,7 @@ Respond in JSON format:
   /**
    * Maps Mailla urgency levels to AI Coordinator urgency format
    */
-  mapMaillaUrgencyToCoordinator(urgencyLevel) {
+  private mapMaillaUrgencyToCoordinator(urgencyLevel: string): 'Low' | 'Medium' | 'High' | 'Critical' {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Critical'> = {
       'low': 'Low',
       'normal': 'Medium',
@@ -1541,7 +1496,7 @@ Respond in JSON format:
   /**
    * Maps Mailla urgency levels to database priority enum values
    */
-  mapUrgencyToPriority(urgencyLevel) {
+  private mapUrgencyToPriority(urgencyLevel: string): 'Low' | 'Medium' | 'High' | 'Urgent' {
     const mapping: Record<string, 'Low' | 'Medium' | 'High' | 'Urgent'> = {
       'low': 'Low',
       'normal': 'Medium', 
@@ -1554,14 +1509,14 @@ Respond in JSON format:
   /**
    * Generates user-friendly case number from UUID
    */
-  generateFriendlyCaseNumber(caseId) {
+  private generateFriendlyCaseNumber(caseId: string): string {
     // Convert UUID to a short, memorable number
     const hash = caseId.split('-')[0]; // Use first part of UUID
     const num = parseInt(hash.substring(0, 6), 16) % 9000 + 1000; // Generate 1000-9999
     return `MIT-${num}`;
   }
 
-  async assignOptimalContractor(caseId, conversationId, conversation) {
+  private async assignOptimalContractor(caseId: string, conversationId: string, conversation: any) {
     try {
       console.log(`🔧 Starting contractor assignment for case ${caseId}`);
 
@@ -1606,7 +1561,7 @@ Respond in JSON format:
           location: smartCase.buildingName || 'Unknown',
           urgency: mappedUrgency,
           estimatedDuration: '2-4 hours',
-          safetyRisk: 'None',
+          safetyRisk: 'None' as any,
           contractorType: smartCase.category || undefined
         },
         availableContractors: availableContractors.map(c => ({
@@ -1637,7 +1592,7 @@ Respond in JSON format:
         // ❌ REMOVED AUTO-ASSIGNMENT - Cases stay "New" for contractor approval
         // await storage.updateSmartCase(caseId, { 
         //   contractorId: bestContractor.contractorId,
-        //   status: 'In Progress'
+        //   status: 'In Progress' as any
         // });
 
         // 🤖 AI-POWERED DURATION ESTIMATION  
@@ -1674,7 +1629,7 @@ Respond in JSON format:
     }
   }
 
-  shouldRequestMedia(conversation) {
+  private shouldRequestMedia(conversation: any): { request: boolean; types: string[]; reason: string } {
     const description = conversation.initialRequest?.toLowerCase() || '';
     
     // Skip media requests for safety hazards - prioritize evacuation
@@ -1721,7 +1676,7 @@ Respond in JSON format:
     return { request: false, types: [], reason: 'No media needed for this issue type' };
   }
 
-  async requestMedia(caseId, conversationId, mediaRequest) {
+  private async requestMedia(caseId: string, conversationId: string, mediaRequest: any) {
     const message = `One quick thing that would help - ${mediaRequest.reason}. ${
       mediaRequest.types.includes('photo') ? 'Can you take a photo showing the problem?' : 
       'Can you record a short audio clip of the sound?'
@@ -1828,7 +1783,7 @@ Respond in JSON format:
   // ENHANCED MEDIA ANALYSIS FOR CONTRACTORS
   // ========================================
 
-  async analyzeConversationMedia(conversation) {
+  private async analyzeConversationMedia(conversation: any): Promise<any> {
     try {
       // Extract media from conversation history and triage data
       const mediaUrls: string[] = [];
@@ -1897,7 +1852,7 @@ Respond in JSON format:
     }
   }
 
-  async analyzePhotosForContractors(imageUrls, conversation) {
+  private async analyzePhotosForContractors(imageUrls: string[], conversation: any): Promise<any> {
     try {
       const firstImage = imageUrls[0]; // Focus on first image for now
       
@@ -1930,7 +1885,7 @@ Please analyze this image and provide a comprehensive contractor assessment in J
 Focus on practical details that help contractors prepare effectively.`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [{
           role: "user",
           content: [
@@ -1955,7 +1910,7 @@ Focus on practical details that help contractors prepare effectively.`;
     }
   }
 
-  async analyzeAudioForContractors(audioUrls, conversation) {
+  private async analyzeAudioForContractors(audioUrls: string[], conversation: any): Promise<any> {
     try {
       // For now, provide structured analysis based on audio description patterns
       // This can be enhanced with actual audio analysis APIs later
@@ -2091,7 +2046,7 @@ Focus on practical details that help contractors prepare effectively.`;
       await storage.updateAppointment(appointment.id, {
         approvalToken,
         approvalExpiresAt,
-        status: 'Proposed'
+        status: 'Proposed' as any
       });
 
       // Format appointment time for student
@@ -2188,7 +2143,7 @@ Questions? Just ask! I'm here to help coordinate your maintenance needs.`;
     return 'General';
   }
 
-  async getStudentFullName(studentId) {
+  private async getStudentFullName(studentId: string): Promise<{ firstName?: string; lastName?: string } | null> {
     try {
       // Get user information from storage
       const user = await storage.getUser(studentId);

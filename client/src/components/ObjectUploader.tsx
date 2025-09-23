@@ -93,15 +93,6 @@ export function ObjectUploader({
         open={showModal}
         onRequestClose={() => setShowModal(false)}
         proudlyDisplayPoweredByUppy={false}
-        locale={{
-          strings: {
-            dropPasteFiles: 'Select or take photos',
-            browseFiles: 'Browse files',
-            dropPasteFolders: 'Select photos',
-            dropPasteImportFiles: 'Select photos',
-            dropPasteImportFolders: 'Select photos',
-          }
-        }}
       />
     </div>
   );

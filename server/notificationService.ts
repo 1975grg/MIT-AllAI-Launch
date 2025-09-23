@@ -16,7 +16,6 @@ interface WebSocketConnection {
   ws: WebSocket;
   userId: string;
   role: string;
-  orgId?: string;
 }
 
 class NotificationService {
@@ -52,7 +51,7 @@ class NotificationService {
 
   // WebSocket connection management with organization context
   addWebSocketConnection(ws: WebSocket, userContext: {userId: string, role: string, orgId: string}) {
-    this.wsConnections.push({ ws, userId: userContext.userId, role: userContext.role, orgId: userContext.orgId });
+    this.wsConnections.push({ ws, ...userContext });
     console.log(`🔗 WebSocket connected: ${userContext.userId} (${userContext.role}) in org ${userContext.orgId}`);
   }
 
@@ -146,9 +145,36 @@ class NotificationService {
     try {
       const storage = (await import('./storage.js')).storage;
       
-      // Skip admin notification for now - implement proper admin lookup later
+      // Get organization owner (admin) - use existing method from storage interface
+      // Note: getUserOrganization expects userId, but we have orgId
+      // Let's find the organization owner using a simpler approach for now
+      
+      // For demo purposes, we'll assume the first user in the system is admin
+      // TODO: Implement proper organization member lookup
+      console.warn(`⚠️ Using simplified admin lookup for org ${orgId} - should implement proper member roles`);
+      
+      // Skip admin notification for now to avoid storage errors
+      // We'll implement this properly when we add the missing storage methods
       console.log(`📧 Would notify admins for org ${orgId} about ${notification.type}`);
-      // TODO: Implement proper organization member lookup when admin roles are defined
+      return;
+
+      // Send all notification types
+      const promises = [];
+
+      // Email notification
+      if (adminUser.email) {
+        promises.push(this.sendEmailNotification(notification, adminUser.email));
+      }
+
+      // SMS notification (if phone number available)
+      if (adminUser.phone) {
+        promises.push(this.sendSMSNotification(notification, adminUser.phone));
+      }
+
+      // Real-time WebSocket notification would go here
+
+      await Promise.allSettled(promises);
+      console.log(`✅ Admin notifications dispatched for ${notification.type}`);
     } catch (error) {
       console.error('❌ Failed to notify admins:', error);
     }
@@ -194,11 +220,11 @@ class NotificationService {
       console.log(`📧 Sending student notification to ${studentEmail}: ${subject}`);
 
       const notification: NotificationData = {
-        to: studentEmail,
-        type: 'case_updated',
+        type: 'case_status_update',
         subject,
         message,
-        urgencyLevel: 'normal'
+        urgencyLevel: 'normal',
+        timestamp: new Date().toISOString()
       };
 
       // Send email notification

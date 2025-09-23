@@ -28,7 +28,7 @@ export interface ContractorAvailability {
 
 export interface AssignmentRecommendation {
   contractorId: string;
-  name: string;
+  contractorName: string;
   matchScore: number; // 0-100
   reasoning: string;
   estimatedResponseTime: string;
@@ -57,14 +57,7 @@ const ContractorMatchRequest = z.object({
     availabilityPattern: z.string(),
     responseTimeHours: z.number(),
     estimatedHourlyRate: z.number().optional(),
-    rating: z.union([z.number(), z.string(), z.null()]).optional().transform(val => {
-      if (val === null || val === undefined) return undefined;
-      if (typeof val === 'string') {
-        const num = parseFloat(val);
-        return isNaN(num) ? undefined : num;
-      }
-      return val;
-    }),
+    rating: z.number().optional(),
     maxJobsPerDay: z.number(),
     currentWorkload: z.number().default(0),
     emergencyAvailable: z.boolean().default(false),
@@ -94,7 +87,7 @@ const AssignmentResponse = z.object({
 });
 
 export class AICoordinatorService {
-  private readonly AI_COORDINATION_TIMEOUT = 25000; // 25 seconds for coordination
+  private readonly AI_COORDINATION_TIMEOUT = 12000; // 12 seconds for coordination
 
   async findOptimalContractor(request: z.infer<typeof ContractorMatchRequest>): Promise<AssignmentRecommendation[]> {
     try {
@@ -105,7 +98,7 @@ export class AICoordinatorService {
       
       const response = await Promise.race([
         openai.chat.completions.create({
-          model: "gpt-5",
+          model: "gpt-4o",
           messages: [
             {
               role: "system",
@@ -129,15 +122,9 @@ export class AICoordinatorService {
       }
 
       const coordinationResult = JSON.parse(content);
+      const validatedResult = AssignmentResponse.parse(coordinationResult);
       
-      // Validate the AI response and use fallback if invalid
-      try {
-        const validatedResult = AssignmentResponse.parse(coordinationResult);
-        return this.convertToRecommendations(validatedResult, validatedRequest.availableContractors);
-      } catch (validationError) {
-        console.error('AI response validation failed, using fallback:', validationError);
-        return this.getFallbackMatching(request);
-      }
+      return this.convertToRecommendations(validatedResult, validatedRequest.availableContractors);
 
     } catch (error) {
       console.error('AI coordination failed:', error);
@@ -205,7 +192,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
     if (primaryContractor) {
       recommendations.push({
         contractorId: aiResult.recommendedContractor.contractorId,
-        name: primaryContractor.name,
+        contractorName: primaryContractor.name,
         matchScore: aiResult.recommendedContractor.matchScore,
         reasoning: aiResult.recommendedContractor.reasoning,
         estimatedResponseTime: aiResult.recommendedContractor.estimatedResponseTime,
@@ -226,7 +213,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
       if (contractor) {
         recommendations.push({
           contractorId: alt.contractorId,
-          name: contractor.name,
+          contractorName: contractor.name,
           matchScore: alt.matchScore,
           reasoning: alt.reasoning,
           estimatedResponseTime: `${contractor.responseTimeHours} hours`,
@@ -254,12 +241,12 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
     
     if (activeContractors.length === 0) {
       // ✅ NO CONTRACTORS AVAILABLE - SUGGEST ADMIN INTERVENTION
-      console.log(`🚨 No contractors available for ${caseData.category} case "${caseData.description}"`);
+      console.log(`🚨 No contractors available for ${caseData.category} case "${caseData.title}"`);
       
       // Return special admin intervention recommendation
       return [{
         contractorId: 'admin-intervention-required',
-        name: '⚡ Admin Intervention Needed',
+        contractorName: '⚡ Admin Intervention Needed',
         matchScore: 0,
         reasoning: `No ${caseData.category} contractors available. Suggested actions: 1) Flag general maintenance contractor, 2) Contact external emergency service, 3) Reassign to available contractor with different specialization`,
         estimatedResponseTime: 'Immediate admin action required',
@@ -295,7 +282,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
       score += availabilityRatio * 15;
       
       // Emergency availability for urgent cases
-      if ((caseData.priority === 'Critical' || caseData.urgency === 'Critical') && contractor.emergencyAvailable) {
+      if ((caseData.priority === 'Urgent' || caseData.urgency === 'Critical') && contractor.emergencyAvailable) {
         score += 15;
       }
       
@@ -310,7 +297,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
       
       return {
         contractorId: contractor.id,
-        name: contractor.name,
+        contractorName: contractor.name,
         matchScore: Math.min(Math.max(score, 0), 100),
         reasoning: `Fallback matching: Category ${contractor.category || 'general'}, ${contractor.currentWorkload}/${contractor.maxJobsPerDay} workload, ${contractor.responseTimeHours}h response time`,
         estimatedResponseTime: `${contractor.responseTimeHours} hours`,

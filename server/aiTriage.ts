@@ -59,7 +59,7 @@ export class AITriageService {
       
       const response = await Promise.race([
         openai.chat.completions.create({
-          model: "gpt-5",
+          model: "gpt-4o",
           messages: [
             {
               role: "system",
@@ -153,7 +153,7 @@ Consider factors like:
       
       const response = await Promise.race([
         openai.chat.completions.create({
-          model: "gpt-5",
+          model: "gpt-4o",
           messages: [{
             role: "user",
             content: [
@@ -208,7 +208,7 @@ Consider factors like:
         contractorId: 'ai-matched-contractor',
         name: 'AI Matched Contractor',
         category: triageResult.category,
-        matchScore: 85, // 0-100 scale for consistency with system
+        matchScore: 0.85,
         availability: 'available',
         estimatedResponse: triageResult.urgency === 'Critical' ? '30 minutes' : '2-4 hours',
         specializations: triageResult.requiredExpertise
@@ -237,7 +237,7 @@ Consider factors like:
       '✅ AI triage analysis completed',
       `📋 Categorized as ${triageResult.category} (${triageResult.estimatedComplexity} complexity)`,
       `⚡ Priority set to ${triageResult.urgency}`,
-      ...(Array.isArray(triageResult.troubleshootingSteps) ? triageResult.troubleshootingSteps.map(step => `🔧 ${step}`) : []),
+      ...triageResult.troubleshootingSteps.map(step => `🔧 ${step}`),
       `🏗️ ${triageResult.contractorType} contractor required`
     ];
 
@@ -254,8 +254,8 @@ Consider factors like:
     if (contractorRecommendations && contractorRecommendations.length > 0) {
       const bestMatch = contractorRecommendations[0];
       autoScheduling.contractorAssigned = bestMatch.contractorId;
-      autoScheduling.schedulingNotes = `Auto-assigned to ${bestMatch.name} (${Math.round(bestMatch.matchScore)}% match)`;
-      workflowSteps.push(`👷 Auto-assigned to ${bestMatch.name}`);
+      autoScheduling.schedulingNotes = `Auto-assigned to ${bestMatch.contractorName} (${bestMatch.matchScore}% match)`;
+      workflowSteps.push(`👷 Auto-assigned to ${bestMatch.contractorName}`);
       
       // For critical issues, add immediate scheduling
       if (triageResult.urgency === 'Critical') {
