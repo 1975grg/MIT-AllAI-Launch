@@ -776,6 +776,20 @@ Example: "I'm here to help with that! Which MIT building are you in?"
     } else {
       prompt += `This is a follow-up message. Conversation progress:\n`;
       
+      // Include conversation history so AI can see what was already discussed
+      if (conversation?.conversationHistory && Array.isArray(conversation.conversationHistory)) {
+        prompt += `\n📝 CONVERSATION HISTORY:\n`;
+        const history = conversation.conversationHistory as any[];
+        history.forEach((msg: any, index: number) => {
+          if (msg.role === 'student') {
+            prompt += `Student: "${msg.message}"\n`;
+          } else if (msg.role === 'mailla') {
+            prompt += `Mailla (YOU): "${msg.message}"\n`;
+          }
+        });
+        prompt += `⚠️ CRITICAL: Review the conversation above. Do NOT repeat questions you already asked!\n\n`;
+      }
+      
       // Add smart context analysis for follow-up messages
       let contextInfo = '';
       if (contextAnalysis) {
