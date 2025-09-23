@@ -173,8 +173,7 @@ async function processTriageMessage(conversationId, studentMessage, isInitial, m
           }
         }
       }],
-      tool_choice: { type: "function", function: { name: "triage_response" } },
-      temperature: 0.3
+      tool_choice: { type: "function", function: { name: "triage_response" } }
     });
 
     const toolCall = completion.choices[0]?.message?.tool_calls?.[0];
