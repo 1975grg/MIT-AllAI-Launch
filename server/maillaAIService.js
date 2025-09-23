@@ -130,7 +130,7 @@ async function processTriageMessage(conversationId, studentMessage, isInitial, m
     // 3. Generate AI response
     const prompt = buildTriageContextPrompt(studentMessage, isInitial, conversation, safetyResults, extractedLocation, contextAnalysis);
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: [
         { role: "system", content: getMaillaSystemPrompt() },
         { role: "user", content: prompt }
