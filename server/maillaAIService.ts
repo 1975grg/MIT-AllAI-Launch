@@ -305,8 +305,20 @@ export class MaillaAIService {
         max_completion_tokens: 1500 // GPT-5 requires max_completion_tokens instead of max_tokens
       });
 
+      // Debug logging to see what GPT-5 is actually returning
+      console.log('🔍 GPT-5 Response structure:', JSON.stringify({
+        choices: aiResponse.choices?.map(choice => ({
+          message: {
+            role: choice.message?.role,
+            content: choice.message?.content,
+            tool_calls: choice.message?.tool_calls
+          }
+        }))
+      }, null, 2));
+
       const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
       if (!toolCall || toolCall.type !== "function") {
+        console.log('❌ No valid tool call found. Full response:', JSON.stringify(aiResponse, null, 2));
         throw new Error("Mailla failed to generate triage response");
       }
 
