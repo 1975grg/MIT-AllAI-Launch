@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { WebSocketServer, WebSocket } from 'ws';
 import { ObjectStorageService } from "./objectStorage";
+import { db } from "./db";
+import { users } from "@shared/schema";
 import { 
   insertOrganizationSchema,
   insertOwnershipEntitySchema,
@@ -48,6 +50,27 @@ async function initializeMITProperties() {
     
     if (!mitOrg) {
       console.log('🏫 Creating MIT Housing organization...');
+      
+      // Find an existing user to be the owner (use the first user if available)
+      const allUsers = await db.select().from(users).limit(1);
+      let ownerId = 'default-owner';
+      
+      if (allUsers.length > 0) {
+        ownerId = allUsers[0].id;
+        console.log(`Using existing user ${ownerId} as MIT Housing owner`);
+      } else {
+        // Create a system user if no users exist
+        console.log('Creating system user for MIT Housing...');
+        const systemUser = {
+          id: 'mit-system-user',
+          email: 'system@mit.edu',
+          name: 'MIT System',
+          createdAt: new Date()
+        };
+        const [createdUser] = await db.insert(users).values(systemUser).returning();
+        ownerId = createdUser.id;
+      }
+      
       // Create MIT housing organization if it doesn't exist
       const orgData = {
         id: 'mit-housing',
@@ -58,7 +81,7 @@ async function initializeMITProperties() {
         city: 'Cambridge',
         state: 'MA',
         zipCode: '02139',
-        ownerId: 'system-owner', // Use system owner for MIT org
+        ownerId: ownerId,
         createdAt: new Date()
       };
       
