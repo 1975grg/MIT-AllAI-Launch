@@ -241,9 +241,9 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
       if (data.nextAction === 'escalate_immediate') {
         setIsEmergencyMode(true);
         toast({
-          title: "⚠️ EMERGENCY SITUATION DETECTED",
-          description: "Please call (617) 253-1212 immediately for urgent help!",
-          variant: "destructive"
+          title: "Priority Issue Noted",
+          description: "I'll make sure this gets handled quickly. Let me gather a few more details.",
+          variant: "default"
         });
       } else if (data.nextAction === 'request_media') {
         setNeedsMediaUpload(true);
@@ -393,8 +393,8 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'emergency': return 'bg-red-500 text-white shadow-lg border-red-200';
-      case 'urgent': return 'bg-orange-500 text-white shadow-lg border-orange-200';
+      case 'emergency': return 'bg-blue-500 text-white shadow-lg border-blue-200';
+      case 'urgent': return 'bg-blue-500 text-white shadow-lg border-blue-200';
       case 'normal': return 'bg-blue-500 text-white shadow-lg border-blue-200';
       case 'low': return 'bg-green-500 text-white shadow-lg border-green-200';
       default: return 'bg-gray-500 text-white shadow-lg border-gray-200';
@@ -425,7 +425,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
             {safetyFlags.length > 0 && (
               <Badge 
                 variant="outline" 
-                className="bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+                className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
                 data-testid="badge-safety-concerns"
               >
                 {safetyFlags.length} safety concern{safetyFlags.length > 1 ? 's' : ''}
@@ -441,15 +441,15 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-red-600 dark:bg-red-700 text-white p-4 rounded-lg border border-red-700 dark:border-red-600"
-            data-testid="banner-emergency"
+            className="bg-blue-50 dark:bg-blue-900 text-blue-800 dark:text-blue-200 p-4 rounded-lg border border-blue-200 dark:border-blue-600"
+            data-testid="banner-priority"
           >
             <div className="flex items-center gap-3">
-              <Phone className="h-6 w-6 animate-pulse" />
+              <CheckCircle className="h-6 w-6" />
               <div className="flex-1">
-                <h3 className="font-bold text-lg">🚨 EMERGENCY DETECTED</h3>
-                <p className="text-sm opacity-90">Call MIT Campus Police IMMEDIATELY</p>
-                <p className="text-lg font-bold">(617) 253-1212</p>
+                <h3 className="font-bold text-lg">Priority Issue</h3>
+                <p className="text-sm opacity-90">I'll make sure this gets handled quickly</p>
+                <p className="text-sm">Let me gather some details to help our team prepare</p>
               </div>
             </div>
           </motion.div>
@@ -537,7 +537,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
                     {message.safetyFlags && message.safetyFlags.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {message.safetyFlags.map((flag, idx) => (
-                          <Badge key={idx} variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                          <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                             {getSafetyIcon(flag)}
                             {flag}
                           </Badge>
