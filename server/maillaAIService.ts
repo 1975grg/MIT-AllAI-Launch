@@ -402,32 +402,28 @@ export class MaillaAIService {
           ? [...pendingQuestions, ...maillaResponse.queuedQuestions]
           : pendingQuestions;
 
-        // 🧠 SMART TRIAGE: Restore AI intelligence with expanded auto-create conditions
-        const hasLocation = !!(updatedLocation.buildingName && updatedLocation.roomNumber);
-        // 🎯 EXPANDED: Better issue detection with more maintenance keywords
-        const hasIssueType = !!(updatedSlots.issueSummary || 
-          // HVAC issues
-          studentMessage?.includes('heating') || studentMessage?.includes('cooling') || studentMessage?.includes('hvac') || studentMessage?.includes('temperature') || studentMessage?.includes('thermostat') ||
-          // Plumbing issues  
-          studentMessage?.includes('plumbing') || studentMessage?.includes('water') || studentMessage?.includes('leak') || studentMessage?.includes('dripping') || studentMessage?.includes('faucet') || studentMessage?.includes('sink') || studentMessage?.includes('toilet') || studentMessage?.includes('shower') || studentMessage?.includes('drain') ||
-          // Electrical issues
-          studentMessage?.includes('electrical') || studentMessage?.includes('outlet') || studentMessage?.includes('power') || studentMessage?.includes('light') || studentMessage?.includes('switch') ||
-          // General maintenance  
-          studentMessage?.includes('broken') || studentMessage?.includes('not working') || studentMessage?.includes('stuck') || studentMessage?.includes('damaged') || studentMessage?.includes('repair'));
-        const hasBasicInfo = hasLocation && hasIssueType;
-        
-        // 🎯 FIXED: More conservative auto-create conditions - require explicit AI completion decision
-        const autoCreate = hasBasicInfo && (
-          maillaResponse.nextAction === 'complete_triage' ||     // ✅ AI explicitly says "ready to complete"
-          maillaResponse.nextAction === 'escalate_immediate' ||  // ✅ True emergencies only
-          maillaResponse.urgencyLevel === 'emergency'            // ✅ Life-threatening situations only
-          // ❌ REMOVED: maillaResponse.urgencyLevel === 'urgent' - this was too aggressive
-          // ❌ REMOVED: contextAnalysis urgent - let AI decide properly
-          // ❌ REMOVED: safety flags urgent - only emergency-level auto-creation
+        // 🎯 ADAPTIVE SCORING: Calculate triage completeness intelligently
+        const triageCompleteness = this.calculateTriageCompleteness(
+          updatedSlots, 
+          updatedLocation, 
+          studentMessage, 
+          contextAnalysis,
+          conversation?.conversationHistory || []
+        );
+
+        // 🧠 SMART TRIAGE: Use adaptive scoring for intelligent completion decisions
+        const autoCreate = (
+          // Adaptive scoring indicates sufficient information
+          triageCompleteness.isReady && maillaResponse.nextAction === 'complete_triage'
+        ) || (
+          // Emergency override - immediate action regardless of completeness score
+          maillaResponse.nextAction === 'escalate_immediate' || 
+          maillaResponse.urgencyLevel === 'emergency'
         );
         
-        console.log(`🧠 Triage check: location=${hasLocation}, issue=${hasIssueType}, AI action=${maillaResponse.nextAction}, urgency=${maillaResponse.urgencyLevel}`);
-        console.log(`🎯 Auto-create decision: ${autoCreate} (hasBasicInfo=${hasBasicInfo})`);
+        console.log(`🎯 Adaptive Triage Decision: ${triageCompleteness.reasoning}`);
+        console.log(`🧠 AI Action: ${maillaResponse.nextAction}, Emergency: ${maillaResponse.urgencyLevel === 'emergency'}`);
+        console.log(`🎯 Auto-create decision: ${autoCreate}`);
         
         if (autoCreate) {
           const isEmergency = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
@@ -508,6 +504,105 @@ export class MaillaAIService {
     
     console.log(`🏷️ Generated structured case number: ${caseNumber} (urgency=${urgencyLevel}, location=${location.buildingName} ${location.roomNumber})`);
     return caseNumber;
+  }
+
+  // ========================================
+  // ADAPTIVE TRIAGE SCORING SYSTEM
+  // ========================================
+
+  private calculateTriageCompleteness(
+    conversationSlots: any,
+    location: any,
+    currentMessage: string,
+    contextAnalysis: any,
+    conversationHistory: any[]
+  ): {
+    score: number;
+    isReady: boolean;
+    missingElements: string[];
+    reasoning: string;
+  } {
+    let score = 0;
+    const missingElements: string[] = [];
+    const maxScore = 100;
+
+    // CORE LOCATION INFO (40 points max - essential for dispatch)
+    if (location.buildingName) {
+      score += 25; // Building is critical
+      if (location.roomNumber) {
+        score += 15; // Room number completes location
+      } else {
+        missingElements.push('room_number');
+      }
+    } else {
+      missingElements.push('building_name');
+    }
+
+    // ISSUE IDENTIFICATION (30 points max - what needs fixing)
+    const issueKeywords = [
+      'leak', 'dripping', 'faucet', 'sink', 'toilet', 'shower', 'drain', // plumbing
+      'heating', 'cooling', 'hvac', 'temperature', 'thermostat', // HVAC
+      'electrical', 'outlet', 'power', 'light', 'switch', // electrical
+      'broken', 'not working', 'stuck', 'damaged', 'repair' // general
+    ];
+    
+    const hasIssueType = conversationSlots.issueSummary || 
+      issueKeywords.some(keyword => currentMessage?.toLowerCase().includes(keyword));
+    
+    if (hasIssueType) {
+      score += 20; // Basic issue identification
+      // Bonus for detailed description
+      if (conversationSlots.issueSummary || currentMessage?.length > 30) {
+        score += 10;
+      }
+    } else {
+      missingElements.push('issue_type');
+    }
+
+    // URGENCY/SEVERITY CONTEXT (20 points max - helps prioritization)
+    const urgencyIndicators = contextAnalysis?.severityIndicators || [];
+    const timelineIndicators = contextAnalysis?.timelineIndicators || [];
+    
+    if (urgencyIndicators.length > 0 || timelineIndicators.length > 0) {
+      score += 15; // Context provided urgency/severity info
+    } else if (conversationSlots.severity || conversationSlots.timeline) {
+      score += 15; // Explicitly stated urgency
+    } else if (contextAnalysis?.emotionalContext !== 'calm') {
+      score += 10; // Emotional context gives urgency clues
+    } else {
+      // Not always missing - can be inferred as "normal" priority
+      score += 5; // Assume normal priority if nothing suggests urgency
+    }
+
+    // ENGAGEMENT DEPTH (10 points max - shows thorough conversation)
+    const messageCount = conversationHistory.length;
+    if (messageCount >= 4) { // At least 2 exchanges (student + mailla, student + mailla)
+      score += 10;
+    } else if (messageCount >= 2) {
+      score += 5;
+    }
+
+    // CALCULATE READINESS - REQUIRE CRITICAL ELEMENTS
+    // 🎯 MANDATORY: Must have both building AND room for dispatch readiness
+    const hasCriticalLocation = location.buildingName && location.roomNumber;
+    const hasCriticalIssue = hasIssueType;
+    
+    const isReady = score >= 70 && hasCriticalLocation && hasCriticalIssue;
+    
+    const reasoning = `Score: ${score}/${maxScore}, Location: ${hasCriticalLocation ? 'Complete' : 'Missing room'}, Issue: ${hasCriticalIssue ? 'Identified' : 'Missing'} - ${
+      isReady 
+        ? 'Ready for case creation' 
+        : `Missing critical: ${missingElements.join(', ')}`
+    }`;
+
+    console.log(`🎯 Triage Completeness: ${reasoning}`);
+
+    return {
+      score,
+      isReady,
+      missingElements,
+      reasoning
+    };
   }
 
   // ========================================
@@ -724,43 +819,33 @@ CRITICAL: If they sound frustrated or said "it's bad/terrible", DO NOT ask about
 Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they shared.
 NEVER ask for information you already have!
 
-💝 **DIAGNOSTIC TRIAGE REQUIREMENTS:**
-You MUST gather sufficient diagnostic information before completing triage. Only complete when you have:
+💝 **NATURAL CONVERSATION PRINCIPLES:**
 
-🔍 **REQUIRED DIAGNOSTIC DETAILS:**
-**For PLUMBING (leaks, faucets, toilets):**
-- Exact location: Which fixture? (kitchen sink, bathroom sink, shower, toilet, etc.)
-- Leak severity: Just dripping or steady flow/gushing?
-- Duration: When did this start? (today, few days, getting worse?)
-- Attempted fixes: Have they tried tightening, turning off water, etc.?
+🗣️ **BE GENUINELY HELPFUL & EMPATHETIC:**
+- Acknowledge what the student shared: *"That sounds frustrating!"* or *"Thanks for those details!"*
+- Offer immediate comfort/advice: *"Try to stay warm"* or *"Grab some towels if you can"*
+- Keep responses short, natural, and caring - like talking to a friend
 
-**For HEATING/COOLING (HVAC issues):**
-- Specific problem: No heat/AC, weird noises, temperature issues?
-- Affected area: Just their room or whole building section?
-- Duration: How long has this been happening?
-- Current workarounds: Using space heater, staying elsewhere, etc.?
+🎯 **SMART INFORMATION GATHERING:**
+- If they provided details, acknowledge them rather than asking again
+- If something important is missing, ask naturally: *"Which sink is giving you trouble?"*
+- Offer helpful suggestions when appropriate: *"Have you tried tightening the handle?"*
+- Only ask one clarifying question at a time
 
-**For ELECTRICAL (outlets, lights, switches):**
-- Exact location: Which outlet/light/switch in which room?
-- Safety check: Any sparking, burning smell, or hot surfaces?
-- Scope: Just one outlet or multiple in area?
-- Recent changes: Anything plugged in before it stopped working?
+⚡ **EMERGENCY OVERRIDE:**
+For true safety emergencies (gas leaks, electrical hazards, major flooding), immediately set nextAction: 'complete_triage' with safety instructions.
 
-🔄 **COMPLETE WITH COMFORT & UPDATES ONLY WHEN:**
-You have gathered the above diagnostic details AND:
-- Student uploaded diagnostic photo
-- Student tried your suggested DIY troubleshooting steps  
-- Student confirmed they've provided all the details you asked for
-- You have enough information to help contractor prepare properly
+🏁 **COMPLETING TRIAGE INTELLIGENTLY:**
+Set nextAction: 'complete_triage' when:
+- You have enough information for a contractor to prepare (location + issue nature + rough severity)
+- The student seems ready to move forward (answered your questions, tried suggestions, uploaded photos)
+- It feels natural to wrap up the conversation with helpful final advice
 
-💝 **COMPLETION MESSAGES:**
-**For HEATING issues:** "Perfect! Thanks for those details. Try to stay warm with some blankets - you don't need to be there while we fix this. I'll keep you updated on timing! 🔧"
+💝 **COMPLETION STYLE:**
+Keep it caring and informative:
+*"Perfect! I've got everything I need. Help should be there within the hour - I'll keep you updated on timing! 🔧"*
 
-**For PLUMBING issues:** "Got it! Grab some towels if you can. Help should be there within the hour. If it gets much worse, that water shutoff valve will help - but we've got this handled! 💧"
-
-**For ELECTRICAL issues:** "Thanks for staying safe and providing those details! Keep away from that area. Maintenance will text you when they're on their way - usually within 30-45 minutes. I'll keep you posted! ⚡"
-
-**CRITICAL:** Only set nextAction: 'complete_triage' when you have gathered comprehensive diagnostic information - NOT just after any follow-up message!
+**Remember:** Be conversational and adaptive. Your goal is to help students feel heard and supported while gathering practical information.
 \n`;
     }
 
