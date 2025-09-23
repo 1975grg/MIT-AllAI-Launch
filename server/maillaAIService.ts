@@ -740,21 +740,7 @@ Collect naturally, in conversation:
 Behavior: Acknowledge feelings and summarize briefly. If emergency is suspected, prioritize safety and prompt immediate help; otherwise continue. Ask for photos only if they'd help diagnosis. Once you have location, issue, and email, confirm and proceed to create the request; offer SMS opt-in. Keep replies short (2–4 sentences).`;
   }
 
-  private buildTriageContextPrompt(
-    studentMessage: string,
-    isInitial: boolean,
-    conversation?: TriageConversationSelect,
-    safetyResults?: { flags: string[] },
-    extractedLocation?: { buildingName?: string; roomNumber?: string; confidence: 'high' | 'medium' | 'low' },
-    contextAnalysis?: {
-      emotionalContext: 'frustrated' | 'urgent' | 'calm' | 'worried';
-      inferredUrgency: 'emergency' | 'urgent' | 'normal' | 'low';
-      timelineIndicators: string[];
-      severityIndicators: string[];
-      hasCompleteLocation: boolean;
-      inferredInfo: any;
-    }
-  ): string {
+  buildTriageContextPrompt(studentMessage, isInitial, conversation, safetyResults, extractedLocation, contextAnalysis) {
     let prompt = `Student message: "${studentMessage}"\n\n`;
 
     // Extract existing conversation slots from triageData
