@@ -1305,6 +1305,12 @@ Respond in JSON format:
       
       // "Tang Hall room 301", "Next House room 123" - NEW: handles full building name + room 
       /\b(tang hall|next house|simmons hall|macgregor house|burton conner|new house|baker house|mccormick hall|random hall|senior house|ashdown house|sidney pacific|sidney-pacific)\s+(?:room|rm)\s+(\d+[a-z]?)\b/gi,
+
+      // "Tang unit 5", "Senior house, unit 5" - NEW: handles "unit X" format
+      /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)[,\s]*\s+(?:unit|apt|apartment)\s+(\d+[a-z]?)\b/gi,
+      
+      // "Tang Hall unit 5", "Senior House, unit 5" - NEW: handles full building name + unit
+      /\b(tang hall|next house|simmons hall|macgregor house|burton conner|new house|baker house|mccormick hall|random hall|senior house|ashdown house|sidney pacific|sidney-pacific)[,\s]*\s+(?:unit|apt|apartment)\s+(\d+[a-z]?)\b/gi,
       
       // "Tang 201", "Next 123", "Simmons 456" - EXISTING: direct adjacency
       /\b(tang|next|simmons|macgregor|mac|burton|bc|new|baker|mccormick|random|senior|westgate|ashdown|sidney|sp)\s+(\d+[a-z]?)\b/gi,
