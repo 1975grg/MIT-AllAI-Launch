@@ -897,12 +897,7 @@ Ask for the next most important missing piece. Once you have location + issue + 
   // AI-POWERED DURATION ESTIMATION
   // ========================================
 
-  private async estimateRepairDuration(triageData: any): Promise<{
-    estimatedMinutes: number;
-    confidence: 'high' | 'medium' | 'low';
-    reasoning: string;
-    category: 'quick' | 'standard' | 'complex' | 'major';
-  }> {
+  async estimateRepairDuration(triageData) {
     try {
       const conversation = triageData.conversationSlots || {};
       const issueDescription = triageData.issueDescription || conversation.issueSummary || '';

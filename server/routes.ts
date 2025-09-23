@@ -28,7 +28,7 @@ import { aiTriageService } from "./aiTriage";
 import { aiCoordinatorService } from "./aiCoordinator";
 import { aiDuplicateDetectionService } from "./aiDuplicateDetection";
 import { dataAuditService } from "./dataAudit";
-// Mailla AI service import handled dynamically in endpoints
+// Mailla AI service import handled dynamically to avoid compile issues
 
 // Revenue schema for API validation
 const insertRevenueSchema = insertTransactionSchema;
