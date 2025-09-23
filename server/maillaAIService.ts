@@ -881,31 +881,16 @@ Ask for the next most important missing piece. Once you have location + issue + 
   // ========================================
 
   private areSimilarIssues(description1: string, description2: string): boolean {
-    // Normalize descriptions for comparison
-    const normalize = (text: string) => text.toLowerCase()
-      .replace(/[^\w\s]/g, '') // Remove punctuation
-      .replace(/\s+/g, ' ')     // Normalize whitespace
-      .trim();
+    const desc1 = description1.toLowerCase().trim();
+    const desc2 = description2.toLowerCase().trim();
     
-    const desc1 = normalize(description1);
-    const desc2 = normalize(description2);
+    const words1 = desc1.split(' ');
+    const words2 = desc2.split(' ');
     
-    // If descriptions are very similar (80%+ overlap), consider them similar
-    const words1 = new Set(desc1.split(' '));
-    const words2 = new Set(desc2.split(' '));
+    const common = words1.filter(word => words2.includes(word)).length;
+    const total = words1.length + words2.length;
     
-    const intersection = new Set([...words1].filter(word => words2.has(word)));
-    const union = new Set([...words1, ...words2]);
-    
-    const similarity = intersection.size / union.size;
-    
-    // Also check for key maintenance terms
-    const maintenanceKeywords = ['dripping', 'leak', 'broken', 'not working', 'faucet', 'toilet', 'heat', 'ac', 'electrical', 'outlet'];
-    const hasCommonKeywords = maintenanceKeywords.some(keyword => 
-      desc1.includes(keyword) && desc2.includes(keyword)
-    );
-    
-    return similarity > 0.8 || (similarity > 0.6 && hasCommonKeywords);
+    return common / total > 0.6;
   }
 
   // ========================================
