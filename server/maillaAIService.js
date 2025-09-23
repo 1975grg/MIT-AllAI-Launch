@@ -15,9 +15,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-if (!process.env.OPENAI_API_KEY) {
-  console.error('❌ OPENAI_API_KEY is required for triage system');
-  throw new Error('Missing OPENAI_API_KEY environment variable');
+// Runtime check for OPENAI_API_KEY
+function checkOpenAIKey() {
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('❌ OPENAI_API_KEY is required for triage system');
+    return false;
+  }
+  return true;
 }
 
 // ========================================
@@ -104,8 +108,8 @@ export async function continueTriageConversation(update) {
     const updatedTriageData = {
       ...conversation.triageData,
       conversationSlots: {
-        ...conversation.triageData?.conversationSlots,
-        ...maillaResponse.conversationSlots
+        ...(conversation.triageData?.conversationSlots || {}),
+        ...(maillaResponse.conversationSlots || {})
       }
     };
     
@@ -155,6 +159,15 @@ async function processTriageMessage(conversationId, studentMessage, isInitial, m
     const extractedLocation = extractLocationFromMessage(studentMessage);
 
     // 3. Generate AI response
+    if (!checkOpenAIKey()) {
+      return {
+        message: "I'm having technical difficulties right now. Can you help me with a few more details? What's your email address so our maintenance team can contact you?",
+        urgencyLevel: "normal",
+        safetyFlags: [],
+        nextAction: "ask_followup",
+        isComplete: false
+      };
+    }
     const prompt = buildTriageContextPrompt(studentMessage, isInitial, conversation, safetyResults, extractedLocation, contextAnalysis);
     const completion = await openai.chat.completions.create({
       model: "gpt-5",

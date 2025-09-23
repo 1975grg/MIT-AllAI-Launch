@@ -28,7 +28,7 @@ export interface ContractorAvailability {
 
 export interface AssignmentRecommendation {
   contractorId: string;
-  contractorName: string;
+  name: string;
   matchScore: number; // 0-100
   reasoning: string;
   estimatedResponseTime: string;
@@ -205,7 +205,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
     if (primaryContractor) {
       recommendations.push({
         contractorId: aiResult.recommendedContractor.contractorId,
-        contractorName: primaryContractor.name,
+        name: primaryContractor.name,
         matchScore: aiResult.recommendedContractor.matchScore,
         reasoning: aiResult.recommendedContractor.reasoning,
         estimatedResponseTime: aiResult.recommendedContractor.estimatedResponseTime,
@@ -226,7 +226,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
       if (contractor) {
         recommendations.push({
           contractorId: alt.contractorId,
-          contractorName: contractor.name,
+          name: contractor.name,
           matchScore: alt.matchScore,
           reasoning: alt.reasoning,
           estimatedResponseTime: `${contractor.responseTimeHours} hours`,
@@ -259,7 +259,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
       // Return special admin intervention recommendation
       return [{
         contractorId: 'admin-intervention-required',
-        contractorName: '⚡ Admin Intervention Needed',
+        name: '⚡ Admin Intervention Needed',
         matchScore: 0,
         reasoning: `No ${caseData.category} contractors available. Suggested actions: 1) Flag general maintenance contractor, 2) Contact external emergency service, 3) Reassign to available contractor with different specialization`,
         estimatedResponseTime: 'Immediate admin action required',
@@ -310,7 +310,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
       
       return {
         contractorId: contractor.id,
-        contractorName: contractor.name,
+        name: contractor.name,
         matchScore: Math.min(Math.max(score, 0), 100),
         reasoning: `Fallback matching: Category ${contractor.category || 'general'}, ${contractor.currentWorkload}/${contractor.maxJobsPerDay} workload, ${contractor.responseTimeHours}h response time`,
         estimatedResponseTime: `${contractor.responseTimeHours} hours`,
