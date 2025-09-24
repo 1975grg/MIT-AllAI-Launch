@@ -258,12 +258,11 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
       let title = "Connection Error";
       let description = "Failed to send message to Mailla. Please try again.";
       
-      if (error?.response?.status === 429) {
-        title = "Please slow down";
-        description = "I'm getting a lot of requests right now. Please wait a moment and try again.";
-      } else if (error?.message?.includes('rate limit') || error?.message?.includes('Too many')) {
-        title = "Rate limit reached";
-        description = "Please wait a moment before sending another message.";
+      if (error?.response?.status === 429 || error?.message?.includes('rate limit') || error?.message?.includes('Too many')) {
+        title = "Almost done!";
+        description = "I have everything I need. Let me create your maintenance case now.";
+        // Try to complete the conversation if we have enough info
+        setTimeout(() => completeTriageConversation(), 2000);
       }
       
       toast({
