@@ -107,7 +107,10 @@ export class MaillaAIService {
 
       // 🎯 CRITICAL FIX: Save initial Mailla response to conversation history
       // This was missing, causing repetition because AI couldn't see its own first response
-      await storage.updateTriageConversation(conversationId, {
+      // 🧠 MEMORY FIX: Get the updated conversation with conversation slots from processTriageMessage
+      const updatedConversation = await storage.getTriageConversation(conversationId);
+      
+      const updateData: any = {
         conversationHistory: [
           {
             role: "student",
@@ -124,7 +127,15 @@ export class MaillaAIService {
         ],
         urgencyLevel: maillaResponse.urgencyLevel,
         safetyFlags: maillaResponse.safetyFlags
-      });
+      };
+      
+      // 🧠 PRESERVE CONVERSATION SLOTS: Only update triageData if we successfully retrieved it
+      if (updatedConversation?.triageData) {
+        updateData.triageData = updatedConversation.triageData;
+        console.log('🧠 Preserving conversation slots:', JSON.stringify(updatedConversation.triageData.conversationSlots || {}));
+      }
+      
+      await storage.updateTriageConversation(conversationId, updateData);
 
       console.log(`✅ Mailla triage started with urgency: ${maillaResponse.urgencyLevel}`);
       return { conversationId, maillaResponse };
@@ -165,7 +176,10 @@ export class MaillaAIService {
       );
 
       // 4. Update conversation with Mailla's response
-      await storage.updateTriageConversation(update.conversationId, {
+      // 🧠 MEMORY FIX: Get the updated conversation with conversation slots from processTriageMessage
+      const updatedConversation = await storage.getTriageConversation(update.conversationId);
+      
+      const updateData: any = {
         conversationHistory: [
           ...updatedHistory,
           {
@@ -179,7 +193,18 @@ export class MaillaAIService {
         urgencyLevel: maillaResponse.urgencyLevel,
         safetyFlags: maillaResponse.safetyFlags,
         currentPhase: maillaResponse.isComplete ? "final_triage" : conversation.currentPhase
-      });
+      };
+      
+      // 🧠 PRESERVE CONVERSATION SLOTS: Use updated triageData if available, otherwise keep original
+      if (updatedConversation?.triageData) {
+        updateData.triageData = updatedConversation.triageData;
+        console.log('🧠 Preserving conversation slots:', JSON.stringify(updatedConversation.triageData.conversationSlots || {}));
+      } else if (conversation.triageData) {
+        updateData.triageData = conversation.triageData;
+        console.log('🧠 Keeping original triageData as fallback');
+      }
+      
+      await storage.updateTriageConversation(update.conversationId, updateData);
 
       console.log(`✅ Mailla response generated with action: ${maillaResponse.nextAction}`);
       return maillaResponse;
