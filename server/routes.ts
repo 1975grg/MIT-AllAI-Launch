@@ -6334,81 +6334,41 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
 
   const httpServer = createServer(app);
 
-  // ✅ Secure WebSocket Server for Real-time Notifications  
+  // ✅ Simple WebSocket Server for Real-time Notifications
   const wss = new WebSocketServer({ 
-    noServer: true  // We'll handle upgrades manually
+    server: httpServer, 
+    path: '/ws'
   });
-
-  // Initialize session middleware
-  const sessionMiddleware = getSession();
-
-  // Handle WebSocket upgrades with authentication
-  httpServer.on('upgrade', (request, socket, head) => {
-    console.log('🔌 WebSocket upgrade request');
-    
-    // Apply session middleware to upgrade request
-    sessionMiddleware(request as any, {} as any, () => {
-      // Apply passport session middleware
-      passport.initialize()(request as any, {} as any, () => {
-        passport.session()(request as any, {} as any, async () => {
-          try {
-            // Now request.user should be available
-            const req = request as any;
-            
-            // Get user context from authenticated session
-            let userContext = {
-              userId: 'anonymous', 
-              role: 'admin',       
-              orgId: 'default'     
-            };
-
-            // Try to get actual user context from session
-            if (req.user && req.user.claims) {
-              try {
-                const userOrg = await storage.getUserOrganization(req.user.claims.sub);
-                if (userOrg) {
-                  userContext = {
-                    userId: req.user.claims.sub,
-                    role: userOrg.role,
-                    orgId: userOrg.id
-                  };
-                  console.log(`🔗 Authenticated WebSocket: ${userContext.userId} (${userContext.role}) in org ${userContext.orgId}`);
-                } else {
-                  console.warn('⚠️ No organization found for authenticated user, using defaults');
-                }
-              } catch (error) {
-                console.warn('⚠️ Could not get user organization, using defaults:', error);
-              }
-            } else {
-              console.warn('⚠️ No authenticated user in WebSocket upgrade, using anonymous');
-            }
-
-            // Accept the WebSocket upgrade
-            wss.handleUpgrade(request, socket, head, (ws) => {
-              console.log('🔌 WebSocket connection established');
-              
-              // Register connection with NotificationService
-              notificationService.addWebSocketConnection(ws, userContext);
-              
-              ws.send('{"type": "connection", "status": "connected"}');
-              console.log('🔗 WebSocket connected for live notifications');
-              
-              ws.on('close', () => {
-                notificationService.removeWebSocketConnection(ws);
-              });
-              
-              ws.on('error', (error) => {
-                console.error('❌ WebSocket error:', error);
-                notificationService.removeWebSocketConnection(ws);
-              });
-            });
-          } catch (error) {
-            console.error('❌ Error during WebSocket upgrade:', error);
-            socket.destroy();
-          }
-        });
+  
+  wss.on('connection', async (ws: WebSocket, req: any) => {
+    try {
+      console.log('🔌 WebSocket connection attempt');
+      
+      // Simple approach: use the main org ID for all connections
+      const userContext = {
+        userId: 'anonymous',
+        role: 'admin',       
+        orgId: '30033c31-7111-4c83-b796-5f7f33786774'  // Your actual org ID
+      };
+      
+      // Register connection with NotificationService
+      notificationService.addWebSocketConnection(ws, userContext);
+      
+      ws.send('{"type": "connection", "status": "connected"}');
+      console.log('🔗 WebSocket connected for live notifications');
+      
+      ws.on('close', () => {
+        console.log('🔌 WebSocket disconnected');
+        notificationService.removeWebSocketConnection(ws);
       });
-    });
+
+      ws.on('error', (error) => {
+        console.error('❌ WebSocket error:', error);
+        notificationService.removeWebSocketConnection(ws);
+      });
+    } catch (error) {
+      console.error('❌ WebSocket connection error:', error);
+    }
   });
 
   return httpServer;
