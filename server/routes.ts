@@ -114,23 +114,32 @@ async function initializeMITProperties() {
       // Check if property already exists
       const existing = await storage.getProperty(prop.id).catch(() => null);
       if (!existing) {
-        // Create new property
-        const propertyData = {
-          id: prop.id,
-          orgId: mitOrg.id,
-          name: prop.name,
-          type: 'Residential Building',
-          street: prop.street,
-          city: 'Cambridge',
-          state: 'MA',
-          zipCode: '02139',
-          country: 'US',
-          status: 'Active' as const,
-          createdAt: new Date()
-        };
-        
-        await storage.createProperty(propertyData);
-        console.log(`✅ Created MIT property: ${prop.name}`);
+        // Create new property with duplicate key protection
+        try {
+          const propertyData = {
+            id: prop.id,
+            orgId: mitOrg.id,
+            name: prop.name,
+            type: 'Residential Building',
+            street: prop.street,
+            city: 'Cambridge',
+            state: 'MA',
+            zipCode: '02139',
+            country: 'US',
+            status: 'Active' as const,
+            createdAt: new Date()
+          };
+          
+          await storage.createProperty(propertyData);
+          console.log(`✅ Created MIT property: ${prop.name}`);
+        } catch (error: any) {
+          if (error?.code === '23505') {
+            // Duplicate key - property was created by another process, skip
+            console.log(`✓ MIT property already exists: ${prop.name}`);
+          } else {
+            throw error;
+          }
+        }
       } else if (existing.orgId !== mitOrg.id) {
         // Fix existing property with wrong organization
         console.log(`🔧 Reassigning ${prop.name} from org ${existing.orgId} to MIT Housing org ${mitOrg.id}`);
