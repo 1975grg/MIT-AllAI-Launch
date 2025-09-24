@@ -1,5 +1,4 @@
 import { TransactionalSMSApi, TransactionalSMSApiApiKeys } from '@getbrevo/brevo';
-import { MailService } from '@sendgrid/mail';
 import { WebSocket } from 'ws';
 
 interface NotificationData {
@@ -21,7 +20,6 @@ interface WebSocketConnection {
 }
 
 class NotificationService {
-  private mailService?: MailService;
   private smsApi?: TransactionalSMSApi;
   private wsConnections: WebSocketConnection[] = [];
 
@@ -31,11 +29,9 @@ class NotificationService {
 
   private initializeNotificationAPIs() {
     try {
-      // Initialize SendGrid for email
+      // Check SendGrid API key (will use HTTP API directly)
       if (process.env.SENDGRID_API_KEY) {
-        this.mailService = new MailService();
-        this.mailService.setApiKey(process.env.SENDGRID_API_KEY);
-        console.log('✅ SendGrid email API initialized');
+        console.log('✅ SendGrid HTTP API ready');
       } else {
         console.warn('⚠️ SENDGRID_API_KEY not found - email notifications will be disabled');
       }
