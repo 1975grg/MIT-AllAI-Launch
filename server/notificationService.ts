@@ -142,6 +142,8 @@ class NotificationService {
 
   // Send SMS notification
   async sendSMSNotification(notification: NotificationData, recipientPhone: string): Promise<boolean> {
+    const formattedPhone = this.formatPhoneNumber(recipientPhone);
+    
     try {
       if (!this.smsApi) {
         console.warn('📱 SMS API not initialized - skipping SMS notification');
@@ -149,7 +151,6 @@ class NotificationService {
       }
       
       const smsContent = this.generateSMSContent(notification);
-      const formattedPhone = this.formatPhoneNumber(recipientPhone);
       
       await this.smsApi.sendTransacSms({
         recipient: formattedPhone,
