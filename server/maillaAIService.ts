@@ -451,6 +451,22 @@ export class MaillaAIService {
         console.log(`📞 Contact Check: ${hasRequiredContact ? 'Complete' : 'Missing'} (Name: ${!!updatedSlots.studentName}, Email: ${!!updatedSlots.studentEmail}, Phone: ${!!updatedSlots.studentPhone})`);
         console.log(`🎯 Auto-create decision: ${autoCreate}`);
         
+        // 🚨 DETERMINISTIC ENFORCEMENT: Use EXACT same updatedSlots data as autoCreate logic
+        if (maillaResponse.nextAction === 'complete_triage' && !triageCompleteness.isReady) {
+          console.log(`🚨 SAFETY OVERRIDE: AI tried to complete but triageCompleteness.isReady = false - forcing continuation`);
+          maillaResponse.nextAction = 'ask_followup';
+          
+          const missing = [];
+          if (!updatedSlots.buildingName) missing.push('building name');
+          if (!updatedSlots.roomNumber) missing.push('room number');
+          if (!updatedSlots.issueSummary) missing.push('issue details');
+          if (!updatedSlots.studentName) missing.push('your full name');
+          if (!updatedSlots.studentEmail) missing.push('email address');
+          if (!updatedSlots.studentPhone) missing.push('phone number');
+          
+          maillaResponse.message = `I need a few more details to create your work order. Could you provide your ${missing.slice(0, 2).join(' and ')}?`;
+        }
+        
         if (autoCreate) {
           const isEmergency = maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency';
           console.log(`${isEmergency ? '🚨 EMERGENCY' : '✅ SMART'} CREATION: AI intelligence triggered case creation`);
@@ -488,6 +504,7 @@ export class MaillaAIService {
           }
         });
       }
+
 
       return maillaResponse;
 
@@ -749,13 +766,21 @@ export class MaillaAIService {
 - "What's your email so I can send you updates on when I'm coming?"
 - "And your cell number in case I need to reach you?"
 
-**CONVERSATION FLOW:**
+**CONVERSATION FLOW (BE SUCCINCT!):**
 1. Get exact location details (which room, which fixture)
-2. Understand the problem severity (how bad, where exactly)
-3. Give immediate help (mitigation steps, shutoff valve)
-4. Request photo if it would help
-5. Collect ALL contact info (name, email, phone)
-6. ONLY create work order when you have everything
+2. Understand the basic problem (faucet leaking, toilet not flushing, etc.)
+3. Give immediate help if needed (shutoff valve, towel placement)
+4. Collect contact info (name, email, phone) 
+5. **COMPLETE TRIAGE QUICKLY** - don't ask endless questions!
+
+**COMPLETION TRIGGERS (Complete ONLY when ALL required info is collected):**
+- You MUST have: building name + room + issue type + contact info (name/email/phone)
+- Once you have ALL required info, you can complete if:
+  - User says "no more questions", "how many more questions", "stop asking", "just fix it"  
+  - OR 3+ questions have been asked already
+  - OR basic information gathering is complete
+
+**BE DECISIVE:** Most maintenance issues are simple - don't overthink it! Create the work order and let the contractor figure out details on-site.
 
 Never use expressions like "huh" - stay professional and knowledgeable. Think like you're the contractor who's going to drive over and fix this yourself.`;
   }
@@ -890,11 +915,35 @@ Example: "I'm here to help with that! Which MIT building are you in?"
                                  (hasVagueIssue || visuallyDiagnosableIssue) &&
                                  !existingSlots.photoRequested; // Haven't asked yet
       
+      // 🚨 FRUSTRATION DETECTION - Complete immediately if user wants to stop
+      const frustrationKeywords = ['no more questions', 'how many more', 'stop asking', 'just fix it', 'enough questions', 'too many questions'];
+      const userIsFrustrated = frustrationKeywords.some(keyword => 
+        studentMessage.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      // 🚨 CONVERSATION LENGTH CHECK - Force completion after 6+ exchanges
+      const conversationTooLong = conversationLength >= 6;
+      const hasBasicInfo = existingSlots.buildingName && 
+                          existingSlots.roomNumber && 
+                          existingSlots.issueSummary &&
+                          existingSlots.studentName && 
+                          existingSlots.studentEmail && 
+                          existingSlots.studentPhone;
+      
+      // 🎯 SAFE COMPLETION: Only complete when we have ALL required info (location + issue + contact)
+      const canSafelyComplete = hasBasicInfo; // hasBasicInfo already includes all required fields
+      
       prompt += `\n🎯 INTELLIGENT ANALYSIS:
 ${hasTimelineFromContext ? '✅ Timeline inferred from context - no need to ask' : '❓ May need timeline'}
 ${hasSeverityFromContext ? '✅ Severity inferred from language - no need to ask' : '❓ May need severity'}
 ${contextAnalysis?.emotionalContext !== 'calm' ? '⚠️ Student sounds ' + contextAnalysis?.emotionalContext + ' - acknowledge empathetically' : ''}
+${userIsFrustrated ? canSafelyComplete ? '🚨 USER FRUSTRATION + CONTACT COMPLETE - COMPLETE TRIAGE NOW! Set nextAction: "complete_triage"' : '🚨 USER FRUSTRATION DETECTED - Must collect contact info first before completing!' : ''}
+${conversationTooLong ? canSafelyComplete ? '⏰ CONVERSATION TOO LONG + CONTACT COMPLETE - COMPLETE TRIAGE NOW! Set nextAction: "complete_triage"' : '⏰ CONVERSATION TOO LONG - Prioritize contact collection then complete!' : ''}
+${hasBasicInfo ? '✅ BASIC INFO COMPLETE - Ready to create work order! Set nextAction: "complete_triage"' : ''}
 ${shouldRequestPhoto ? '📸 PHOTO OPPORTUNITY: Conversation needs visual clarity - suggest photo politely' : ''}
+
+🚨 **COMPLETION DECISION:** 
+${canSafelyComplete ? 'COMPLETE TRIAGE NOW! Set nextAction: "complete_triage"' : userIsFrustrated ? 'User frustrated but need contact info first - prioritize name/email/phone collection!' : 'Continue gathering info (but be succinct!)'}
 
 Next question priority (only ask for what's MISSING):
 ${needsBuilding ? '1. Building name (REQUIRED)' : '✅ Building name: already have it'}
@@ -924,14 +973,14 @@ NEVER ask for information you already have!
 ⚡ **EMERGENCY OVERRIDE:**
 For true safety emergencies (gas leaks, electrical hazards, major flooding), immediately set nextAction: 'complete_triage' with safety instructions.
 
-🏁 **COMPLETING TRIAGE INTELLIGENTLY:**
-Set nextAction: 'complete_triage' when you have:
-1. **Specific location details** (which room, which faucet, what floor)
-2. **Issue details** (when started, how bad, any simple fixes tried)  
-3. **Contact info** (full name, email, cell phone)
-4. **Enough info for contractor** to bring right tools and plan time
+🏁 **COMPLETING TRIAGE IMMEDIATELY:**
+Set nextAction: 'complete_triage' when ANY of these conditions are met:
+1. **User says "no more questions", "how many more", "stop asking", "just fix it"** - COMPLETE IMMEDIATELY!
+2. **Basic info collected**: building + room + issue type + name/email/phone
+3. **3+ questions asked already** - time to wrap up!
+4. **User seems frustrated or impatient** - don't push it!
 
-**KEEP GOING** until you have these details! Don't complete early.
+**DON'T OVERTHINK IT** - Contractors can figure out details on-site! Complete the triage quickly.
 
 💝 **COMPLETION STYLE:**
 Keep it caring and informative:
