@@ -2709,12 +2709,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (workflowData.autoScheduling.contractorAssigned) {
         const contractor = await storage.getVendor(workflowData.autoScheduling.contractorAssigned);
         if (contractor && contractor.userId) {
+          // Database notification
           await storage.createNotification(
             contractor.userId,
             `🔧 New Maintenance Assignment: ${smartCase.title}`,
             `You've been assigned a ${aiTriage.urgency.toLowerCase()} priority maintenance case at ${smartCase.buildingName || 'MIT Housing'}. ${smartCase.description.substring(0, 100)}...`,
             'urgent'
           );
+          
+          // Real-time WebSocket notification
+          await notificationService.notifyContractor({
+            id: `case-assigned-${smartCase.id}`,
+            type: 'case_assigned',
+            orgId: orgId,
+            title: `🔧 New Maintenance Assignment: ${smartCase.title}`,
+            message: `You've been assigned a ${aiTriage.urgency.toLowerCase()} priority maintenance case at ${smartCase.buildingName || 'MIT Housing'}. ${smartCase.description.substring(0, 100)}...`,
+            timestamp: new Date().toISOString(),
+            subject: `Maintenance Assignment - ${smartCase.title}`,
+            metadata: {
+              caseId: smartCase.id,
+              urgency: aiTriage.urgency,
+              category: aiTriage.category,
+              buildingName: smartCase.buildingName
+            }
+          }, contractor.userId);
+          
           console.log(`🔔 Notified assigned contractor: ${contractor.name}`);
         }
       } else {
@@ -2724,12 +2743,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         for (const contractor of categoryContractors.slice(0, 5)) { // Limit to 5 contractors
           if (contractor.userId) {
+            // Database notification
             await storage.createNotification(
               contractor.userId,
               `🆕 New Maintenance Request Available: ${smartCase.title}`,
               `A ${aiTriage.urgency.toLowerCase()} priority ${aiTriage.category} maintenance request is available at ${smartCase.buildingName || 'MIT Housing'}. First to accept gets the job!`,
               aiTriage.urgency === 'Critical' ? 'urgent' : 'info'
             );
+            
+            // Real-time WebSocket notification
+            await notificationService.notifyContractor({
+              id: `case-available-${smartCase.id}-${contractor.id}`,
+              type: 'case_available',
+              orgId: orgId,
+              title: `🆕 New Maintenance Request Available: ${smartCase.title}`,
+              message: `A ${aiTriage.urgency.toLowerCase()} priority ${aiTriage.category} maintenance request is available at ${smartCase.buildingName || 'MIT Housing'}. First to accept gets the job!`,
+              timestamp: new Date().toISOString(),
+              subject: `New Case Available - ${smartCase.title}`,
+              metadata: {
+                caseId: smartCase.id,
+                urgency: aiTriage.urgency,
+                category: aiTriage.category,
+                buildingName: smartCase.buildingName
+              }
+            }, contractor.userId);
           }
         }
         console.log(`🔔 Notified ${categoryContractors.length} available contractors`);
@@ -2785,6 +2822,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
       
+      // 🎯 REAL-TIME NOTIFICATION: Notify student that contractor accepted their case
+      if (smartCase.studentEmail) {
+        const studentNotification = {
+          id: `case-accepted-${smartCase.id}`,
+          type: 'case_accepted' as const,
+          orgId: orgId,
+          title: `✅ Your Maintenance Request Has Been Accepted!`,
+          message: `${contractor.name} has accepted your maintenance request "${smartCase.title}". ${estimatedArrival ? `Expected arrival: ${estimatedArrival}` : 'They will be starting work soon.'}`,
+          timestamp: new Date().toISOString(),
+          subject: `Contractor Assigned - ${smartCase.title}`,
+          metadata: {
+            caseId: smartCase.id,
+            contractorName: contractor.name,
+            estimatedArrival: estimatedArrival || 'Soon',
+            buildingName: smartCase.buildingName
+          }
+        };
+        
+        await notificationService.notifyStudentRealTime(
+          studentNotification,
+          smartCase.studentEmail,
+          smartCase.studentUserId
+        );
+        console.log(`📱 Real-time notification sent to student: ${smartCase.studentEmail}`);
+      }
+      
       console.log(`✅ Notifications sent for case acceptance by ${contractor.name}`);
     } catch (error) {
       console.error('Failed to send case acceptance notifications:', error);
@@ -2817,13 +2880,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         for (const backup of activeBackups) {
           if (backup.userId) {
+            // Database notification
             await storage.createNotification(
               backup.userId,
               `🚨 URGENT: Critical Case Needs Immediate Attention`,
               `Critical ${smartCase.category} maintenance case at ${smartCase.buildingName || 'MIT Housing'} was declined by another contractor. URGENT response needed!`,
               'urgent'
             );
+            
+            // Real-time WebSocket notification for backup contractors
+            await notificationService.notifyContractor({
+              id: `case-backup-urgent-${smartCase.id}-${backup.id}`,
+              type: 'case_urgent',
+              orgId: smartCase.orgId,
+              title: `🚨 URGENT: Critical Case Needs Immediate Attention`,
+              message: `Critical ${smartCase.category} maintenance case at ${smartCase.buildingName || 'MIT Housing'} was declined by another contractor. URGENT response needed!`,
+              timestamp: new Date().toISOString(),
+              subject: `URGENT Case Assignment Needed`,
+              metadata: {
+                caseId: smartCase.id,
+                urgency: 'Critical',
+                category: smartCase.category,
+                buildingName: smartCase.buildingName,
+                declinedBy: contractor.name
+              }
+            }, backup.userId);
           }
+        }
+        
+        // 🎯 REAL-TIME NOTIFICATION: Notify student that critical case was declined
+        if (smartCase.studentEmail) {
+          const studentNotification = {
+            id: `case-declined-critical-${smartCase.id}`,
+            type: 'case_declined' as const,
+            orgId: smartCase.orgId,
+            title: `⚠️ Update on Your Urgent Maintenance Request`,
+            message: `We're working to reassign your urgent maintenance request "${smartCase.title}" to another contractor. We'll notify you as soon as someone accepts it.`,
+            timestamp: new Date().toISOString(),
+            subject: `Reassigning Your Urgent Request - ${smartCase.title}`,
+            metadata: {
+              caseId: smartCase.id,
+              urgency: smartCase.priority,
+              buildingName: smartCase.buildingName,
+              status: 'reassigning'
+            }
+          };
+          
+          await notificationService.notifyStudentRealTime(
+            studentNotification,
+            smartCase.studentEmail,
+            smartCase.studentUserId
+          );
+          console.log(`📱 Critical decline notification sent to student: ${smartCase.studentEmail}`);
         }
       } else {
         // For non-critical cases, just notify admins for tracking
@@ -4464,7 +4572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orgId: org.id,
         title: '🚀 WebSocket Test Notification',
         message: 'This is a real-time notification test! Your WebSocket connection is working perfectly.',
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         subject: 'WebSocket Test Successful',
         metadata: {
           testUser: userId,
@@ -4523,7 +4631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orgId: user?.orgId || 'test-org',
         title: 'Test Notification',
         message: message || 'This is a test notification to verify the system is working.',
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         subject: 'Test: AllAI Property Notification System',
         metadata: {
           testUser: testUser,

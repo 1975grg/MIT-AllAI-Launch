@@ -2,10 +2,14 @@ import { TransactionalSMSApi, TransactionalSMSApiApiKeys } from '@getbrevo/brevo
 import { WebSocket } from 'ws';
 
 interface NotificationData {
-  to: string;
-  subject: string;
+  id?: string;
+  to?: string;
+  subject?: string;
   message: string;
-  type: 'case_created' | 'contractor_assigned' | 'case_updated' | 'emergency_alert';
+  type: 'case_created' | 'contractor_assigned' | 'case_updated' | 'emergency_alert' | 'case_assigned' | 'case_available' | 'case_accepted' | 'case_declined' | 'case_urgent' | 'maintenance_test';
+  title?: string;
+  timestamp?: string;
+  orgId?: string;
   caseId?: string;
   caseNumber?: string;
   urgencyLevel?: string;
@@ -291,7 +295,7 @@ class NotificationService {
     }
   }
 
-  // 🎯 Notify student via email about case status updates
+  // 🎯 Notify student via email about case status updates (legacy method)
   async notifyStudent(studentEmail: string, subject: string, message: string, orgId: string): Promise<void> {
     try {
       console.log(`📧 Sending student notification to ${studentEmail}: ${subject}`);
@@ -311,6 +315,32 @@ class NotificationService {
     } catch (error) {
       console.error('❌ Failed to notify student:', error);
       throw error; // Re-throw so calling code knows it failed
+    }
+  }
+
+  // 🎯 Enhanced method to notify student with real-time WebSocket + email
+  async notifyStudentRealTime(notification: NotificationData, studentEmail: string, studentUserId?: string): Promise<void> {
+    try {
+      console.log(`📱 Sending real-time student notification to ${studentEmail}: ${notification.subject}`);
+
+      const promises = [];
+
+      // Email notification (always send this)
+      promises.push(this.sendEmailNotification(notification, studentEmail));
+
+      // WebSocket notification (ONLY if we have a specific student userId)
+      // 🔒 SECURITY: Never use 'anonymous' fallback - it would leak to all anonymous users
+      if (studentUserId) {
+        this.sendWebSocketNotification(studentUserId, notification, notification.orgId);
+        console.log(`📱 WebSocket notification sent to student: ${studentUserId}`);
+      } else {
+        console.log(`⚠️ No studentUserId provided - skipping WebSocket notification for privacy (email sent instead)`);
+      }
+
+      await Promise.allSettled(promises);
+      console.log(`✅ Real-time student notifications dispatched for ${notification.type}`);
+    } catch (error) {
+      console.error('❌ Failed to notify student with real-time:', error);
     }
   }
 
