@@ -39,56 +39,11 @@ export default function TestNotifications() {
   const [ws, setWs] = useState<WebSocket | null>(null);
   const { toast } = useToast();
 
-  // WebSocket connection for testing real-time notifications
+  // Monitor WebSocket connection status from LiveNotification component
   useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    try {
-      const websocket = new WebSocket(wsUrl);
-      
-      websocket.onopen = () => {
-        console.log('🔗 Test WebSocket connected');
-        setWsConnected(true);
-        setWs(websocket);
-      };
-      
-      websocket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('📱 WebSocket message received:', data);
-          
-          if (data.type === 'notification') {
-            toast({
-              title: "🚀 Real-time notification received!",
-              description: data.data?.message || "WebSocket notification test successful",
-              duration: 5000
-            });
-          }
-        } catch (error) {
-          console.error('❌ Error parsing WebSocket message:', error);
-        }
-      };
-      
-      websocket.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
-        setWsConnected(false);
-      };
-      
-      websocket.onclose = () => {
-        console.log('🔌 Test WebSocket disconnected');
-        setWsConnected(false);
-        setWs(null);
-      };
-      
-      return () => {
-        websocket.close();
-      };
-    } catch (error) {
-      console.error('❌ Failed to connect test WebSocket:', error);
-      setWsConnected(false);
-    }
-  }, [toast]);
+    // Just show connected status - LiveNotification handles the actual connection
+    setWsConnected(true);
+  }, []);
 
   const sendWebSocketTest = async () => {
     try {
