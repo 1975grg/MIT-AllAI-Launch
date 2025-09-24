@@ -172,11 +172,34 @@ COORDINATION REQUIREMENTS:
 6. Provide clear reasoning for recommendations
 7. Generate appropriate communication template
 
-Respond with JSON containing:
-- recommendedContractor: Best match with score (0-100) and detailed reasoning
-- alternativeContractors: 1-2 backup options with scores
-- coordinationNotes: Summary of assignment logic
-- communicationTemplate: Subject/message for contractor notification
+Respond with JSON in exactly this format:
+{
+  "recommendedContractor": {
+    "contractorId": "string (exact ID from available contractors)",
+    "matchScore": number (0-100),
+    "reasoning": "string (detailed explanation of why this contractor is best)",
+    "estimatedResponseTime": "string (e.g., '2 hours', '4 hours')", 
+    "riskFactors": ["string array of potential risks or concerns"]
+  },
+  "alternativeContractors": [
+    {
+      "contractorId": "string (exact ID)",
+      "matchScore": number (0-100),
+      "reasoning": "string (why this is backup option)"
+    },
+    {
+      "contractorId": "string (exact ID)",
+      "matchScore": number (0-100), 
+      "reasoning": "string (why this is backup option)"
+    }
+  ],
+  "coordinationNotes": "string (summary of assignment logic)",
+  "communicationTemplate": {
+    "subject": "string (email subject for contractor)",
+    "message": "string (email body for contractor)",
+    "urgencyLevel": "normal" | "high" | "urgent" | "emergency"
+  }
+}
 
 Score contractors on: skill match (30%), availability (25%), response time (20%), workload (15%), cost (10%)`;
   }
@@ -241,7 +264,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
     
     if (activeContractors.length === 0) {
       // ✅ NO CONTRACTORS AVAILABLE - SUGGEST ADMIN INTERVENTION
-      console.log(`🚨 No contractors available for ${caseData.category} case "${caseData.title}"`);
+      console.log(`🚨 No contractors available for ${caseData.category} case "${caseData.description}"`);
       
       // Return special admin intervention recommendation
       return [{

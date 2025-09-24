@@ -16,6 +16,7 @@ interface WebSocketConnection {
   ws: WebSocket;
   userId: string;
   role: string;
+  orgId: string;
 }
 
 class NotificationService {
@@ -145,18 +146,33 @@ class NotificationService {
     try {
       const storage = (await import('./storage.js')).storage;
       
-      // Get organization owner (admin) - use existing method from storage interface
-      // Note: getUserOrganization expects userId, but we have orgId
-      // Let's find the organization owner using a simpler approach for now
+      // Get all users and find admin for this organization
+      // For now, find the first user with this organization (simplified admin lookup)
+      console.log(`🔍 Looking up admin for org ${orgId} for ${notification.type} notification`);
       
-      // For demo purposes, we'll assume the first user in the system is admin
-      // TODO: Implement proper organization member lookup
-      console.warn(`⚠️ Using simplified admin lookup for org ${orgId} - should implement proper member roles`);
+      // Try to get admin user for this organization
+      let adminUser;
+      try {
+        // Get organization info to find the owner (simplified admin approach)
+        const org = await storage.getOrganization(orgId);
+        if (org?.ownerId) {
+          adminUser = await storage.getUser(org.ownerId);
+          console.log(`📧 Found org owner: ${adminUser?.email} for org ${orgId} notifications`);
+        }
+        
+        if (!adminUser) {
+          console.warn(`⚠️ No admin/owner found for org ${orgId}`);
+          return;
+        }
+      } catch (error) {
+        console.warn(`⚠️ Could not find admin user for org ${orgId}, skipping admin notification: ${error}`);
+        return;
+      }
       
-      // Skip admin notification for now to avoid storage errors
-      // We'll implement this properly when we add the missing storage methods
-      console.log(`📧 Would notify admins for org ${orgId} about ${notification.type}`);
-      return;
+      if (!adminUser || !adminUser.email) {
+        console.warn(`⚠️ No admin user or email found for org ${orgId}`);
+        return;
+      }
 
       // Send all notification types
       const promises = [];
@@ -220,11 +236,11 @@ class NotificationService {
       console.log(`📧 Sending student notification to ${studentEmail}: ${subject}`);
 
       const notification: NotificationData = {
-        type: 'case_status_update',
+        to: studentEmail,
+        type: 'case_updated',
         subject,
         message,
-        urgencyLevel: 'normal',
-        timestamp: new Date().toISOString()
+        urgencyLevel: 'normal'
       };
 
       // Send email notification

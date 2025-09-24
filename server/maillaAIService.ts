@@ -766,11 +766,37 @@ export class MaillaAIService {
 - "What's your email so I can send you updates on when I'm coming?"
 - "And your cell number in case I need to reach you?"
 
+**QUESTION AGGREGATION (ask related items together):**
+- "I'll need your full name, email, and cell number for the work order and to keep you updated"
+- "What's your name, email, and phone so I can create the ticket and text you updates?"
+- "Quick contact info - what's your name, email address, and cell number?"
+
+**CONTRACTOR-SPECIFIC DIAGNOSTIC QUESTIONS:**
+For **Faucets/Sinks:**
+- "Which faucet exactly - kitchen sink, bathroom sink, or shower?"
+- "Where's it leaking from - the spout, handle, or base connection?"
+- "Single handle or two separate hot/cold handles?"
+
+For **Toilets:**
+- "Is it the water constantly running, not filling, or not flushing properly?"
+- "Can you see water in the tank when you lift the lid?"
+- "Is it overflowing or just making noise?"
+
+For **Electrical:**
+- "Which outlets exactly aren't working - describe their location in the room"
+- "Did anything happen right before it stopped - power outage, storm, plugged something in?"
+- "Any burning smell or warm wall plates?"
+
+For **HVAC/Heat:**
+- "No heat at all, or not getting warm enough?"
+- "Electric or gas heat? Check if there's a pilot light if you can see one safely"
+- "What's the thermostat set to vs actual temperature?"
+
 **CONVERSATION FLOW (BE SUCCINCT!):**
-1. Get exact location details (which room, which fixture)
-2. Understand the basic problem (faucet leaking, toilet not flushing, etc.)
-3. Give immediate help if needed (shutoff valve, towel placement)
-4. Collect contact info (name, email, phone) 
+1. Get exact location details (which room, which specific fixture/appliance)
+2. Understand the specific problem with contractor-level detail
+3. Give immediate help if needed (shutoff valve, safety steps)
+4. **Collect ALL contact info at once** (name, email, phone together) 
 5. **COMPLETE TRIAGE QUICKLY** - don't ask endless questions!
 
 **COMPLETION TRIGGERS (Complete ONLY when ALL required info is collected):**
@@ -1659,6 +1685,9 @@ Respond in JSON format:
 
       // ✅ Send comprehensive notifications to admins and contractors
       await this.sendCaseCreationNotifications(newCase, conversation);
+
+      // 📧 ADDED: Send immediate confirmation to student with case details
+      await this.sendStudentCaseConfirmation(newCase, conversation);
 
       return {
         success: true,
@@ -2609,6 +2638,66 @@ Questions? Just ask! I'm here to help coordinate your maintenance needs.`;
       console.log(`✅ Notifications sent for case ${newCase.caseNumber}`);
     } catch (error) {
       console.error('❌ Failed to send case creation notifications:', error);
+      // Don't throw - notification failures shouldn't block case creation
+    }
+  }
+
+  /**
+   * Send immediate confirmation to student after case creation
+   */
+  private async sendStudentCaseConfirmation(newCase: any, conversation: any) {
+    try {
+      console.log(`📧 Sending case confirmation to student for case ${newCase.caseNumber}`);
+      
+      // Extract student contact info from conversation
+      const triageData = conversation.triageData as any;
+      const slots = triageData?.conversationSlots || {};
+      
+      if (!slots.studentEmail) {
+        console.warn('⚠️ No student email found for case confirmation');
+        return;
+      }
+
+      const { notificationService } = await import('./notificationService.js');
+      
+      const subject = `✅ Your Maintenance Request #${newCase.caseNumber} - Help is Coming!`;
+      const message = `Hi ${slots.studentName || 'there'}!
+
+Great news! I've successfully created your maintenance request and help is on the way.
+
+🎫 **Your Case Details:**
+• **Case Number:** ${newCase.caseNumber}
+• **Location:** ${newCase.buildingName} ${newCase.roomNumber ? `Room ${newCase.roomNumber}` : ''}
+• **Issue:** ${newCase.title || 'Maintenance needed'}
+• **Priority:** ${conversation.urgencyLevel || 'Normal'}
+
+👷 **What Happens Next:**
+1. **Contractor Assignment:** I'm finding the best available contractor for your specific issue
+2. **Contact Soon:** They'll reach out within the next few hours to schedule a convenient time
+3. **Updates:** You'll get SMS/email updates when the contractor is assigned and on their way
+
+📱 **Stay Connected:**
+I'll keep you posted via text (${slots.studentPhone}) and email about your case progress.
+
+❓ **Need Help?** 
+Just reply to this message if you have questions or if anything changes with your maintenance needs.
+
+Thanks for reporting this issue - we'll get it fixed quickly!
+
+Best regards,
+Mailla 🤖
+MIT Housing Maintenance Coordinator`;
+
+      await notificationService.notifyStudent(
+        slots.studentEmail,
+        subject,
+        message,
+        conversation.orgId
+      );
+      
+      console.log(`✅ Student confirmation sent to ${slots.studentEmail} for case ${newCase.caseNumber}`);
+    } catch (error) {
+      console.error('❌ Failed to send student case confirmation:', error);
       // Don't throw - notification failures shouldn't block case creation
     }
   }
