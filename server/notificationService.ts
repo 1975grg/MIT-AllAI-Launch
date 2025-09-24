@@ -103,7 +103,7 @@ class NotificationService {
       const msg = {
         to: recipientEmail,
         from: {
-          email: 'maintenance@allai-property.com',
+          email: 'omar@vibeapp.social',
           name: 'AllAI Property Maintenance'
         },
         subject: notification.subject,
