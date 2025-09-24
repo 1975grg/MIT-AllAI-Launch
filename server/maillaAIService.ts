@@ -27,7 +27,6 @@ interface MaillaResponse {
     issueSummary?: string;
     timeline?: string;
     severity?: string;
-    urgency?: string;
     studentName?: string;
     studentEmail?: string;
     studentPhone?: string;
@@ -321,7 +320,6 @@ export class MaillaAIService {
                     issueSummary: { type: "string" },
                     timeline: { type: "string" },
                     severity: { type: "string" },
-                    urgency: { type: "string", description: "Urgency level from student ('urgent', 'normal', 'can wait')" },
                     studentName: { type: "string", description: "Student's name if provided" },
                     studentEmail: { type: "string", description: "Student's email for updates" },
                     studentPhone: { type: "string", description: "Student's phone for urgent contact" },
@@ -466,14 +464,10 @@ export class MaillaAIService {
         // 🧠 SMART TRIAGE: Use adaptive scoring for intelligent completion decisions
         // 🎯 MANDATORY: Even emergencies require contact info for notifications and follow-up
         const hasRequiredContact = updatedSlots.studentName && updatedSlots.studentEmail && updatedSlots.studentPhone;
-        // Only accept explicit urgency from conversation OR meaningful context inference (not default "normal")
-        const hasUrgencyFromContext = contextAnalysis?.inferredUrgency && contextAnalysis.inferredUrgency !== 'normal';
-        const hasUrgencyInfo = updatedSlots.urgency || hasUrgencyFromContext;
         
         const autoCreate = (
           // Adaptive scoring indicates sufficient information
-          triageCompleteness.isReady && maillaResponse.nextAction === 'complete_triage' &&
-          hasRequiredContact && hasUrgencyInfo
+          triageCompleteness.isReady && maillaResponse.nextAction === 'complete_triage'
         ) || (
           // Emergency path - still requires contact info for notifications
           (maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency') &&
@@ -483,7 +477,6 @@ export class MaillaAIService {
         console.log(`🎯 Adaptive Triage Decision: ${triageCompleteness.reasoning}`);
         console.log(`🧠 AI Action: ${maillaResponse.nextAction}, Emergency: ${maillaResponse.urgencyLevel === 'emergency'}`);
         console.log(`📞 Contact Check: ${hasRequiredContact ? 'Complete' : 'Missing'} (Name: ${!!updatedSlots.studentName}, Email: ${!!updatedSlots.studentEmail}, Phone: ${!!updatedSlots.studentPhone})`);
-        console.log(`⚡ Urgency Check: ${hasUrgencyInfo ? 'Complete' : 'Missing'} (Slot: ${!!updatedSlots.urgency}, Context: ${hasUrgencyFromContext ? contextAnalysis?.inferredUrgency : 'not meaningful'})`);
         console.log(`🎯 Auto-create decision: ${autoCreate}`);
         
         // 🚨 DETERMINISTIC ENFORCEMENT: Use EXACT same updatedSlots data as autoCreate logic
@@ -965,9 +958,8 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       // Smart inference: skip questions if context analysis provides answers
       const hasTimelineFromContext = contextAnalysis?.timelineIndicators && contextAnalysis.timelineIndicators.length > 0;
       const hasSeverityFromContext = contextAnalysis?.severityIndicators && contextAnalysis.severityIndicators.length > 0;
-      const hasUrgencyFromContext = contextAnalysis?.inferredUrgency && contextAnalysis.inferredUrgency !== 'normal';
       
-      // 🎯 SMART PHOTO REQUEST ANALYSIS (Make photos more prominent and optional)
+      // 🎯 SMART PHOTO REQUEST ANALYSIS
       const conversationLength = conversation?.conversationHistory ? (conversation.conversationHistory as any[]).length : 0;
       const hasVagueIssue = !existingSlots.issueSummary || 
                            existingSlots.issueSummary?.includes('vague') ||
@@ -977,14 +969,9 @@ Example: "I'm here to help with that! Which MIT building are you in?"
                                        studentMessage.toLowerCase().includes('broken') ||
                                        studentMessage.toLowerCase().includes('damage') ||
                                        studentMessage.toLowerCase().includes('electrical') ||
-                                       studentMessage.toLowerCase().includes('sparks') ||
-                                       studentMessage.toLowerCase().includes('clog') ||
-                                       studentMessage.toLowerCase().includes('stain') ||
-                                       studentMessage.toLowerCase().includes('rust');
+                                       studentMessage.toLowerCase().includes('sparks');
       
-      // Request photos earlier in conversation (after location is established)
-      const shouldRequestPhoto = conversationLength >= 2 && // Earlier request
-                                 existingSlots.buildingName && existingSlots.roomNumber && // Location established
+      const shouldRequestPhoto = conversationLength >= 4 && // Multiple exchanges
                                  (hasVagueIssue || visuallyDiagnosableIssue) &&
                                  !existingSlots.photoRequested; // Haven't asked yet
       
@@ -1009,12 +996,11 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       prompt += `\n🎯 INTELLIGENT ANALYSIS:
 ${hasTimelineFromContext ? '✅ Timeline inferred from context - no need to ask' : '❓ May need timeline'}
 ${hasSeverityFromContext ? '✅ Severity inferred from language - no need to ask' : '❓ May need severity'}
-${hasUrgencyFromContext ? '✅ Urgency inferred from context: ' + contextAnalysis?.inferredUrgency : '❓ NEED URGENCY ASSESSMENT - Ask "How urgent is this? Can it wait a few hours or do you need someone right away?"'}
 ${contextAnalysis?.emotionalContext !== 'calm' ? '⚠️ Student sounds ' + contextAnalysis?.emotionalContext + ' - acknowledge empathetically' : ''}
 ${userIsFrustrated ? canSafelyComplete ? '🚨 USER FRUSTRATION + CONTACT COMPLETE - COMPLETE TRIAGE NOW! Set nextAction: "complete_triage"' : '🚨 USER FRUSTRATION DETECTED - Must collect contact info first before completing!' : ''}
 ${conversationTooLong ? canSafelyComplete ? '⏰ CONVERSATION TOO LONG + CONTACT COMPLETE - COMPLETE TRIAGE NOW! Set nextAction: "complete_triage"' : '⏰ CONVERSATION TOO LONG - Prioritize contact collection then complete!' : ''}
 ${hasBasicInfo ? '✅ BASIC INFO COMPLETE - Ready to create work order! Set nextAction: "complete_triage"' : ''}
-${shouldRequestPhoto ? '📸 PHOTO OPPORTUNITY: Ask for optional photo - "A quick photo would help, but totally optional if you can\'t right now!"' : ''}
+${shouldRequestPhoto ? '📸 PHOTO OPPORTUNITY: Conversation needs visual clarity - suggest photo politely' : ''}
 
 🚨 **COMPLETION DECISION:** 
 ${canSafelyComplete ? 'COMPLETE TRIAGE NOW! Set nextAction: "complete_triage"' : userIsFrustrated ? 'User frustrated but need contact info first - prioritize name/email/phone collection!' : 'Continue gathering info (but be succinct!)'}
@@ -1023,9 +1009,8 @@ Next question priority (CRITICAL ORDER - only ask for what's MISSING):
 ${needsBuilding ? '1. Building name (REQUIRED FIRST)' : '✅ Building name: already have it'}
 ${needsRoom ? '2. ROOM LOCATION (HIGHEST PRIORITY): "Which room is the faucet in - kitchen, bathroom, or somewhere else?"' : '✅ Room location: already have it'}  
 ${needsIssueDetails ? '3. SPECIFIC FIXTURE: "Kitchen sink, bathroom sink, or shower faucet?" + "Where exactly is it leaking from?"' : '✅ Issue details: covered'}
-${!hasUrgencyFromContext ? '4. URGENCY ASSESSMENT: "How urgent is this? Can it wait a few hours or do you need someone right away?"' : '✅ Urgency level: determined from context'}
-${shouldRequestPhoto ? '5. OPTIONAL PHOTO REQUEST: "A quick photo would help me bring the right parts, but totally optional if you can\'t right now!"' : ''}
-${(!existingSlots.studentName || !existingSlots.studentEmail || !existingSlots.studentPhone) ? '6. CONTACT INFO (COLLECT FULL NAME): "I\'ll need your full name, email, and cell phone number to send updates and schedule the repair"' : '✅ Contact info: complete'}
+${(!existingSlots.studentName || !existingSlots.studentEmail || !existingSlots.studentPhone) ? '4. CONTACT INFO (ONLY AFTER LOCATION): "I\'ll need your email and phone number to send updates and schedule the repair"' : '✅ Contact info: complete'}
+${shouldRequestPhoto ? '📸 PHOTO REQUEST: "Could you snap a quick photo of the issue? That would help me bring exactly the right parts!"' : ''}
 
 🆘 **IMMEDIATE REMEDIATION ADVICE (give this for leaks):**
 "While we get this sorted - grab a towel or bucket to catch the drips, and if you can see shutoff valves under the sink, try turning them clockwise to stop the leak temporarily. Don't force anything if they're stuck!"
@@ -1067,8 +1052,7 @@ Set nextAction: 'complete_triage' when ANY of these conditions are met:
 - Building name (e.g., "Senior House")
 - Room/location (e.g., "unit 10 kitchen", "bathroom")  
 - Issue type (e.g., "kitchen sink faucet leaking from spout")
-- Urgency level assessment (urgent/normal/low priority) - REQUIRED IN CONVERSATION SLOTS
-- Contact info (full name, email, cell phone)
+- Contact info (name, email, phone)
 
 **NEVER complete without room/location specifics** - contractors need to know exactly where to go!
 4. **User seems frustrated or impatient** - don't push it!
@@ -1181,7 +1165,7 @@ Keep it caring and informative:
             }
           }
         } catch (error) {
-          console.log('📊 Learning data not yet available:', (error as Error).message);
+          console.log('📊 Learning data not yet available:', error.message);
         }
       }
 
@@ -1688,12 +1672,7 @@ Respond in JSON format:
       if (!studentInfo.firstName && !studentInfo.email) {
         const fallbackInfo = await this.getStudentFullName(conversation.studentId);
         if (fallbackInfo) {
-          studentInfo = {
-            firstName: fallbackInfo.firstName || '',
-            lastName: fallbackInfo.lastName || '',
-            email: fallbackInfo.email || '',
-            phone: fallbackInfo.phone || ''
-          };
+          studentInfo = fallbackInfo;
         }
       }
       
@@ -2407,9 +2386,7 @@ Focus on practical details that help contractors prepare effectively.`;
         const audio = audioResults[0];
         combinedInsights.toolsRequired.push(...(audio.toolsRequired || []));
         const audioSummary = audio.summary || 'Audio provided for equipment diagnosis';
-        if (audioSummary) {
-          combinedInsights.contractorRecommendations.specialConsiderations.push(audioSummary);
-        }
+        combinedInsights.contractorRecommendations.specialConsiderations.push(audioSummary);
       }
 
       // Generate comprehensive summary
