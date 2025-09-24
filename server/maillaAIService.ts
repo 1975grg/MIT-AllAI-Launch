@@ -105,6 +105,27 @@ export class MaillaAIService {
       // 2. Generate initial Mailla response with safety-first assessment
       const maillaResponse = await this.processTriageMessage(conversationId, initialRequest, true);
 
+      // 🎯 CRITICAL FIX: Save initial Mailla response to conversation history
+      // This was missing, causing repetition because AI couldn't see its own first response
+      await storage.updateTriageConversation(conversationId, {
+        conversationHistory: [
+          {
+            role: "student",
+            message: initialRequest,
+            timestamp: new Date().toISOString()
+          },
+          {
+            role: "mailla",
+            message: maillaResponse.message,
+            urgencyLevel: maillaResponse.urgencyLevel,
+            safetyFlags: maillaResponse.safetyFlags,
+            timestamp: new Date().toISOString()
+          }
+        ],
+        urgencyLevel: maillaResponse.urgencyLevel,
+        safetyFlags: maillaResponse.safetyFlags
+      });
+
       console.log(`✅ Mailla triage started with urgency: ${maillaResponse.urgencyLevel}`);
       return { conversationId, maillaResponse };
 
@@ -273,7 +294,8 @@ export class MaillaAIService {
                     severity: { type: "string" },
                     studentName: { type: "string", description: "Student's name if provided" },
                     studentEmail: { type: "string", description: "Student's email for updates" },
-                    studentPhone: { type: "string", description: "Student's phone for urgent contact" }
+                    studentPhone: { type: "string", description: "Student's phone for urgent contact" },
+                    photoRequested: { type: "boolean", description: "Whether a photo has been requested to avoid asking again" }
                   },
                   description: "Information slots filled from this interaction"
                 },
@@ -852,10 +874,27 @@ Example: "I'm here to help with that! Which MIT building are you in?"
       const hasTimelineFromContext = contextAnalysis?.timelineIndicators && contextAnalysis.timelineIndicators.length > 0;
       const hasSeverityFromContext = contextAnalysis?.severityIndicators && contextAnalysis.severityIndicators.length > 0;
       
-      prompt += `\nINTELLIGENT ANALYSIS:
+      // 🎯 SMART PHOTO REQUEST ANALYSIS
+      const conversationLength = conversation?.conversationHistory ? (conversation.conversationHistory as any[]).length : 0;
+      const hasVagueIssue = !existingSlots.issueSummary || 
+                           existingSlots.issueSummary?.includes('vague') ||
+                           existingSlots.issueSummary?.includes('unclear');
+      const visuallyDiagnosableIssue = studentMessage.toLowerCase().includes('leak') ||
+                                       studentMessage.toLowerCase().includes('crack') ||
+                                       studentMessage.toLowerCase().includes('broken') ||
+                                       studentMessage.toLowerCase().includes('damage') ||
+                                       studentMessage.toLowerCase().includes('electrical') ||
+                                       studentMessage.toLowerCase().includes('sparks');
+      
+      const shouldRequestPhoto = conversationLength >= 4 && // Multiple exchanges
+                                 (hasVagueIssue || visuallyDiagnosableIssue) &&
+                                 !existingSlots.photoRequested; // Haven't asked yet
+      
+      prompt += `\n🎯 INTELLIGENT ANALYSIS:
 ${hasTimelineFromContext ? '✅ Timeline inferred from context - no need to ask' : '❓ May need timeline'}
 ${hasSeverityFromContext ? '✅ Severity inferred from language - no need to ask' : '❓ May need severity'}
 ${contextAnalysis?.emotionalContext !== 'calm' ? '⚠️ Student sounds ' + contextAnalysis?.emotionalContext + ' - acknowledge empathetically' : ''}
+${shouldRequestPhoto ? '📸 PHOTO OPPORTUNITY: Conversation needs visual clarity - suggest photo politely' : ''}
 
 Next question priority (only ask for what's MISSING):
 ${needsBuilding ? '1. Building name (REQUIRED)' : '✅ Building name: already have it'}
@@ -863,6 +902,7 @@ ${needsRoom ? '2. Room number (REQUIRED if building known)' : '✅ Room number: 
 ${needsIssueDetails ? '3. Issue details (if location complete)' : '✅ Issue details: covered'}
 ${!hasTimelineFromContext ? '4. Timeline (if not inferred)' : '✅ Timeline: inferred from context'}
 ${!hasSeverityFromContext ? '5. Severity (if not inferred)' : '✅ Severity: inferred from language'}
+${shouldRequestPhoto ? '📸 PHOTO REQUEST: "Could you snap a quick photo of the issue? That would help me bring exactly the right parts!"' : ''}
 
 CRITICAL: If they sound frustrated or said "it's bad/terrible", DO NOT ask about severity - it's already urgent!
 Ask the MOST IMPORTANT missing piece of information. Be natural and acknowledge what they shared.

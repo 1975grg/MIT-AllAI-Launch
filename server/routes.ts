@@ -2497,7 +2497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rate limiter for public endpoints (protect against spam/abuse)
   const publicRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // Limit each IP to 5 requests per windowMs
+    max: 50, // Allow 50 requests per 15 minutes for chat conversations (was 5, too restrictive)
     message: {
       message: "Too many maintenance requests from this IP. Please try again in 15 minutes."
     },
