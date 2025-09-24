@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Mail, MessageSquare, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Mail, MessageSquare, AlertCircle, CheckCircle, Clock, Wifi, WifiOff } from "lucide-react";
 
 interface TestResult {
   timestamp: string;
@@ -21,6 +21,11 @@ interface TestResult {
     recipient?: string;
     error?: string;
   };
+  websocket?: {
+    success: boolean;
+    connected: boolean;
+    error?: string;
+  };
 }
 
 export default function TestNotifications() {
@@ -29,7 +34,110 @@ export default function TestNotifications() {
   const [message, setMessage] = useState("This is a test notification to verify the system is working correctly.");
   const [isLoading, setIsLoading] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [ws, setWs] = useState<WebSocket | null>(null);
   const { toast } = useToast();
+
+  // WebSocket connection for testing real-time notifications
+  useEffect(() => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    
+    try {
+      const websocket = new WebSocket(wsUrl);
+      
+      websocket.onopen = () => {
+        console.log('🔗 Test WebSocket connected');
+        setWsConnected(true);
+        setWs(websocket);
+      };
+      
+      websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('📱 WebSocket message received:', data);
+          
+          if (data.type === 'notification') {
+            toast({
+              title: "🚀 Real-time notification received!",
+              description: data.data?.message || "WebSocket notification test successful",
+              duration: 5000
+            });
+          }
+        } catch (error) {
+          console.error('❌ Error parsing WebSocket message:', error);
+        }
+      };
+      
+      websocket.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        setWsConnected(false);
+      };
+      
+      websocket.onclose = () => {
+        console.log('🔌 Test WebSocket disconnected');
+        setWsConnected(false);
+        setWs(null);
+      };
+      
+      return () => {
+        websocket.close();
+      };
+    } catch (error) {
+      console.error('❌ Failed to connect test WebSocket:', error);
+      setWsConnected(false);
+    }
+  }, [toast]);
+
+  const sendWebSocketTest = async () => {
+    try {
+      setIsLoading(true);
+      
+      const testResult: TestResult = {
+        timestamp: new Date().toISOString(),
+        testType: 'websocket',
+        user: 'anonymous-tester',
+        websocket: {
+          success: wsConnected,
+          connected: wsConnected,
+          error: wsConnected ? undefined : 'WebSocket not connected'
+        }
+      };
+      
+      if (wsConnected && ws) {
+        // Send a test message through WebSocket
+        const testMessage = {
+          type: 'test',
+          message: 'WebSocket real-time notification test'
+        };
+        ws.send(JSON.stringify(testMessage));
+        
+        toast({
+          title: "WebSocket test sent!",
+          description: "Test message sent through WebSocket connection",
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "WebSocket not connected",
+          description: "Cannot test WebSocket - connection not established",
+          variant: "destructive"
+        });
+      }
+      
+      setTestResults(prev => [testResult, ...prev]);
+      
+    } catch (error) {
+      console.error('WebSocket test failed:', error);
+      toast({
+        title: "WebSocket test failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const sendTestNotification = async (testType: 'email' | 'sms' | 'both') => {
     try {
@@ -71,8 +179,23 @@ export default function TestNotifications() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">🧪 Notification System Test</h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Test email and SMS notifications to verify the Brevo integration is working properly.
+          Test email, SMS, and WebSocket notifications to verify all notification systems are working properly.
         </p>
+        
+        {/* WebSocket Connection Status */}
+        <div className="flex items-center gap-2 mt-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+          {wsConnected ? (
+            <>
+              <Wifi className="h-5 w-5 text-green-500" />
+              <span className="text-green-600 dark:text-green-400 font-medium">Real-time notifications active</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="h-5 w-5 text-red-500" />
+              <span className="text-red-600 dark:text-red-400 font-medium">Connecting to real-time notifications...</span>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6">
@@ -124,7 +247,7 @@ export default function TestNotifications() {
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-4 flex-wrap">
               <Button
                 onClick={() => sendTestNotification('email')}
                 disabled={isLoading}
@@ -155,6 +278,17 @@ export default function TestNotifications() {
               >
                 <Clock className="h-4 w-4" />
                 {isLoading ? 'Testing...' : 'Test Both'}
+              </Button>
+
+              <Button
+                onClick={sendWebSocketTest}
+                disabled={isLoading}
+                variant={wsConnected ? "default" : "destructive"}
+                className="flex items-center gap-2"
+                data-testid="button-test-websocket"
+              >
+                {wsConnected ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                {isLoading ? 'Testing...' : 'Test WebSocket'}
               </Button>
             </div>
           </CardContent>
@@ -214,6 +348,22 @@ export default function TestNotifications() {
                           ) : (
                             <Badge variant="destructive">
                               ❌ Failed: {result.sms.error || 'Unknown error'}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
+                      {result.websocket && (
+                        <div className="flex items-center gap-2">
+                          {result.websocket.connected ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                          <span className="text-sm">WebSocket real-time:</span>
+                          {result.websocket.success ? (
+                            <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                              ✅ Connected & Tested
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">
+                              ❌ {result.websocket.error || 'Connection failed'}
                             </Badge>
                           )}
                         </div>
