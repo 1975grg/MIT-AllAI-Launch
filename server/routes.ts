@@ -6342,12 +6342,29 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     try {
       console.log('🔌 WebSocket connection attempt');
       
-      // For now, use anonymous connection - TODO: Add proper authentication
-      const userContext = {
-        userId: 'anonymous', // TODO: Get from session 
-        role: 'admin',       // TODO: Get from user data
-        orgId: 'default'     // TODO: Get from organization
+      // Get user context from session
+      let userContext = {
+        userId: 'anonymous', 
+        role: 'admin',       
+        orgId: 'default'     
       };
+
+      // Try to get actual user context from session
+      if (req.user) {
+        try {
+          const userOrg = await storage.getUserOrganization(req.user.id);
+          if (userOrg) {
+            userContext = {
+              userId: req.user.id,
+              role: userOrg.role,
+              orgId: userOrg.id
+            };
+            console.log(`🔗 Using authenticated user context: ${userContext.userId} (${userContext.role}) in org ${userContext.orgId}`);
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not get user organization, using defaults:', error);
+        }
+      }
       
       // Register connection with NotificationService
       notificationService.addWebSocketConnection(ws, userContext);
