@@ -4473,8 +4473,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send via WebSocket using imported NotificationService
       try {
-        // Send notification to the user (use 'anonymous' for now since WebSocket uses anonymous)
-        await notificationService.notifyUser('anonymous', testNotification, org.id);
+        // Send test WebSocket notification to anonymous connections
+        await notificationService.sendTestWebSocketNotification(testNotification, org.id);
         
         console.log('✅ WebSocket test notification sent successfully');
         

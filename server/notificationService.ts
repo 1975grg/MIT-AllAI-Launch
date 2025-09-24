@@ -237,12 +237,24 @@ class NotificationService {
         promises.push(this.sendSMSNotification(notification, adminUser.phone));
       }
 
-      // Real-time WebSocket notification would go here
+      // Real-time WebSocket notification 
+      this.sendWebSocketNotification(adminUser.id, notification, orgId);
 
       await Promise.allSettled(promises);
       console.log(`✅ Admin notifications dispatched for ${notification.type}`);
     } catch (error) {
       console.error('❌ Failed to notify admins:', error);
+    }
+  }
+
+  // Test method to send WebSocket notification to anonymous connections
+  async sendTestWebSocketNotification(notification: NotificationData, orgId: string): Promise<void> {
+    try {
+      console.log(`🧪 Sending test WebSocket notification to anonymous users in org ${orgId}`);
+      this.sendWebSocketNotification('anonymous', notification, orgId);
+      console.log(`✅ Test WebSocket notification sent to anonymous connections`);
+    } catch (error) {
+      console.error('❌ Failed to send test WebSocket notification:', error);
     }
   }
 
