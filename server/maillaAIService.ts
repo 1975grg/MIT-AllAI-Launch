@@ -971,9 +971,11 @@ Example: "I'm here to help with that! Which MIT building are you in?"
                                        studentMessage.toLowerCase().includes('electrical') ||
                                        studentMessage.toLowerCase().includes('sparks');
       
-      const shouldRequestPhoto = conversationLength >= 4 && // Multiple exchanges
+      const shouldRequestPhoto = conversationLength >= 2 && // Allow earlier photo requests
                                  (hasVagueIssue || visuallyDiagnosableIssue) &&
-                                 !existingSlots.photoRequested; // Haven't asked yet
+                                 !existingSlots.photoRequested && // Haven't asked yet
+                                 existingSlots.roomNumber && // Have location first
+                                 existingSlots.buildingName; // Have building
       
       // 🚨 FRUSTRATION DETECTION - Complete immediately if user wants to stop
       const frustrationKeywords = ['no more questions', 'how many more', 'stop asking', 'just fix it', 'enough questions', 'too many questions'];
@@ -1003,14 +1005,14 @@ ${hasBasicInfo ? '✅ BASIC INFO COMPLETE - Ready to create work order! Set next
 ${shouldRequestPhoto ? '📸 PHOTO OPPORTUNITY: Conversation needs visual clarity - suggest photo politely' : ''}
 
 🚨 **COMPLETION DECISION:** 
-${canSafelyComplete ? 'COMPLETE TRIAGE NOW! Set nextAction: "complete_triage"' : userIsFrustrated ? 'User frustrated but need contact info first - prioritize name/email/phone collection!' : 'Continue gathering info (but be succinct!)'}
+${shouldRequestPhoto ? 'REQUEST PHOTO! Set nextAction: "request_media" and ask politely for photo' : canSafelyComplete ? 'COMPLETE TRIAGE NOW! Set nextAction: "complete_triage"' : userIsFrustrated ? 'User frustrated but need contact info first - prioritize name/email/phone collection!' : 'Continue gathering info (but be succinct!)'}
 
 Next question priority (CRITICAL ORDER - only ask for what's MISSING):
 ${needsBuilding ? '1. Building name (REQUIRED FIRST)' : '✅ Building name: already have it'}
 ${needsRoom ? '2. ROOM LOCATION (HIGHEST PRIORITY): "Which room is the faucet in - kitchen, bathroom, or somewhere else?"' : '✅ Room location: already have it'}  
 ${needsIssueDetails ? '3. SPECIFIC FIXTURE: "Kitchen sink, bathroom sink, or shower faucet?" + "Where exactly is it leaking from?"' : '✅ Issue details: covered'}
 ${(!existingSlots.studentName || !existingSlots.studentEmail || !existingSlots.studentPhone) ? '4. CONTACT INFO (ONLY AFTER LOCATION): "I\'ll need your email and phone number to send updates and schedule the repair"' : '✅ Contact info: complete'}
-${shouldRequestPhoto ? '📸 PHOTO REQUEST: "Could you snap a quick photo of the issue? That would help me bring exactly the right parts!"' : ''}
+${shouldRequestPhoto ? '📸 PHOTO REQUEST TRIGGER: Set nextAction: "request_media" and say: "Could you snap a quick photo of the issue? That would help me bring exactly the right parts!"' : ''}
 
 🆘 **IMMEDIATE REMEDIATION ADVICE (give this for leaks):**
 "While we get this sorted - grab a towel or bucket to catch the drips, and if you can see shutoff valves under the sink, try turning them clockwise to stop the leak temporarily. Don't force anything if they're stuck!"

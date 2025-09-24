@@ -11,6 +11,7 @@ import Landing from "@/pages/landing";
 import StudentRequest from "@/pages/student-request";
 import StudentTracking from "@/pages/student-tracking";
 import StudentMaillaTriagePage from "@/pages/student-mailla-triage";
+import TestNotificationsPage from "@/pages/test-notifications";
 import Dashboard from "@/pages/dashboard";
 import Properties from "@/pages/properties";
 import Entities from "@/pages/entities";
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/student-request" component={StudentRequest} />
       <Route path="/student-tracking" component={StudentTracking} />
       <Route path="/student-mailla-triage" component={StudentMaillaTriagePage} />
+      <Route path="/test-notifications" component={TestNotificationsPage} />
       
       {!isAuthenticated ? (
         <>

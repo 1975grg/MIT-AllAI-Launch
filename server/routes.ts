@@ -4442,6 +4442,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🧪 TEST NOTIFICATION ENDPOINT - Separate testing functionality
+  app.post('/api/test/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const { email, phone, message, testType } = req.body;
+      const user = req.user as any;
+      
+      console.log(`🧪 Testing ${testType} notification for user ${user.claims.email}`);
+      
+      const testNotification = {
+        id: 'test-' + Date.now(),
+        type: 'maintenance_test' as const,
+        orgId: user.orgId,
+        title: 'Test Notification',
+        message: message || 'This is a test notification to verify the system is working.',
+        timestamp: new Date(),
+        subject: 'Test: AllAI Property Notification System',
+        metadata: {
+          testUser: user.claims.email,
+          testTime: new Date().toISOString()
+        }
+      };
+
+      const results: any = {
+        timestamp: new Date().toISOString(),
+        testType,
+        user: user.claims.email
+      };
+
+      // Test email if requested
+      if (testType === 'email' || testType === 'both') {
+        const emailResult = await notificationService.sendEmailNotification(
+          testNotification, 
+          email || user.claims.email
+        );
+        results.email = {
+          success: emailResult,
+          recipient: email || user.claims.email
+        };
+      }
+
+      // Test SMS if requested  
+      if (testType === 'sms' || testType === 'both') {
+        if (!phone) {
+          results.sms = {
+            success: false,
+            error: 'Phone number required for SMS test'
+          };
+        } else {
+          const smsResult = await notificationService.sendSMSNotification(
+            testNotification,
+            phone
+          );
+          results.sms = {
+            success: smsResult,
+            recipient: phone
+          };
+        }
+      }
+
+      console.log('🧪 Test notification results:', results);
+      res.json({ success: true, results });
+      
+    } catch (error) {
+      console.error('❌ Test notification failed:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to send test notification', 
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Payment status update endpoint
   app.patch('/api/transactions/:id/payment-status', isAuthenticated, async (req: any, res) => {
     try {
