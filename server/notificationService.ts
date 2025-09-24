@@ -116,6 +116,30 @@ class NotificationService {
     }
   }
 
+  // Format phone number to international E.164 format for Brevo
+  private formatPhoneNumber(phone: string): string {
+    // Remove all non-digits
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // If already has country code (11+ digits), add + prefix
+    if (cleanPhone.length >= 11 && cleanPhone.startsWith('1')) {
+      return '+' + cleanPhone;
+    }
+    
+    // If 10 digits, assume US/Canada and add +1
+    if (cleanPhone.length === 10) {
+      return '+1' + cleanPhone;
+    }
+    
+    // If already starts with +, return as is
+    if (phone.startsWith('+')) {
+      return phone;
+    }
+    
+    // Default: assume US/Canada for other formats
+    return '+1' + cleanPhone;
+  }
+
   // Send SMS notification
   async sendSMSNotification(notification: NotificationData, recipientPhone: string): Promise<boolean> {
     try {
@@ -125,18 +149,19 @@ class NotificationService {
       }
       
       const smsContent = this.generateSMSContent(notification);
+      const formattedPhone = this.formatPhoneNumber(recipientPhone);
       
       await this.smsApi.sendTransacSms({
-        recipient: recipientPhone,
+        recipient: formattedPhone,
         content: smsContent,
         sender: 'AllAIProp',
         type: 'transactional' as any
       });
 
-      console.log(`📱 SMS notification sent to ${recipientPhone}`);
+      console.log(`📱 SMS notification sent to ${formattedPhone} (original: ${recipientPhone})`);
       return true;
     } catch (error) {
-      console.error(`❌ Failed to send SMS to ${recipientPhone}:`, error);
+      console.error(`❌ Failed to send SMS to ${formattedPhone} (original: ${recipientPhone}):`, error);
       return false;
     }
   }
