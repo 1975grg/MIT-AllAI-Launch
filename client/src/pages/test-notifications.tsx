@@ -35,22 +35,24 @@ export default function TestNotifications() {
     try {
       setIsLoading(true);
       
-      const response = await apiRequest('/api/test/notifications', 'POST', {
+      const response = await apiRequest('POST', '/api/test/notifications', {
         email: email || undefined,
         phone: phone || undefined,
         message,
         testType
       });
 
-      if (response.success) {
-        setTestResults(prev => [response.results, ...prev]);
+      const data = await response.json();
+
+      if (data.success) {
+        setTestResults(prev => [data.results, ...prev]);
         toast({
           title: "Test notification sent!",
           description: `${testType} notification test completed`,
           variant: "default"
         });
       } else {
-        throw new Error(response.error || 'Test failed');
+        throw new Error(data.error || 'Test failed');
       }
     } catch (error) {
       console.error('Test notification failed:', error);
