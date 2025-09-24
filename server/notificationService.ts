@@ -1,4 +1,5 @@
-import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys, TransactionalSMSApi, TransactionalSMSApiApiKeys } from '@getbrevo/brevo';
+import { TransactionalSMSApi, TransactionalSMSApiApiKeys } from '@getbrevo/brevo';
+import { MailService } from '@sendgrid/mail';
 import { WebSocket } from 'ws';
 
 interface NotificationData {
@@ -20,33 +21,35 @@ interface WebSocketConnection {
 }
 
 class NotificationService {
-  private emailApi?: TransactionalEmailsApi;
+  private mailService?: MailService;
   private smsApi?: TransactionalSMSApi;
   private wsConnections: WebSocketConnection[] = [];
 
   constructor() {
-    // Lazy initialization to prevent server crashes if BREVO_API_KEY is missing
-    this.initializeBrevoAPIs();
+    this.initializeNotificationAPIs();
   }
 
-  private initializeBrevoAPIs() {
+  private initializeNotificationAPIs() {
     try {
-      if (!process.env.BREVO_API_KEY) {
-        console.warn('⚠️ BREVO_API_KEY not found - email/SMS notifications will be disabled');
-        return;
+      // Initialize SendGrid for email
+      if (process.env.SENDGRID_API_KEY) {
+        this.mailService = new MailService();
+        this.mailService.setApiKey(process.env.SENDGRID_API_KEY);
+        console.log('✅ SendGrid email API initialized');
+      } else {
+        console.warn('⚠️ SENDGRID_API_KEY not found - email notifications will be disabled');
       }
 
-      // Initialize Brevo email API
-      this.emailApi = new TransactionalEmailsApi();
-      this.emailApi.setApiKey(TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
-
-      // Initialize Brevo SMS API
-      this.smsApi = new TransactionalSMSApi();
-      this.smsApi.setApiKey(TransactionalSMSApiApiKeys.apiKey, process.env.BREVO_API_KEY);
-      
-      console.log('✅ Brevo email/SMS APIs initialized');
+      // Initialize Brevo SMS API (keeping SMS via Brevo for now)
+      if (process.env.BREVO_API_KEY) {
+        this.smsApi = new TransactionalSMSApi();
+        this.smsApi.setApiKey(TransactionalSMSApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+        console.log('✅ Brevo SMS API initialized');
+      } else {
+        console.warn('⚠️ BREVO_API_KEY not found - SMS notifications will be disabled');
+      }
     } catch (error) {
-      console.error('❌ Failed to initialize Brevo APIs:', error);
+      console.error('❌ Failed to initialize notification APIs:', error);
     }
   }
 
@@ -87,31 +90,33 @@ class NotificationService {
     });
   }
 
-  // Send email notification
+  // Send email notification via SendGrid
   async sendEmailNotification(notification: NotificationData, recipientEmail: string): Promise<boolean> {
     try {
-      if (!this.emailApi) {
-        console.warn('📧 Email API not initialized - skipping email notification');
+      if (!this.mailService) {
+        console.warn('📧 SendGrid API not initialized - skipping email notification');
         return false;
       }
       
       const emailContent = this.generateEmailContent(notification);
       
-      await this.emailApi.sendTransacEmail({
-        to: [{ email: recipientEmail }],
+      const msg = {
+        to: recipientEmail,
+        from: {
+          email: 'maintenance@allai-property.com',
+          name: 'AllAI Property Maintenance'
+        },
         subject: notification.subject,
-        htmlContent: emailContent.html,
-        textContent: emailContent.text,
-        sender: { 
-          email: 'maintenance@allai-property.edu', 
-          name: 'AllAI Property Maintenance' 
-        }
-      });
+        text: emailContent.text,
+        html: emailContent.html
+      };
 
-      console.log(`📧 Email notification sent to ${recipientEmail}`);
+      await this.mailService.send(msg);
+
+      console.log(`📧 SendGrid email notification sent to ${recipientEmail}`);
       return true;
     } catch (error) {
-      console.error(`❌ Failed to send email to ${recipientEmail}:`, error);
+      console.error(`❌ Failed to send SendGrid email to ${recipientEmail}:`, error);
       return false;
     }
   }
