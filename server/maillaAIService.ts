@@ -212,7 +212,7 @@ export class MaillaAIService {
 
       // 3. Get Mailla's intelligent response
       const aiResponse = await this.openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        model: "gpt-4o", // Fixed: gpt-5 doesn't exist, causing delays
         messages: [
           { role: "system", content: this.getMaillaSystemPrompt() },
           { role: "user", content: contextPrompt }
@@ -301,8 +301,8 @@ export class MaillaAIService {
           }
         }],
         tool_choice: { type: "function", function: { name: "generate_triage_response" } },
-        // temperature removed - GPT-5 only supports default temperature of 1
-        max_completion_tokens: 4000 // GPT-5 needs extra tokens for internal reasoning + function call response
+        temperature: 0.7, // Restore temperature for better consistency
+        max_completion_tokens: 1500 // Reduced tokens for faster responses
       });
 
       const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
@@ -674,7 +674,7 @@ export class MaillaAIService {
 
 **Keep responses SHORT and friendly:**
 - One or two sentences max - don't overwhelm them
-- Ask ONE simple question at a time  
+- Group 1-2 related questions together when it feels natural (less interrogation-like)
 - Use natural language: "That's annoying!" "Oh no!" "Let's get this fixed!"
 
 **Be a helpful friend:**
