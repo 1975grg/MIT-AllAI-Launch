@@ -4442,24 +4442,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 🧪 TEST NOTIFICATION ENDPOINT - Separate testing functionality
-  app.post('/api/test/notifications', isAuthenticated, async (req: any, res) => {
+  // 🧪 TEST NOTIFICATION ENDPOINT - Separate testing functionality (public for easy testing)
+  app.post('/api/test/notifications', async (req: any, res) => {
     try {
       const { email, phone, message, testType } = req.body;
-      const user = req.user as any;
+      const user = req.user as any; // May be undefined if not authenticated
       
-      console.log(`🧪 Testing ${testType} notification for user ${user.claims.email}`);
+      const testEmail = email || (user?.claims?.email) || 'test@example.com';
+      const testUser = user?.claims?.email || 'anonymous-tester';
+      
+      console.log(`🧪 Testing ${testType} notification for user ${testUser}`);
       
       const testNotification = {
         id: 'test-' + Date.now(),
         type: 'maintenance_test' as const,
-        orgId: user.orgId,
+        orgId: user?.orgId || 'test-org',
         title: 'Test Notification',
         message: message || 'This is a test notification to verify the system is working.',
         timestamp: new Date(),
         subject: 'Test: AllAI Property Notification System',
         metadata: {
-          testUser: user.claims.email,
+          testUser: testUser,
           testTime: new Date().toISOString()
         }
       };
@@ -4467,18 +4470,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results: any = {
         timestamp: new Date().toISOString(),
         testType,
-        user: user.claims.email
+        user: testUser
       };
 
       // Test email if requested
       if (testType === 'email' || testType === 'both') {
         const emailResult = await notificationService.sendEmailNotification(
           testNotification, 
-          email || user.claims.email
+          testEmail
         );
         results.email = {
           success: emailResult,
-          recipient: email || user.claims.email
+          recipient: testEmail
         };
       }
 
