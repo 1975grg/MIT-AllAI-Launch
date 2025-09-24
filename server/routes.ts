@@ -4473,8 +4473,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send via WebSocket using imported NotificationService
       try {
-        // Send notification to the user
-        await notificationService.notifyUser(userId, testNotification, org.id);
+        // Send notification to the user (use 'anonymous' for now since WebSocket uses anonymous)
+        await notificationService.notifyUser('anonymous', testNotification, org.id);
         
         console.log('✅ WebSocket test notification sent successfully');
         
@@ -6342,13 +6342,23 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     try {
       console.log('🔌 WebSocket connection attempt');
       
-      // For now, skip authentication and use a fallback approach
-      // TODO: Implement proper WebSocket authentication with session validation
+      // For now, use anonymous connection - TODO: Add proper authentication
+      const userContext = {
+        userId: 'anonymous', // TODO: Get from session 
+        role: 'admin',       // TODO: Get from user data
+        orgId: 'default'     // TODO: Get from organization
+      };
+      
+      // Register connection with NotificationService
+      notificationService.addWebSocketConnection(ws, userContext);
+      
       ws.send('{"type": "connection", "status": "connected"}');
       console.log('🔗 WebSocket connected for live notifications');
       
       ws.on('close', () => {
         console.log('🔌 WebSocket disconnected');
+        // Remove connection from NotificationService
+        notificationService.removeWebSocketConnection(ws);
       });
       
       ws.on('error', (error) => {
