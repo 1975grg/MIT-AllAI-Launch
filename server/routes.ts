@@ -2650,6 +2650,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Access denied to this conversation' });
       }
       
+      // 🎯 MANDATORY: Enforce contact collection before completing triage
+      const triageData = conversation.triageData as any;
+      const conversationSlots = triageData?.conversationSlots || {};
+      
+      // Check if all required contact info is present
+      const hasRequiredContact = conversationSlots.studentName && 
+                                conversationSlots.studentEmail && 
+                                conversationSlots.studentPhone;
+      
+      if (!hasRequiredContact) {
+        console.log(`🚨 CONTACT COLLECTION BLOCKED: Missing required info for conversation ${conversationId}`);
+        console.log(`📞 Contact Status: Name: ${!!conversationSlots.studentName}, Email: ${!!conversationSlots.studentEmail}, Phone: ${!!conversationSlots.studentPhone}`);
+        
+        const missing = [];
+        if (!conversationSlots.studentName) missing.push('full name');
+        if (!conversationSlots.studentEmail) missing.push('email');
+        if (!conversationSlots.studentPhone) missing.push('phone number');
+        
+        return res.status(400).json({ 
+          error: 'Contact information required',
+          message: `Please provide your ${missing.join(' and ')} before we can create your maintenance request.`,
+          missingFields: missing
+        });
+      }
+      
+      console.log(`✅ CONTACT VALIDATION PASSED: All required info collected for conversation ${conversationId}`);
+      
       const { maillaAIService } = await import('./maillaAIService');
       const response = await maillaAIService.completeTriageConversation(conversationId);
       
