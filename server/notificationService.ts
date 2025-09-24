@@ -102,7 +102,7 @@ class NotificationService {
           subject: notification.subject
         }],
         from: {
-          email: 'noreply@allai-property.com',
+          email: 'omar@vibeapp.social',
           name: 'AllAI Property Maintenance'
         },
         content: [
