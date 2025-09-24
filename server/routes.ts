@@ -31,6 +31,8 @@ import { aiCoordinatorService } from "./aiCoordinator";
 import { aiDuplicateDetectionService } from "./aiDuplicateDetection";
 import { dataAuditService } from "./dataAudit";
 import { notificationService } from "./notificationService";
+import { getSession } from "./replitAuth";
+import passport from "passport";
 // Mailla AI service import handled dynamically in endpoints
 
 // Revenue schema for API validation
@@ -6332,60 +6334,81 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
 
   const httpServer = createServer(app);
 
-  // ✅ Secure WebSocket Server for Real-time Notifications
+  // ✅ Secure WebSocket Server for Real-time Notifications  
   const wss = new WebSocketServer({ 
-    server: httpServer, 
-    path: '/ws'
+    noServer: true  // We'll handle upgrades manually
   });
-  
-  wss.on('connection', async (ws: WebSocket, req: any) => {
-    try {
-      console.log('🔌 WebSocket connection attempt');
-      
-      // Get user context from session
-      let userContext = {
-        userId: 'anonymous', 
-        role: 'admin',       
-        orgId: 'default'     
-      };
 
-      // Try to get actual user context from session
-      if (req.user) {
-        try {
-          const userOrg = await storage.getUserOrganization(req.user.id);
-          if (userOrg) {
-            userContext = {
-              userId: req.user.id,
-              role: userOrg.role,
-              orgId: userOrg.id
+  // Initialize session middleware
+  const sessionMiddleware = getSession();
+
+  // Handle WebSocket upgrades with authentication
+  httpServer.on('upgrade', (request, socket, head) => {
+    console.log('🔌 WebSocket upgrade request');
+    
+    // Apply session middleware to upgrade request
+    sessionMiddleware(request as any, {} as any, () => {
+      // Apply passport session middleware
+      passport.initialize()(request as any, {} as any, () => {
+        passport.session()(request as any, {} as any, async () => {
+          try {
+            // Now request.user should be available
+            const req = request as any;
+            
+            // Get user context from authenticated session
+            let userContext = {
+              userId: 'anonymous', 
+              role: 'admin',       
+              orgId: 'default'     
             };
-            console.log(`🔗 Using authenticated user context: ${userContext.userId} (${userContext.role}) in org ${userContext.orgId}`);
+
+            // Try to get actual user context from session
+            if (req.user && req.user.claims) {
+              try {
+                const userOrg = await storage.getUserOrganization(req.user.claims.sub);
+                if (userOrg) {
+                  userContext = {
+                    userId: req.user.claims.sub,
+                    role: userOrg.role,
+                    orgId: userOrg.id
+                  };
+                  console.log(`🔗 Authenticated WebSocket: ${userContext.userId} (${userContext.role}) in org ${userContext.orgId}`);
+                } else {
+                  console.warn('⚠️ No organization found for authenticated user, using defaults');
+                }
+              } catch (error) {
+                console.warn('⚠️ Could not get user organization, using defaults:', error);
+              }
+            } else {
+              console.warn('⚠️ No authenticated user in WebSocket upgrade, using anonymous');
+            }
+
+            // Accept the WebSocket upgrade
+            wss.handleUpgrade(request, socket, head, (ws) => {
+              console.log('🔌 WebSocket connection established');
+              
+              // Register connection with NotificationService
+              notificationService.addWebSocketConnection(ws, userContext);
+              
+              ws.send('{"type": "connection", "status": "connected"}');
+              console.log('🔗 WebSocket connected for live notifications');
+              
+              ws.on('close', () => {
+                notificationService.removeWebSocketConnection(ws);
+              });
+              
+              ws.on('error', (error) => {
+                console.error('❌ WebSocket error:', error);
+                notificationService.removeWebSocketConnection(ws);
+              });
+            });
+          } catch (error) {
+            console.error('❌ Error during WebSocket upgrade:', error);
+            socket.destroy();
           }
-        } catch (error) {
-          console.warn('⚠️ Could not get user organization, using defaults:', error);
-        }
-      }
-      
-      // Register connection with NotificationService
-      notificationService.addWebSocketConnection(ws, userContext);
-      
-      ws.send('{"type": "connection", "status": "connected"}');
-      console.log('🔗 WebSocket connected for live notifications');
-      
-      ws.on('close', () => {
-        console.log('🔌 WebSocket disconnected');
-        // Remove connection from NotificationService
-        notificationService.removeWebSocketConnection(ws);
+        });
       });
-      
-      ws.on('error', (error) => {
-        console.error('❌ WebSocket error:', error);
-      });
-      
-    } catch (error) {
-      console.error('❌ WebSocket authentication failed:', error);
-      ws.close(1011, 'Authentication failed');
-    }
+    });
   });
 
   return httpServer;
