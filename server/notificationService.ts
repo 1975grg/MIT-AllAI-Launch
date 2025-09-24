@@ -66,19 +66,42 @@ class NotificationService {
 
   // Send real-time push notification via WebSocket
   private sendWebSocketNotification(targetUserId: string, notification: NotificationData, targetOrgId?: string) {
+    console.log(`🔍 Looking for WebSocket connections matching userId: ${targetUserId}, targetOrgId: ${targetOrgId}`);
+    console.log(`🔍 Available connections: ${this.wsConnections.map(c => `${c.userId}(${c.orgId})`).join(', ')}`);
+    
     const connections = this.wsConnections.filter(conn => {
-      if (conn.userId !== targetUserId || conn.ws.readyState !== WebSocket.OPEN) return false;
+      console.log(`🔍 Checking connection: userId=${conn.userId}, orgId=${conn.orgId}, readyState=${conn.ws.readyState}`);
+      
+      if (conn.userId !== targetUserId) {
+        console.log(`❌ UserId mismatch: ${conn.userId} !== ${targetUserId}`);
+        return false;
+      }
+      
+      if (conn.ws.readyState !== WebSocket.OPEN) {
+        console.log(`❌ WebSocket not open: ${conn.ws.readyState}`);
+        return false;
+      }
+      
       // Organization scoping for security - only send to connections in the same org
-      if (targetOrgId && conn.orgId && conn.orgId !== targetOrgId) return false;
+      if (targetOrgId && conn.orgId && conn.orgId !== targetOrgId) {
+        console.log(`❌ OrgId mismatch: ${conn.orgId} !== ${targetOrgId}`);
+        return false;
+      }
+      
+      console.log(`✅ Connection matches criteria`);
       return true;
     });
 
+    console.log(`🔍 Found ${connections.length} matching connections`);
+
     connections.forEach(conn => {
       try {
-        conn.ws.send(JSON.stringify({
+        const message = JSON.stringify({
           type: 'notification',
           data: notification
-        }));
+        });
+        console.log(`📱 Sending message to ${targetUserId}: ${message}`);
+        conn.ws.send(message);
         console.log(`📱 Real-time notification sent to ${targetUserId} (${conn.role})`);
       } catch (error) {
         console.error(`❌ Failed to send WebSocket notification to ${targetUserId}:`, error);
