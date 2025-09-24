@@ -2649,11 +2649,13 @@ Questions? Just ask! I'm here to help coordinate your maintenance needs.`;
     try {
       console.log(`📧 Sending case confirmation to student for case ${newCase.caseNumber}`);
       
-      // Extract student contact info from conversation
-      const triageData = conversation.triageData as any;
-      const slots = triageData?.conversationSlots || {};
+      // Extract student contact info from case metadata (where it's actually stored)
+      const metadata = newCase.metadata || {};
+      const studentEmail = metadata.studentEmail;
+      const studentName = metadata.studentName;
+      const studentPhone = metadata.studentPhone;
       
-      if (!slots.studentEmail) {
+      if (!studentEmail) {
         console.warn('⚠️ No student email found for case confirmation');
         return;
       }
@@ -2661,7 +2663,7 @@ Questions? Just ask! I'm here to help coordinate your maintenance needs.`;
       const { notificationService } = await import('./notificationService.js');
       
       const subject = `✅ Your Maintenance Request #${newCase.caseNumber} - Help is Coming!`;
-      const message = `Hi ${slots.studentName || 'there'}!
+      const message = `Hi ${studentName || 'there'}!
 
 Great news! I've successfully created your maintenance request and help is on the way.
 
@@ -2677,7 +2679,7 @@ Great news! I've successfully created your maintenance request and help is on th
 3. **Updates:** You'll get SMS/email updates when the contractor is assigned and on their way
 
 📱 **Stay Connected:**
-I'll keep you posted via text (${slots.studentPhone}) and email about your case progress.
+I'll keep you posted via text (${studentPhone}) and email about your case progress.
 
 ❓ **Need Help?** 
 Just reply to this message if you have questions or if anything changes with your maintenance needs.
@@ -2689,13 +2691,13 @@ Mailla 🤖
 MIT Housing Maintenance Coordinator`;
 
       await notificationService.notifyStudent(
-        slots.studentEmail,
+        studentEmail,
         subject,
         message,
         conversation.orgId
       );
       
-      console.log(`✅ Student confirmation sent to ${slots.studentEmail} for case ${newCase.caseNumber}`);
+      console.log(`✅ Student confirmation sent to ${studentEmail} for case ${newCase.caseNumber}`);
     } catch (error) {
       console.error('❌ Failed to send student case confirmation:', error);
       // Don't throw - notification failures shouldn't block case creation
