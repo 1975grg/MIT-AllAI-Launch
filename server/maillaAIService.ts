@@ -133,6 +133,9 @@ export class MaillaAIService {
       if (updatedConversation?.triageData) {
         updateData.triageData = updatedConversation.triageData;
         console.log('🧠 Preserving conversation slots:', JSON.stringify(updatedConversation.triageData.conversationSlots || {}));
+      } else {
+        // 🛡️ CRITICAL: DON'T update triageData if fetch failed - preserve what processTriageMessage saved
+        console.log('⚠️ Could not retrieve updated conversation - skipping triageData update to preserve slots');
       }
       
       await storage.updateTriageConversation(conversationId, updateData);
