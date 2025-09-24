@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { LiveNotification } from "@/components/ui/live-notification";
 import { Mail, MessageSquare, AlertCircle, CheckCircle, Clock, Wifi, WifiOff } from "lucide-react";
 
 interface TestResult {
@@ -402,6 +403,12 @@ export default function TestNotifications() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Live Notifications Component */}
+      <LiveNotification 
+        userRole="admin" 
+        userId="44521588" 
+      />
     </div>
   );
 }
