@@ -4443,6 +4443,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🧪 TEST WEBSOCKET REAL-TIME NOTIFICATIONS
+  app.post('/api/test/websocket', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const org = await storage.getUserOrganization(userId);
+      
+      if (!org) {
+        return res.status(403).json({ message: "User not in organization" });
+      }
+
+      console.log('🧪 Testing WebSocket notification for user', userId);
+
+      // Create test notification data
+      const testNotification = {
+        id: `websocket-test-${Date.now()}`,
+        type: 'case_created' as const,
+        orgId: org.id,
+        title: '🚀 WebSocket Test Notification',
+        message: 'This is a real-time notification test! Your WebSocket connection is working perfectly.',
+        timestamp: new Date(),
+        subject: 'WebSocket Test Successful',
+        metadata: {
+          testUser: userId,
+          testTime: new Date().toISOString(),
+          testType: 'websocket_functionality'
+        }
+      };
+
+      // Send via WebSocket using imported NotificationService
+      try {
+        // Send notification to the user
+        await notificationService.notifyUser(userId, testNotification, org.id);
+        
+        console.log('✅ WebSocket test notification sent successfully');
+        
+        res.json({
+          success: true,
+          message: 'WebSocket notification sent! Check for real-time notification.',
+          notification: {
+            type: testNotification.type,
+            title: testNotification.title,
+            message: testNotification.message
+          }
+        });
+      } catch (notifyError) {
+        console.error('❌ Failed to send WebSocket notification:', notifyError);
+        res.status(500).json({ 
+          success: false, 
+          error: 'Failed to send WebSocket notification' 
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ WebSocket test failed:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'WebSocket test failed' 
+      });
+    }
+  });
+
   // 🧪 TEST NOTIFICATION ENDPOINT - Separate testing functionality (public for easy testing)
   app.post('/api/test/notifications', async (req: any, res) => {
     try {

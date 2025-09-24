@@ -93,34 +93,31 @@ export default function TestNotifications() {
     try {
       setIsLoading(true);
       
+      // Call the server WebSocket test endpoint
+      const response = await apiRequest('POST', '/api/test/websocket', {});
+      const data = await response.json();
+      
       const testResult: TestResult = {
         timestamp: new Date().toISOString(),
         testType: 'websocket',
-        user: 'anonymous-tester',
+        user: 'authenticated-user',
         websocket: {
-          success: wsConnected,
+          success: data.success,
           connected: wsConnected,
-          error: wsConnected ? undefined : 'WebSocket not connected'
+          error: data.success ? undefined : data.error
         }
       };
       
-      if (wsConnected && ws) {
-        // Send a test message through WebSocket
-        const testMessage = {
-          type: 'test',
-          message: 'WebSocket real-time notification test'
-        };
-        ws.send(JSON.stringify(testMessage));
-        
+      if (data.success) {
         toast({
-          title: "WebSocket test sent!",
-          description: "Test message sent through WebSocket connection",
+          title: "WebSocket test triggered!",
+          description: "Server notification sent - watch for real-time notification popup!",
           variant: "default"
         });
       } else {
         toast({
-          title: "WebSocket not connected",
-          description: "Cannot test WebSocket - connection not established",
+          title: "WebSocket test failed",
+          description: data.error || "Failed to send server notification",
           variant: "destructive"
         });
       }
@@ -129,6 +126,20 @@ export default function TestNotifications() {
       
     } catch (error) {
       console.error('WebSocket test failed:', error);
+      
+      const testResult: TestResult = {
+        timestamp: new Date().toISOString(),
+        testType: 'websocket',
+        user: 'authenticated-user',
+        websocket: {
+          success: false,
+          connected: wsConnected,
+          error: error instanceof Error ? error.message : "Unknown error occurred"
+        }
+      };
+      
+      setTestResults(prev => [testResult, ...prev]);
+      
       toast({
         title: "WebSocket test failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
