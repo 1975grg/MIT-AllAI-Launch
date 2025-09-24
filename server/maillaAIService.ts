@@ -212,7 +212,7 @@ export class MaillaAIService {
 
       // 3. Get Mailla's intelligent response
       const aiResponse = await this.openai.chat.completions.create({
-        model: "gpt-4o", // Fixed: gpt-5 doesn't exist, causing delays
+        model: "gpt-4o-mini", // Faster, more efficient model for better responsiveness
         messages: [
           { role: "system", content: this.getMaillaSystemPrompt() },
           { role: "user", content: contextPrompt }
