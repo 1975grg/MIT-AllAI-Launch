@@ -90,33 +90,56 @@ class NotificationService {
     });
   }
 
-  // Send email notification via SendGrid
+  // Send email notification via SendGrid HTTP API
   async sendEmailNotification(notification: NotificationData, recipientEmail: string): Promise<boolean> {
     try {
-      if (!this.mailService) {
-        console.warn('📧 SendGrid API not initialized - skipping email notification');
+      if (!process.env.SENDGRID_API_KEY) {
+        console.warn('📧 SendGrid API key not found - skipping email notification');
         return false;
       }
       
       const emailContent = this.generateEmailContent(notification);
       
-      const msg = {
-        to: recipientEmail,
+      const payload = {
+        personalizations: [{
+          to: [{ email: recipientEmail }],
+          subject: notification.subject
+        }],
         from: {
-          email: 'omar@vibeapp.social',
+          email: 'noreply@allai-property.com',
           name: 'AllAI Property Maintenance'
         },
-        subject: notification.subject,
-        text: emailContent.text,
-        html: emailContent.html
+        content: [
+          {
+            type: 'text/plain',
+            value: emailContent.text
+          },
+          {
+            type: 'text/html', 
+            value: emailContent.html
+          }
+        ]
       };
 
-      await this.mailService.send(msg);
+      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
 
-      console.log(`📧 SendGrid email notification sent to ${recipientEmail}`);
-      return true;
+      if (response.ok) {
+        console.log(`📧 SendGrid HTTP API email sent to ${recipientEmail}`);
+        return true;
+      } else {
+        const errorText = await response.text();
+        console.error(`❌ SendGrid HTTP API error (${response.status}): ${errorText}`);
+        return false;
+      }
     } catch (error) {
-      console.error(`❌ Failed to send SendGrid email to ${recipientEmail}:`, error);
+      console.error(`❌ Failed to send email via SendGrid HTTP API to ${recipientEmail}:`, error);
       return false;
     }
   }
