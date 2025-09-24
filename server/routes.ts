@@ -30,6 +30,7 @@ import { aiTriageService } from "./aiTriage";
 import { aiCoordinatorService } from "./aiCoordinator";
 import { aiDuplicateDetectionService } from "./aiDuplicateDetection";
 import { dataAuditService } from "./dataAudit";
+import { notificationService } from "./notificationService";
 // Mailla AI service import handled dynamically in endpoints
 
 // Revenue schema for API validation
