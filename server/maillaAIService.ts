@@ -466,7 +466,9 @@ export class MaillaAIService {
         // 🧠 SMART TRIAGE: Use adaptive scoring for intelligent completion decisions
         // 🎯 MANDATORY: Even emergencies require contact info for notifications and follow-up
         const hasRequiredContact = updatedSlots.studentName && updatedSlots.studentEmail && updatedSlots.studentPhone;
-        const hasUrgencyInfo = updatedSlots.urgency || contextAnalysis?.inferredUrgency;
+        // Only accept explicit urgency from conversation OR meaningful context inference (not default "normal")
+        const hasUrgencyFromContext = contextAnalysis?.inferredUrgency && contextAnalysis.inferredUrgency !== 'normal';
+        const hasUrgencyInfo = updatedSlots.urgency || hasUrgencyFromContext;
         
         const autoCreate = (
           // Adaptive scoring indicates sufficient information
@@ -481,7 +483,7 @@ export class MaillaAIService {
         console.log(`🎯 Adaptive Triage Decision: ${triageCompleteness.reasoning}`);
         console.log(`🧠 AI Action: ${maillaResponse.nextAction}, Emergency: ${maillaResponse.urgencyLevel === 'emergency'}`);
         console.log(`📞 Contact Check: ${hasRequiredContact ? 'Complete' : 'Missing'} (Name: ${!!updatedSlots.studentName}, Email: ${!!updatedSlots.studentEmail}, Phone: ${!!updatedSlots.studentPhone})`);
-        console.log(`⚡ Urgency Check: ${hasUrgencyInfo ? 'Complete' : 'Missing'} (Slot: ${!!updatedSlots.urgency}, Context: ${!!contextAnalysis?.inferredUrgency})`);
+        console.log(`⚡ Urgency Check: ${hasUrgencyInfo ? 'Complete' : 'Missing'} (Slot: ${!!updatedSlots.urgency}, Context: ${hasUrgencyFromContext ? contextAnalysis?.inferredUrgency : 'not meaningful'})`);
         console.log(`🎯 Auto-create decision: ${autoCreate}`);
         
         // 🚨 DETERMINISTIC ENFORCEMENT: Use EXACT same updatedSlots data as autoCreate logic
