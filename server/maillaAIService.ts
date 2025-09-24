@@ -412,17 +412,21 @@ export class MaillaAIService {
         );
 
         // 🧠 SMART TRIAGE: Use adaptive scoring for intelligent completion decisions
+        // 🎯 MANDATORY: Even emergencies require contact info for notifications and follow-up
+        const hasRequiredContact = updatedSlots.studentName && updatedSlots.studentEmail && updatedSlots.studentPhone;
+        
         const autoCreate = (
           // Adaptive scoring indicates sufficient information
           triageCompleteness.isReady && maillaResponse.nextAction === 'complete_triage'
         ) || (
-          // Emergency override - immediate action regardless of completeness score
-          maillaResponse.nextAction === 'escalate_immediate' || 
-          maillaResponse.urgencyLevel === 'emergency'
+          // Emergency path - still requires contact info for notifications
+          (maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency') &&
+          hasRequiredContact
         );
         
         console.log(`🎯 Adaptive Triage Decision: ${triageCompleteness.reasoning}`);
         console.log(`🧠 AI Action: ${maillaResponse.nextAction}, Emergency: ${maillaResponse.urgencyLevel === 'emergency'}`);
+        console.log(`📞 Contact Check: ${hasRequiredContact ? 'Complete' : 'Missing'} (Name: ${!!updatedSlots.studentName}, Email: ${!!updatedSlots.studentEmail}, Phone: ${!!updatedSlots.studentPhone})`);
         console.log(`🎯 Auto-create decision: ${autoCreate}`);
         
         if (autoCreate) {
@@ -444,6 +448,11 @@ export class MaillaAIService {
             console.error('❌ Case creation failed:', error);
             maillaResponse.message += `\n\n⚡ I'm getting help dispatched right away - you'll get updates soon!`;
           }
+        } else if ((maillaResponse.nextAction === 'escalate_immediate' || maillaResponse.urgencyLevel === 'emergency') && !hasRequiredContact) {
+          // Emergency detected but missing contact info - prioritize contact collection
+          console.log(`🚨 EMERGENCY PENDING: Contact info required before case creation`);
+          maillaResponse.nextAction = 'ask_followup';
+          maillaResponse.message = `🚨 This sounds urgent! I need to get help to you right away. What's your full name, email, and cell number so I can contact you immediately?`;
         } else {
           console.log(`🤖 AI CONTROL: Continuing diagnostic conversation (${maillaResponse.nextAction})`);
         }
@@ -587,9 +596,18 @@ export class MaillaAIService {
     const hasCriticalLocation = location.buildingName && location.roomNumber;
     const hasCriticalIssue = hasIssueType;
     
-    const isReady = score >= 70 && hasCriticalLocation && hasCriticalIssue;
+    // 🎯 MANDATORY: Must have contact information for follow-up and notifications
+    const hasContactInfo = conversationSlots.studentName && 
+                          conversationSlots.studentEmail && 
+                          conversationSlots.studentPhone;
     
-    const reasoning = `Score: ${score}/${maxScore}, Location: ${hasCriticalLocation ? 'Complete' : 'Missing room'}, Issue: ${hasCriticalIssue ? 'Identified' : 'Missing'} - ${
+    if (!conversationSlots.studentName) missingElements.push('student_name');
+    if (!conversationSlots.studentEmail) missingElements.push('student_email');
+    if (!conversationSlots.studentPhone) missingElements.push('student_phone');
+    
+    const isReady = score >= 70 && hasCriticalLocation && hasCriticalIssue && hasContactInfo;
+    
+    const reasoning = `Score: ${score}/${maxScore}, Location: ${hasCriticalLocation ? 'Complete' : 'Missing room'}, Issue: ${hasCriticalIssue ? 'Identified' : 'Missing'}, Contact: ${hasContactInfo ? 'Complete' : 'Missing'} - ${
       isReady 
         ? 'Ready for case creation' 
         : `Missing critical: ${missingElements.join(', ')}`
@@ -676,11 +694,18 @@ export class MaillaAIService {
 - One or two sentences max - don't overwhelm them
 - Group 1-2 related questions together when it feels natural (less interrogation-like)
 - Use natural language: "That's annoying!" "Oh no!" "Let's get this fixed!"
+- ALWAYS provide comfort: "I totally get how frustrating that is" or "No worries, we'll sort this out!"
 
 **Be a helpful friend:**
 - If it's a simple fix, suggest ONE easy thing: "Quick check - is the handle turned all the way off?"
+- Ask diagnostic details naturally: "Is it dripping from the spout or base?" "Can you put a towel under it for now?"
 - Don't give long lists or bullet points - that's overwhelming
-- If they need help, just say: "No worries, I'll get someone out to fix this!"
+- ALWAYS reassure about follow-up: "I'll make sure someone gets to you quickly with updates!"
+
+**MANDATORY - Collect contact info:**
+- NEVER create a case without: Full name, email, and cell phone
+- Ask naturally: "What's your full name, email, and cell number so I can keep you updated?"
+- If they give partial info, ask for what's missing: "Got it! And your email address?"
 
 **Examples of good responses:**
 - "Oh that's so annoying! Is it dripping from the spout or somewhere else?"
