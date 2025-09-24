@@ -537,19 +537,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
 
                     {/* Natural conversation flow - only one question at a time via quick replies */}
 
-                    {/* DIY Action */}
-                    {message.diyAction && (
-                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
-                        <p className="font-medium text-green-800">Quick Fix Option:</p>
-                        <p className="text-green-700">{message.diyAction.action}</p>
-                        {message.diyAction.instructions.map((instruction, idx) => (
-                          <p key={idx} className="text-green-600">• {instruction}</p>
-                        ))}
-                        {message.diyAction.warnings.map((warning, idx) => (
-                          <p key={idx} className="text-red-600 font-medium">⚠️ {warning}</p>
-                        ))}
-                      </div>
-                    )}
+                    {/* DIY Action - HIDDEN to reduce overwhelm */}
                     
                     <div className="text-xs opacity-50 mt-1">
                       {message.timestamp.toLocaleTimeString()}
