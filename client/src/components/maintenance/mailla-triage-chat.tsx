@@ -6,12 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, AlertTriangle, Clock, Bot, User, CheckCircle, Heart, Upload, X, Phone, MapPin, Home } from "lucide-react";
+import { Loader2, Send, AlertTriangle, Clock, Bot, User, CheckCircle, Heart, Upload, X, Phone, MapPin, Home, Bell, Wifi } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MaillaMessage {
   id: string;
-  type: "user" | "mailla" | "system";
+  type: "user" | "mailla" | "system" | "notification";
   content: string;
   timestamp: Date;
   urgencyLevel?: 'emergency' | 'urgent' | 'normal' | 'low';
@@ -26,6 +26,13 @@ interface MaillaMessage {
     warnings: string[];
   };
   isTyping?: boolean;
+  notificationData?: {
+    type: string;
+    subject?: string;
+    caseId?: string;
+    caseNumber?: string;
+    metadata?: any;
+  };
 }
 
 interface TriageConversation {
@@ -100,6 +107,7 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [currentQuickReplies, setCurrentQuickReplies] = useState<string[]>([]);
+  const [wsConnected, setWsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
