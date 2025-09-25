@@ -31,6 +31,7 @@ import { aiCoordinatorService } from "./aiCoordinator";
 import { aiDuplicateDetectionService } from "./aiDuplicateDetection";
 import { dataAuditService } from "./dataAudit";
 import { notificationService } from "./notificationService";
+import { contractorChatService } from "./contractorChatService";
 import { getSession } from "./replitAuth";
 import passport from "passport";
 // Mailla AI service import handled dynamically in endpoints
@@ -6503,6 +6504,91 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
       });
     } catch (error) {
       console.error('❌ WebSocket connection error:', error);
+    }
+  });
+
+  // 🆕 NEW CONTRACTOR CHAT API ROUTES
+  // Start a new chat session
+  app.post('/api/contractor-chat/start', async (req, res) => {
+    try {
+      const { initialMessage, studentId, orgId } = req.body;
+      
+      if (!initialMessage || !studentId || !orgId) {
+        return res.status(400).json({ 
+          message: 'Missing required fields: initialMessage, studentId, orgId' 
+        });
+      }
+
+      const result = await contractorChatService.startChat(studentId, orgId, initialMessage);
+      res.json(result);
+    } catch (error) {
+      console.error('Error starting contractor chat:', error);
+      res.status(500).json({ message: 'Failed to start chat session' });
+    }
+  });
+
+  // Continue an existing chat session
+  app.post('/api/contractor-chat/continue', async (req, res) => {
+    try {
+      const { sessionId, message } = req.body;
+      
+      if (!sessionId || !message) {
+        return res.status(400).json({ 
+          message: 'Missing required fields: sessionId, message' 
+        });
+      }
+
+      const result = await contractorChatService.continueChat(sessionId, message);
+      
+      // If case creation is triggered, create the actual case
+      if (result.caseData) {
+        try {
+          const session = contractorChatService.getSession(sessionId);
+          if (session) {
+            // Create the maintenance case using existing storage
+            const caseData = {
+              orgId: session.orgId,
+              title: result.caseData.title,
+              description: result.caseData.description,
+              priority: result.caseData.urgency,
+              category: result.caseData.category,
+              status: 'New' as const,
+              studentEmail: 'student@mit.edu', // Default - could be enhanced later
+              studentName: 'Student', // Default - could be enhanced later
+              buildingName: result.caseData.location.split(' ')[0] || 'MIT Housing',
+              roomNumber: result.caseData.location.split(' ').slice(1).join(' ') || 'TBD',
+              reportedAt: new Date(),
+              metadata: {
+                chatSessionId: sessionId,
+                contractorNotes: result.caseData.studentInfo
+              }
+            };
+
+            const newCase = await storage.createSmartCase(caseData);
+            console.log(`✅ Case created from contractor chat: ${newCase.id}`);
+            
+            // Update session with case ID
+            const updatedSession = contractorChatService.getSession(sessionId);
+            if (updatedSession) {
+              updatedSession.caseCreated = newCase.id;
+            }
+
+            return res.json({
+              response: result.response,
+              caseCreated: true,
+              caseId: newCase.id
+            });
+          }
+        } catch (caseError) {
+          console.error('Error creating case from chat:', caseError);
+          // Still return the response even if case creation fails
+        }
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error continuing contractor chat:', error);
+      res.status(500).json({ message: 'Failed to continue chat' });
     }
   });
 

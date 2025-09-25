@@ -4,7 +4,7 @@ import { ArrowLeft, Bot, GraduationCap, MapPin, Clock, Upload, AlertTriangle } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import MaillaTriageChat from "@/components/maintenance/mailla-triage-chat";
+import ContractorChat from "@/components/maintenance/contractor-chat";
 
 export default function StudentMaillaTriagePage() {
   const [triageCompleted, setTriageCompleted] = useState(false);
@@ -33,12 +33,12 @@ export default function StudentMaillaTriagePage() {
             <GraduationCap className="h-8 w-8 text-red-600" />
             <h1 className="text-3xl font-bold text-gray-900">MIT Housing Maintenance</h1>
           </div>
-          <p className="text-gray-600 mb-4">Get help with maintenance issues using our AI-powered triage system</p>
+          <p className="text-gray-600 mb-4">Chat with our maintenance assistant - like talking to a contractor who can help fix issues or dispatch the right person</p>
           
           {/* MIT-style description */}
           <div className="max-w-2xl mx-auto mb-6">
             <p className="text-gray-600 text-center">
-              Describe your maintenance issue and we'll help prioritize and route it to the right team. 
+              Describe your maintenance issue and our assistant will try to help you fix it yourself first, or get the right contractor dispatched with the right tools. 
               For emergencies, call Campus Police at <strong>(617) 253-1212</strong> immediately.
             </p>
           </div>
@@ -46,10 +46,10 @@ export default function StudentMaillaTriagePage() {
 
         {/* Main Triage Interface */}
         <div className="max-w-3xl mx-auto">
-          <MaillaTriageChat
+          <ContractorChat
             studentId={studentId}
-            orgId={orgId}
-            onTriageComplete={handleTriageComplete}
+            orgId="30033c31-7111-4c83-b796-5f7f33786774"
+            onCaseCreated={handleTriageComplete}
           />
           
           {/* Compact Info Panel */}
