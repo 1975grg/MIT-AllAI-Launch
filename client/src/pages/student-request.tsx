@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, CheckCircle, ArrowLeft, Camera, Eye } from "lucide-react";
+import { GraduationCap, CheckCircle, ArrowLeft, Camera, Eye, Wifi, WifiOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { useAnonymousNotifications } from "@/hooks/useAnonymousNotifications";
 
 const MAINTENANCE_CATEGORIES = [
   "HVAC / Heating & Cooling",
@@ -54,7 +55,14 @@ export default function StudentRequest() {
   const [selectedPriority, setSelectedPriority] = useState<string>("");
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
   const [showTrackingDialog, setShowTrackingDialog] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState<string>("");
   const { toast } = useToast();
+  
+  // Anonymous student notifications for real-time updates
+  const { notifications, isConnected } = useAnonymousNotifications({
+    studentEmail: submittedEmail,
+    orgId: "30033c31-7111-4c83-b796-5f7f33786774" // MIT organization ID
+  });
   
   const form = useForm<StudentRequestForm>({
     resolver: zodResolver(studentRequestSchema),
@@ -92,10 +100,11 @@ export default function StudentRequest() {
 
       const result = await response.json();
       setRequestId(result.id || "MIT-" + Date.now());
+      setSubmittedEmail(data.studentEmail); // Enable real-time notifications
       setIsSubmitted(true);
       toast({
         title: "Request Submitted Successfully!",
-        description: "You'll receive email updates on your maintenance request."
+        description: "You'll receive email updates and real-time notifications about your maintenance request."
       });
     } catch (error) {
       toast({
@@ -152,14 +161,37 @@ export default function StudentRequest() {
             <p className="text-lg text-muted-foreground mb-4">
               Your maintenance request has been received and assigned ID: <strong>{requestId}</strong>
             </p>
+            {/* Real-time notification status */}
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                {isConnected ? (
+                  <>
+                    <Wifi className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-700 font-medium">Connected for live updates</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">Connecting to notification system...</span>
+                  </>
+                )}
+              </div>
+              {notifications.length > 0 && (
+                <div className="text-xs text-blue-600 text-center">
+                  {notifications.length} new update{notifications.length > 1 ? 's' : ''} received
+                </div>
+              )}
+            </div>
+            
             <p className="text-muted-foreground mb-6">
-              You'll receive email updates as your request is processed. Our AI system will automatically 
+              You'll receive email updates and real-time notifications as your request is processed. Our AI system will automatically 
               assess the urgency and route it to the appropriate maintenance team.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 onClick={() => {
                   setIsSubmitted(false);
+                  setSubmittedEmail("");
                   form.reset();
                   setSelectedPriority("");
                 }}

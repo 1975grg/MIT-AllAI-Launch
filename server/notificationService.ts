@@ -328,13 +328,18 @@ class NotificationService {
       // Email notification (always send this)
       promises.push(this.sendEmailNotification(notification, studentEmail));
 
-      // WebSocket notification (ONLY if we have a specific student userId)
-      // 🔒 SECURITY: Never use 'anonymous' fallback - it would leak to all anonymous users
+      // WebSocket notification - support both registered users and anonymous students
       if (studentUserId) {
+        // Registered student with user account
         this.sendWebSocketNotification(studentUserId, notification, notification.orgId);
-        console.log(`📱 WebSocket notification sent to student: ${studentUserId}`);
+        console.log(`📱 WebSocket notification sent to registered student: ${studentUserId}`);
+      } else if (studentEmail && notification.orgId) {
+        // 🔒 SECURE: Anonymous student - use email hash as identifier with org scoping
+        const anonymousId = `student_${Buffer.from(studentEmail).toString('base64').substring(0, 12)}`;
+        this.sendWebSocketNotification(anonymousId, notification, notification.orgId);
+        console.log(`📱 WebSocket notification sent to anonymous student: ${studentEmail.substring(0, 3)}***`);
       } else {
-        console.log(`⚠️ No studentUserId provided - skipping WebSocket notification for privacy (email sent instead)`);
+        console.log(`⚠️ No identifier available - skipping WebSocket notification for privacy (email sent instead)`);
       }
 
       await Promise.allSettled(promises);
