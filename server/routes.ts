@@ -5738,8 +5738,16 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
           }
         };
 
-        // Send to anonymous connections (for Mailla triage)
-        await notificationService.sendTestWebSocketNotification(maillaNotification, org.id);
+        // 🔒 SECURITY: Send to admin/Mailla (gets all notifications)
+        notificationService.sendWebSocketNotification('admin_all', maillaNotification, org.id);
+        
+        // 🔒 SECURITY: Send to specific anonymous student if case has studentEmail
+        if (smartCase.studentEmail) {
+          const studentAnonymousId = `student_${Buffer.from(smartCase.studentEmail).toString('base64').substring(0, 12)}`;
+          notificationService.sendWebSocketNotification(studentAnonymousId, maillaNotification, org.id);
+          console.log(`📱 Notification sent to specific student: ${smartCase.studentEmail.substring(0, 3)}***`);
+        }
+        
         console.log(`📱 Mailla notification sent for case acceptance by ${contractor.name}`);
       } catch (error) {
         console.error('❌ Failed to send Mailla notification:', error);
@@ -6479,8 +6487,8 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
     try {
       console.log('🔌 WebSocket connection attempt');
       
-      // Simple approach: use the main org ID for all connections
-      const userContext = {
+      // Default context until authentication
+      let userContext = {
         userId: 'anonymous',
         role: 'admin',       
         orgId: '30033c31-7111-4c83-b796-5f7f33786774'  // Your actual org ID
@@ -6491,6 +6499,46 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
       
       ws.send('{"type": "connection", "status": "connected"}');
       console.log('🔗 WebSocket connected for live notifications');
+      
+      // 🔒 SECURITY: Handle authentication messages for anonymous scoping
+      ws.on('message', (message: any) => {
+        try {
+          const data = JSON.parse(message.toString());
+          
+          if (data.type === 'auth_anonymous' && data.anonymousId && data.orgId) {
+            // 🔒 Update context for anonymous student with unique identifier
+            userContext = {
+              userId: data.anonymousId, // Use unique anonymous identifier
+              role: 'student',
+              orgId: data.orgId
+            };
+            
+            // Re-register connection with new context
+            notificationService.removeWebSocketConnection(ws);
+            notificationService.addWebSocketConnection(ws, userContext);
+            
+            console.log(`🔗 Anonymous student authenticated: ${data.studentEmail} as ${data.anonymousId}`);
+            ws.send(JSON.stringify({type: 'auth_success', anonymousId: data.anonymousId}));
+            
+          } else if (data.type === 'auth_admin' && data.orgId) {
+            // 🔒 Admin/Mailla gets ALL notifications for the org
+            userContext = {
+              userId: 'admin_all', // Special identifier for admin access
+              role: 'admin',
+              orgId: data.orgId
+            };
+            
+            // Re-register connection with admin context
+            notificationService.removeWebSocketConnection(ws);
+            notificationService.addWebSocketConnection(ws, userContext);
+            
+            console.log(`🔗 Admin/Mailla authenticated for org ${data.orgId}`);
+            ws.send(JSON.stringify({type: 'auth_success', role: 'admin'}));
+          }
+        } catch (error) {
+          console.error('❌ Error parsing WebSocket auth message:', error);
+        }
+      });
       
       ws.on('close', () => {
         console.log('🔌 WebSocket disconnected');

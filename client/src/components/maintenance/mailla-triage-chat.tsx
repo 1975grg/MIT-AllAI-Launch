@@ -121,6 +121,11 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
       
       websocket.onopen = () => {
         console.log('🔗 Mailla triage WebSocket connected');
+        // 🔒 SECURITY: Register as general admin listener (gets all notifications)
+        websocket.send(JSON.stringify({
+          type: 'auth_admin',
+          orgId: orgId
+        }));
         setWsConnected(true);
       };
       
