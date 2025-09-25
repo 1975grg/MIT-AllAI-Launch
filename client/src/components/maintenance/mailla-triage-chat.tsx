@@ -111,6 +111,69 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // WebSocket connection for real-time notifications
+  useEffect(() => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    
+    try {
+      const websocket = new WebSocket(wsUrl);
+      
+      websocket.onopen = () => {
+        console.log('🔗 Mailla triage WebSocket connected');
+        setWsConnected(true);
+      };
+      
+      websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'notification' && data.data) {
+            const notification = data.data;
+            
+            // Add notification as a special message in the chat
+            const notificationMessage: MaillaMessage = {
+              id: `notification_${Date.now()}`,
+              type: "notification",
+              content: `🔔 **${notification.subject || notification.title}**\n\n${notification.message}`,
+              timestamp: new Date(),
+              notificationData: {
+                type: notification.type,
+                subject: notification.subject || notification.title,
+                caseId: notification.caseId,
+                caseNumber: notification.caseNumber,
+                metadata: notification.metadata
+              }
+            };
+            
+            setMessages(prev => [...prev, notificationMessage]);
+            
+            console.log('📱 Notification added to Mailla chat:', notification);
+          }
+        } catch (error) {
+          console.error('❌ Error parsing WebSocket message in Mailla:', error);
+        }
+      };
+      
+      websocket.onerror = (error) => {
+        console.error('❌ Mailla WebSocket error:', error);
+        setWsConnected(false);
+      };
+      
+      websocket.onclose = () => {
+        console.log('🔌 Mailla WebSocket disconnected');
+        setWsConnected(false);
+      };
+      
+      return () => {
+        websocket.close();
+      };
+    } catch (error) {
+      console.error('❌ Failed to connect Mailla WebSocket:', error);
+      setWsConnected(false);
+    }
+  }, []);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -420,6 +483,13 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-red-600" />
             <CardTitle className="text-lg">Mailla AI Triage</CardTitle>
+            {/* WebSocket connection indicator */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+              wsConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+            }`}>
+              <Wifi className={`h-3 w-3 ${wsConnected ? 'text-green-600' : 'text-gray-400'}`} />
+              <span>{wsConnected ? 'Live' : 'Offline'}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Badge 
@@ -526,16 +596,19 @@ export default function MaillaTriageChat({ studentId, orgId, onTriageComplete }:
                 <div className={`flex gap-2 max-w-[80%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                     message.type === 'user' ? 'bg-slate-100' : 
-                    message.type === 'mailla' ? 'bg-gray-100' : 'bg-gray-100'
+                    message.type === 'mailla' ? 'bg-gray-100' : 
+                    message.type === 'notification' ? 'bg-blue-100' : 'bg-gray-100'
                   }`}>
                     {message.type === 'user' ? <User className="h-4 w-4 text-slate-700" /> : 
                      message.type === 'mailla' ? <Bot className="h-4 w-4 text-red-600" /> :
+                     message.type === 'notification' ? <Bell className="h-4 w-4 text-blue-600" /> :
                      <CheckCircle className="h-4 w-4 text-gray-600" />}
                   </div>
                   
                   <div className={`rounded-lg px-3 py-2 ${
                     message.type === 'user' ? 'bg-blue-600 text-white' :
                     message.type === 'mailla' ? 'bg-gray-50 text-gray-900 border border-gray-200' :
+                    message.type === 'notification' ? 'bg-blue-50 text-blue-900 border border-blue-200' :
                     'bg-gray-50 text-gray-900 border border-gray-200'
                   }`}>
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
