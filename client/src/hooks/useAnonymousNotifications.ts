@@ -24,9 +24,6 @@ export function useAnonymousNotifications({ studentEmail, orgId }: UseAnonymousN
     // Only connect if we have student email (after form submission)
     if (!studentEmail || !orgId) return;
 
-    // 🔒 SECURITY: Create unique anonymous identifier from email
-    const anonymousId = `student_${Buffer.from(studentEmail).toString('base64').substring(0, 12)}`;
-    
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
@@ -35,13 +32,6 @@ export function useAnonymousNotifications({ studentEmail, orgId }: UseAnonymousN
       
       websocket.onopen = () => {
         console.log('🔗 Anonymous student WebSocket connected');
-        // 🔒 SECURITY: Send anonymous identifier for scoped notifications
-        websocket.send(JSON.stringify({
-          type: 'auth_anonymous',
-          anonymousId: anonymousId,
-          orgId: orgId,
-          studentEmail: studentEmail.substring(0, 3) + '***' // Partial email for logging
-        }));
         setIsConnected(true);
       };
       
