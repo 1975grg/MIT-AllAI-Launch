@@ -5718,6 +5718,33 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
         });
       }
 
+      // 🎯 NEW: Send notification through NotificationService for Mailla triage
+      try {
+        const maillaNotification = {
+          id: `case-accepted-${caseId}`,
+          type: 'case_accepted' as const,
+          orgId: org.id,
+          title: `✅ Case Accepted: ${smartCase.title}`,
+          message: `${contractor.name} has accepted the maintenance case and scheduled it for ${new Date(scheduledDateTime).toLocaleString()}. ${notes ? `Notes: ${notes}` : ''}`,
+          timestamp: new Date().toISOString(),
+          subject: `Case Accepted - ${smartCase.title}`,
+          metadata: {
+            caseId,
+            caseNumber: smartCase.caseNumber,
+            contractorName: contractor.name,
+            scheduledDateTime,
+            estimatedDurationMinutes,
+            notes
+          }
+        };
+
+        // Send to anonymous connections (for Mailla triage)
+        await notificationService.sendTestWebSocketNotification(maillaNotification, org.id);
+        console.log(`📱 Mailla notification sent for case acceptance by ${contractor.name}`);
+      } catch (error) {
+        console.error('❌ Failed to send Mailla notification:', error);
+      }
+
       res.json({ 
         success: true, 
         case: updatedCase,
