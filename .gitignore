@@ -1,6 +1,46 @@
-node_modules
-dist
-.DS_Store
-server/public
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+server/public/
+
+# Environment variables (IMPORTANT - keeps secrets safe)
+.env
+.env.local
+.env.production
+.env.development
+
+# Logs
+logs/
+/tmp/logs/
+*.log
+npm-debug.log*
+
+# Replit specific
+.replit
+.upm/
+.config/
+.cache/
 vite.config.ts.*
+
+# Database files
+*.db
+*.sqlite
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/
+*.tmp
 *.tar.gz
+
+# Editor
+.vscode/
+.idea/
+
+# Attached assets (if you want to exclude uploaded files)
+# attached_assets/
