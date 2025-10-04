@@ -305,7 +305,7 @@ Score contractors on: skill match (30%), availability (25%), response time (20%)
       score += availabilityRatio * 15;
       
       // Emergency availability for urgent cases
-      if ((caseData.priority === 'Urgent' || caseData.urgency === 'Critical') && contractor.emergencyAvailable) {
+      if ((caseData.priority === 'High' || caseData.priority === 'Critical' || caseData.urgency === 'Critical') && contractor.emergencyAvailable) {
         score += 15;
       }
       

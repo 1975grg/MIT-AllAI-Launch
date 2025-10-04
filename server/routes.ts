@@ -6540,33 +6540,141 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
 
       const result = await contractorChatService.continueChat(sessionId, message);
       
-      // If case creation is triggered, create the actual case
+      // If case creation is triggered, create the actual case with full AI triage and contractor matching
       if (result.caseData) {
         try {
           const session = contractorChatService.getSession(sessionId);
           if (session) {
-            // Create the maintenance case using existing storage
+            console.log('🎯 Creating case with AI triage and contractor matching...');
+            
+            // Step 1: Run AI Triage Analysis
+            const triageRequest = {
+              title: result.caseData.title,
+              description: result.caseData.description,
+              category: result.caseData.category,
+              building: result.caseData.location.split(' ')[0] || 'MIT Housing',
+              room: result.caseData.location.split(' ').slice(1).join(' ') || 'TBD',
+              studentContact: {
+                name: result.caseData.studentInfo || 'Student',
+                email: 'student@mit.edu',
+                building: result.caseData.location.split(' ')[0] || 'MIT Housing',
+                room: result.caseData.location.split(' ').slice(1).join(' ') || 'TBD'
+              }
+            };
+
+            const triageResult = await aiTriageService.analyzeMaintenanceRequest(triageRequest);
+            console.log(`🤖 AI Triage: ${triageResult.urgency} urgency, ${triageResult.category} category`);
+
+            // Step 2: Create the maintenance case with triage analysis
             const caseData = {
               orgId: session.orgId,
               title: result.caseData.title,
               description: result.caseData.description,
-              priority: result.caseData.urgency,
-              category: result.caseData.category,
+              priority: triageResult.urgency,
+              category: triageResult.category,
               status: 'New' as const,
-              studentEmail: 'student@mit.edu', // Default - could be enhanced later
-              studentName: 'Student', // Default - could be enhanced later
+              studentEmail: 'student@mit.edu',
+              studentName: result.caseData.studentInfo || 'Student',
               buildingName: result.caseData.location.split(' ')[0] || 'MIT Housing',
               roomNumber: result.caseData.location.split(' ').slice(1).join(' ') || 'TBD',
               reportedAt: new Date(),
+              aiAnalysis: triageResult,
               metadata: {
                 chatSessionId: sessionId,
-                contractorNotes: result.caseData.studentInfo
+                contractorNotes: result.caseData.studentInfo,
+                triageCompleted: true,
+                aiVersion: triageResult.version || '1.0'
               }
             };
 
             const newCase = await storage.createSmartCase(caseData);
             console.log(`✅ Case created from contractor chat: ${newCase.id}`);
-            
+
+            // Step 3: Get available contractors for AI matching
+            const allVendors = await storage.getVendors(session.orgId);
+            const availableContractors = allVendors
+              .filter(v => v.contractorType === 'contractor' && v.isActive)
+              .map(v => ({
+                id: v.id,
+                name: v.name,
+                category: v.category || 'General',
+                specializations: v.specializations || [],
+                availabilityPattern: v.availabilityPattern || 'Business hours',
+                responseTimeHours: v.responseTimeHours || 24,
+                estimatedHourlyRate: v.hourlyRate,
+                rating: v.rating,
+                maxJobsPerDay: v.maxJobsPerDay || 5,
+                currentWorkload: v.currentWorkload || 0,
+                emergencyAvailable: v.emergencyAvailable || false,
+                isActiveContractor: v.isActive
+              }));
+
+            // Step 4: Use AI Coordinator to find optimal contractor match
+            if (availableContractors.length > 0) {
+              const matchRequest = {
+                caseData: {
+                  id: newCase.id,
+                  category: triageResult.category,
+                  priority: triageResult.urgency,
+                  description: result.caseData.description,
+                  location: `${result.caseData.location}`,
+                  urgency: triageResult.urgency,
+                  estimatedDuration: triageResult.estimatedDuration,
+                  safetyRisk: triageResult.safetyRisk,
+                  contractorType: triageResult.contractorType
+                },
+                availableContractors
+              };
+
+              const recommendations = await aiCoordinatorService.findOptimalContractor(matchRequest);
+              console.log(`🎯 AI Coordinator: Found ${recommendations.length} contractor matches`);
+
+              // Step 5: Assign the best-matched contractor
+              if (recommendations.length > 0 && recommendations[0].matchScore > 0) {
+                const bestMatch = recommendations[0];
+                console.log(`✨ Best match: ${bestMatch.contractorName} (score: ${bestMatch.matchScore})`);
+
+                // Assign contractor to case
+                const assignedCase = await storage.assignContractor(newCase.id, bestMatch.contractorId);
+
+                // Step 6: Create appointment for contractor
+                const appointmentDate = new Date();
+                appointmentDate.setHours(appointmentDate.getHours() + parseInt(bestMatch.estimatedResponseTime) || 24);
+
+                await storage.createAppointment({
+                  caseId: newCase.id,
+                  vendorId: bestMatch.contractorId,
+                  scheduledDate: appointmentDate,
+                  status: 'Scheduled',
+                  notes: `AI-matched contractor. ${bestMatch.reasoning}`,
+                  appointmentType: 'maintenance'
+                });
+
+                // Step 7: Send notifications
+                try {
+                  // Notify the contractor about the new assignment
+                  await notificationService.notifyContractorNewCase(
+                    session.orgId,
+                    bestMatch.contractorId,
+                    {
+                      caseId: newCase.id,
+                      title: newCase.title,
+                      priority: triageResult.urgency,
+                      location: `${newCase.buildingName} ${newCase.roomNumber}`,
+                      estimatedResponseTime: bestMatch.estimatedResponseTime
+                    }
+                  );
+                  console.log(`📬 Notified contractor ${bestMatch.contractorName}`);
+                } catch (notifError) {
+                  console.error('Error sending contractor notification:', notifError);
+                }
+              } else {
+                console.log('⚠️ No suitable contractors found - case created without assignment');
+              }
+            } else {
+              console.log('⚠️ No contractors available - case created without assignment');
+            }
+
             // Update session with case ID
             const updatedSession = contractorChatService.getSession(sessionId);
             if (updatedSession) {
@@ -6576,7 +6684,9 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
             return res.json({
               response: result.response,
               caseCreated: true,
-              caseId: newCase.id
+              caseId: newCase.id,
+              triageCompleted: true,
+              contractorMatched: availableContractors.length > 0
             });
           }
         } catch (caseError) {
