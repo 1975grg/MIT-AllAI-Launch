@@ -176,20 +176,24 @@ export class ContractorChatService {
 
     // Get GPT response
     const response = await this.getChatGPTResponse(session.messages);
+    console.log('🤖 GPT Response:', response.substring(0, 200));
 
     // Check if this is a case creation response
     if (response.includes('CREATE_CASE:')) {
+      console.log('📋 CREATE_CASE detected in response');
       try {
         // Extract JSON from response - find the JSON object between { and }
         const jsonStart = response.indexOf('{');
         const jsonEnd = response.lastIndexOf('}');
+        
+        console.log(`🔍 JSON boundaries: start=${jsonStart}, end=${jsonEnd}`);
         
         if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
           const jsonStr = response.substring(jsonStart, jsonEnd + 1);
           console.log('🔍 Extracted JSON string:', jsonStr);
           
           const caseData = JSON.parse(jsonStr);
-          console.log('✅ Parsed case data:', caseData);
+          console.log('✅ Parsed case data successfully:', JSON.stringify(caseData, null, 2));
           
           // Mark session as complete
           session.isComplete = true;
