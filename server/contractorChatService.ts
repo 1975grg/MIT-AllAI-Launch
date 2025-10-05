@@ -170,22 +170,34 @@ export class ContractorChatService {
     const response = await this.getChatGPTResponse(session.messages);
 
     // Check if this is a case creation response
-    if (response.startsWith('CREATE_CASE:')) {
+    if (response.includes('CREATE_CASE:')) {
       try {
-        const jsonStr = response.substring('CREATE_CASE:'.length).trim();
-        const caseData = JSON.parse(jsonStr);
+        // Extract JSON from response - find the JSON object between { and }
+        const jsonStart = response.indexOf('{');
+        const jsonEnd = response.lastIndexOf('}');
         
-        // Mark session as complete
-        session.isComplete = true;
-        session.caseCreated = 'pending';
-        
-        // Return both the case data and a friendly response
-        return {
-          response: "I've gathered all the information needed. Let me create a maintenance request for you right away. A contractor will be in touch soon!",
-          caseData
-        };
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+          const jsonStr = response.substring(jsonStart, jsonEnd + 1);
+          console.log('🔍 Extracted JSON string:', jsonStr);
+          
+          const caseData = JSON.parse(jsonStr);
+          console.log('✅ Parsed case data:', caseData);
+          
+          // Mark session as complete
+          session.isComplete = true;
+          session.caseCreated = 'pending';
+          
+          // Return both the case data and a friendly response
+          return {
+            response: "I've gathered all the information needed. Let me create a maintenance request for you right away. A contractor will be in touch soon!",
+            caseData
+          };
+        } else {
+          console.error('❌ Could not find valid JSON boundaries in response');
+        }
       } catch (error) {
         console.error('Failed to parse case creation data:', error);
+        console.error('Response was:', response);
         // Fall back to regular response
       }
     }
