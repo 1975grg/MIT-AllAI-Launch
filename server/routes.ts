@@ -6566,25 +6566,42 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
             console.log(`🤖 AI Triage: ${triageResult.urgency} urgency, ${triageResult.category} category`);
 
             // Step 2: Create the maintenance case with triage analysis
+            // Format description with student info (schema doesn't have separate student fields)
+            const formattedDescription = `**Student Report:**
+${result.caseData.description}
+
+**Location:** ${result.caseData.location}
+
+**Reported by:** ${result.caseData.studentInfo || 'Student via Chat'}
+
+**AI Triage:** ${triageResult.urgency} priority, ${triageResult.category} category
+${triageResult.preliminaryDiagnosis ? `\n**Diagnosis:** ${triageResult.preliminaryDiagnosis}` : ''}`;
+
+            // Generate case number
+            const building = result.caseData.location.split(' ')[0] || 'MIT';
+            const room = result.caseData.location.split(' ').slice(1).join(' ') || 'TBD';
+            const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const caseNumber = `L1-${building}-${room}-${dateStr}`;
+
+            // Map AI triage urgency to case priority (Critical -> Urgent for schema compatibility)
+            const casePriority = triageResult.urgency === 'Critical' ? 'Urgent' : triageResult.urgency;
+
             const caseData = {
               orgId: session.orgId,
+              caseNumber,
               title: result.caseData.title,
-              description: result.caseData.description,
-              priority: triageResult.urgency,
+              description: formattedDescription,
+              priority: casePriority,
               category: triageResult.category,
               status: 'New' as const,
-              studentEmail: 'student@mit.edu',
-              studentName: result.caseData.studentInfo || 'Student',
-              buildingName: result.caseData.location.split(' ')[0] || 'MIT Housing',
-              roomNumber: result.caseData.location.split(' ').slice(1).join(' ') || 'TBD',
-              reportedAt: new Date(),
-              aiAnalysis: triageResult,
-              metadata: {
-                chatSessionId: sessionId,
-                contractorNotes: result.caseData.studentInfo,
-                triageCompleted: true,
-                aiVersion: triageResult.version || '1.0'
-              }
+              buildingName: building,
+              roomNumber: room,
+              locationText: result.caseData.location,
+              aiTriageJson: triageResult,
+              aiCategory: triageResult.category,
+              aiPriority: casePriority,
+              aiTriageStatus: 'completed' as const,
+              urgencyKeywords: triageResult.troubleshootingSteps || []
             };
 
             const newCase = await storage.createSmartCase(caseData);
@@ -6593,7 +6610,7 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
             // Step 3: Get available contractors for AI matching
             const allVendors = await storage.getVendors(session.orgId);
             const availableContractors = allVendors
-              .filter(v => v.contractorType === 'contractor' && v.isActive)
+              .filter(v => v.isActiveContractor === true)
               .map(v => ({
                 id: v.id,
                 name: v.name,
@@ -6601,12 +6618,12 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
                 specializations: v.specializations || [],
                 availabilityPattern: v.availabilityPattern || 'Business hours',
                 responseTimeHours: v.responseTimeHours || 24,
-                estimatedHourlyRate: v.hourlyRate,
-                rating: v.rating,
+                estimatedHourlyRate: v.estimatedHourlyRate ? parseFloat(v.estimatedHourlyRate) : undefined,
+                rating: v.rating ? parseFloat(v.rating) : undefined,
                 maxJobsPerDay: v.maxJobsPerDay || 5,
-                currentWorkload: v.currentWorkload || 0,
+                currentWorkload: 0, // Default to 0 since we don't track this in real-time
                 emergencyAvailable: v.emergencyAvailable || false,
-                isActiveContractor: v.isActive
+                isActiveContractor: true // Always true due to filter above
               }));
 
             // Step 4: Use AI Coordinator to find optimal contractor match
@@ -6635,35 +6652,42 @@ Respond with valid JSON: {"tldr": "summary", "bullets": ["facts"], "actions": [{
                 console.log(`✨ Best match: ${bestMatch.contractorName} (score: ${bestMatch.matchScore})`);
 
                 // Assign contractor to case
-                const assignedCase = await storage.assignContractor(newCase.id, bestMatch.contractorId);
+                await storage.updateSmartCase(newCase.id, {
+                  contractorId: bestMatch.contractorId
+                });
 
                 // Step 6: Create appointment for contractor
-                const appointmentDate = new Date();
-                appointmentDate.setHours(appointmentDate.getHours() + parseInt(bestMatch.estimatedResponseTime) || 24);
+                const appointmentStart = new Date();
+                appointmentStart.setHours(appointmentStart.getHours() + (parseInt(bestMatch.estimatedResponseTime) || 24));
+                const appointmentEnd = new Date(appointmentStart);
+                appointmentEnd.setHours(appointmentEnd.getHours() + 2); // 2 hour default duration
 
                 await storage.createAppointment({
+                  orgId: session.orgId,
                   caseId: newCase.id,
-                  vendorId: bestMatch.contractorId,
-                  scheduledDate: appointmentDate,
-                  status: 'Scheduled',
-                  notes: `AI-matched contractor. ${bestMatch.reasoning}`,
-                  appointmentType: 'maintenance'
+                  contractorId: bestMatch.contractorId,
+                  title: `Maintenance: ${newCase.title}`,
+                  description: `AI-matched contractor. ${bestMatch.reasoning}`,
+                  scheduledStartAt: appointmentStart,
+                  scheduledEndAt: appointmentEnd,
+                  estimatedDurationMinutes: 120,
+                  priority: triageResult.urgency === 'Critical' ? 'High' : triageResult.urgency,
+                  status: 'Confirmed',
+                  locationDetails: `${newCase.buildingName} ${newCase.roomNumber}`,
+                  requiresTenantAccess: true,
+                  isEmergency: triageResult.urgency === 'Critical'
                 });
 
                 // Step 7: Send notifications
                 try {
                   // Notify the contractor about the new assignment
-                  await notificationService.notifyContractorNewCase(
-                    session.orgId,
-                    bestMatch.contractorId,
-                    {
-                      caseId: newCase.id,
-                      title: newCase.title,
-                      priority: triageResult.urgency,
-                      location: `${newCase.buildingName} ${newCase.roomNumber}`,
-                      estimatedResponseTime: bestMatch.estimatedResponseTime
-                    }
-                  );
+                  await notificationService.notifyContractor({
+                    type: 'case_assigned',
+                    title: 'New Case Assigned',
+                    message: `You have been assigned to case: ${newCase.title} at ${newCase.buildingName} ${newCase.roomNumber}`,
+                    orgId: session.orgId,
+                    link: `/contractor/cases/${newCase.id}`
+                  }, bestMatch.contractorId);
                   console.log(`📬 Notified contractor ${bestMatch.contractorName}`);
                 } catch (notifError) {
                   console.error('Error sending contractor notification:', notifError);
