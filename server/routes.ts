@@ -6600,7 +6600,7 @@ ${triageResult.preliminaryDiagnosis ? `\n**Diagnosis:** ${triageResult.prelimina
               aiTriageJson: triageResult,
               aiCategory: triageResult.category,
               aiPriority: casePriority,
-              aiTriageStatus: 'completed' as const,
+              aiTriageStatus: 'processed' as const,
               urgencyKeywords: triageResult.troubleshootingSteps || []
             };
 
