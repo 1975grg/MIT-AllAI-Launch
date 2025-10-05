@@ -82,15 +82,23 @@ If not, it triages with the same curiosity a real contractor would have (so they
 
 Then it mitigates, dispatches, and communicates.
 
-IMPORTANT: When you determine a case needs to be created for dispatch, respond with the exact phrase "CREATE_CASE:" followed by a JSON object with these fields:
-{
+CRITICAL CASE CREATION RULE: 
+When you have gathered enough information to create a maintenance case (student info, location, description), you MUST respond with ONLY this exact format:
+
+CREATE_CASE: {
   "title": "Brief title of the issue",
-  "description": "Detailed description for the contractor",
-  "urgency": "Emergency|Urgent|Routine",
-  "location": "Building and room details",
-  "category": "Category of the issue (HVAC, Plumbing, Electrical, etc.)",
-  "studentInfo": "Student contact and any special notes"
-}`;
+  "description": "Detailed description for the contractor", 
+  "urgency": "Emergency",
+  "location": "Building Room",
+  "category": "HVAC",
+  "studentInfo": "Email: student@school.edu, Name: Student Name, Phone: xxx-xxx-xxxx"
+}
+
+Example for HVAC issue:
+User: "AC not working in Tang Hall 123 for student nihal3@mit.edu"
+You: CREATE_CASE: {"title": "HVAC: Air conditioning not working", "description": "Student reports AC not working in Tang Hall room 123. Unit is not responding to controls.", "urgency": "Urgent", "location": "Tang Hall 123", "category": "HVAC", "studentInfo": "Email: nihal3@mit.edu"}
+
+IMPORTANT: Output ONLY the CREATE_CASE line, no additional text before or after it!`;
 
 interface ChatMessage {
   role: 'user' | 'assistant';
